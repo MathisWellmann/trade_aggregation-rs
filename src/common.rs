@@ -1,5 +1,16 @@
 use std::fs::File;
 
+pub const M1: i64 = 60;  // 1 minute candle constant
+pub const M5: i64 = 300;
+pub const M15: i64 = 900;
+pub const M30: i64 = 1800;
+pub const H1: i64 = 3600;  // 1 hour candle constant
+pub const H2: i64 = 7200;
+pub const H4: i64 = 14400;
+pub const H8: i64 = 28800;
+pub const H12: i64 = 43200;
+pub const D1: i64 = 86400;  // 1 day candle constant
+
 #[derive(Debug)]
 pub struct Trade {
     pub(crate) timestamp: i64,
@@ -15,8 +26,8 @@ pub struct Candle {
     pub(crate) low: f64,
     pub(crate) close: f64,
     pub(crate) volume: f64,
-    pub(crate) volume_direction_ratio: f64,
-    pub(crate) trade_direction_ratio: f64,
+    pub(crate) volume_direction_ratio: f64,  // buy_volume / volume // in range [0, 1]
+    pub(crate) trade_direction_ratio: f64,  // num_buys / num_trades // in range [0, 1]
     pub(crate) num_trades: i32,
     pub(crate) weighted_price: f64,
 }
@@ -45,7 +56,6 @@ pub fn load_trades_from_csv(filename: &str) -> Vec<Trade> {
     let mut r = csv::Reader::from_reader(f);
 
     let mut out: Vec<Trade> = vec![];
-    let mut count: i64 = 0;
     for record in r.records() {
         let row = record.unwrap();
 
@@ -59,7 +69,6 @@ pub fn load_trades_from_csv(filename: &str) -> Vec<Trade> {
             size: size,
         };
         out.push(trade);
-        count += 1;
     };
     return out
 }

@@ -1,16 +1,5 @@
 use crate::common::{Trade, Candle};
 
-pub const M1: i64 = 60;  // 1 minute candle constant
-pub const M5: i64 = 300;
-pub const M15: i64 = 900;
-pub const M30: i64 = 1800;
-pub const H1: i64 = 3600;  // 1 hour candle constant
-pub const H2: i64 = 7200;
-pub const H4: i64 = 14400;
-pub const H8: i64 = 28800;
-pub const H12: i64 = 43200;
-pub const D1: i64 = 86400;  // 1 day candle constant
-
 // agg_time aggregates trades by timestamp and returns a vector of candles
 // threshold in nano-seconds
 pub fn agg_time(trades: &Vec<Trade>, threshold: i64) -> Vec<Candle> {
@@ -53,6 +42,7 @@ pub fn agg_time(trades: &Vec<Trade>, threshold: i64) -> Vec<Candle> {
         }
         wp += trades[i].price * trades[i].size.abs();
 
+        // convert threshold from seconds to milliseconds
         if trades[i].timestamp - init_timestamp > threshold * 1000 {
             // create new candle
             let c = Candle{
@@ -69,14 +59,24 @@ pub fn agg_time(trades: &Vec<Trade>, threshold: i64) -> Vec<Candle> {
             };
             out.push(c);
 
-            init_timestamp = trades[i].timestamp;
-            open = trades[i].price;
-            high = trades[i].price;
-            low = trades[i].price;
-            volume = 0.0;
-            num_buys = 0;
-            num_trades = 0;
+            init = true;
         }
     }
     return out
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::common;
+
+    #[test]
+    fn test_agg_time() {
+        let trades = common::load_trades_from_csv("data/Bitmex_XBTUSD_1M.csv");
+        let candles = agg_time(&trades, common::H1);
+
+        for i in 0..candles.len() {
+            common::test_candle(&candles[i]);
+        }
+    }
 }
