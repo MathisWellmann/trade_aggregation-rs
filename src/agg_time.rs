@@ -22,8 +22,8 @@ pub fn agg_time(trades: &Vec<Trade>, threshold: i64) -> Vec<Candle> {
     let mut low: f64 = trades[0].price;
     let mut volume: f64 = 0.0;
     let mut buy_volume: f64 = 0.0;
-    let mut num_buys: i8 = 0;
-    let mut num_trades: i8 = 0;
+    let mut num_buys: i32 = 0;
+    let mut num_trades: i32 = 0;
     let mut wp: f64 = 0.0;
     let mut init: bool = true;
 

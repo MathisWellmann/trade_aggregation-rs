@@ -1,25 +1,26 @@
 use crate::common::{Trade, Candle};
 
-pub const ASSET: i8 = 0;
-pub const BASE_CURRENCY: i8 = 1;
+pub const ASSET: usize = 0;
+pub const BASE: usize = 1;
 
+#[derive(Debug)]
 pub struct AggVolumeStreaming {
     pub last_candle: Candle,
     vol_threshold: f64,
-    by: i8,
+    by: usize,
     open: f64,
     high: f64,
     low: f64,
     volume: f64,
+    buy_volume: f64,
     wp: f64,
     init: bool,
-    num_trades: i8,
-    trade_direction_ratio: f64,
-    volume_direction_ratio: f64,
+    num_trades: i32,
+    num_buys: i32,
 }
 
 
-pub fn new(vol_threshold: f64, by: i8) -> AggVolumeStreaming {
+pub fn new(vol_threshold: f64, by: usize) -> AggVolumeStreaming {
     return AggVolumeStreaming {
         vol_threshold: vol_threshold,
         by: by,
@@ -39,11 +40,11 @@ pub fn new(vol_threshold: f64, by: i8) -> AggVolumeStreaming {
         high: 0.0,
         low: 0.0,
         volume: 0.0,
+        buy_volume: 0.0,
         wp: 0.0,
         init: true,
         num_trades: 0,
-        trade_direction_ratio: 0.0,
-        volume_direction_ratio: 0.0,
+        num_buys: 0,
     }
 }
 
@@ -56,6 +57,11 @@ impl AggVolumeStreaming {
             self.open = trade.price;
             self.high = trade.price;
             self.low = trade.price;
+            self.volume = 0.0;
+            self.buy_volume = 0.0;
+            self.wp = 0.0;
+            self.num_trades = 0;
+            self.num_buys = 0;
         }
         if trade.price > self.high {
             self.high = trade.price;
@@ -65,11 +71,18 @@ impl AggVolumeStreaming {
         }
         if self.by == ASSET {
             self.volume += trade.size.abs() / trade.price;
+            if trade.size > 0.0 {
+                self.buy_volume += trade.size.abs() / trade.price;
+            }
             self.wp += trade.size.abs();
-        } else if self.by == BASE_CURRENCY {
+        } else if self.by == BASE {
             self.volume += trade.size.abs();
+            if trade.size > 0.0 {
+                self.buy_volume += trade.size.abs();
+            }
             self.wp += trade.price * trade.size.abs();
         }
+        self.num_trades += 1;
 
         if self.volume > self.vol_threshold {
             // create new candle
@@ -77,18 +90,54 @@ impl AggVolumeStreaming {
                 timestamp: trade.timestamp,
                 open: self.open,
                 high: self.high,
-                low: self.high,
+                low: self.low,
                 close: trade.price,
                 volume: self.volume,
                 weighted_price: self.wp / self.volume,
                 num_trades: self.num_trades,
-                trade_direction_ratio: self.trade_direction_ratio,
-                volume_direction_ratio: self.volume_direction_ratio,
+                trade_direction_ratio: self.num_buys as f64 / self.num_trades as f64,
+                volume_direction_ratio: self.buy_volume / self.volume,
             };
             self.last_candle = c;
             self.init = true;
             return true
         }
         return false
+    }
+
+    pub fn last(&self) -> &Candle {
+        return &self.last_candle
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::common;
+
+    #[test]
+    fn test_agg_volume_streaming_base() {
+        let mut agg_volume = new(100.0, BASE);
+
+        let trades = common::load_trades_from_csv("data/Bitmex_XBTUSD_1M.csv");
+        for i in 0..trades.len() {
+            let new_candle = agg_volume.update(&trades[i]);
+            if new_candle {
+                common::test_candle(&agg_volume.last_candle);
+            }
+        }
+    }
+
+    #[test]
+    fn test_agg_volume_streaming_asset() {
+        let mut agg_volume = new(1000.0, ASSET);
+
+        let trades = common::load_trades_from_csv("data/Bitmex_XBTUSD_1M.csv");
+        for i in 0..trades.len() {
+            let new_candle = agg_volume.update(&trades[i]);
+            if new_candle {
+                common::test_candle(&agg_volume.last_candle);
+            }
+        }
     }
 }
