@@ -1,7 +1,4 @@
-use crate::common::{Trade, Candle};
-
-pub const ASSET: usize = 0;
-pub const BASE: usize = 1;
+use crate::common::{Trade, Candle, BASE, ASSET};
 
 #[derive(Debug)]
 pub struct AggVolumeStreaming {

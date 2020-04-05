@@ -1,7 +1,4 @@
-use crate::common::{Trade, Candle};
-
-const ASSET: usize = 0;
-const BASE: usize = 0;
+use crate::common::{Trade, Candle, BASE, ASSET};
 
 // agg_volume aggregates trades by volume
 pub fn agg_volume(trades: &Vec<Trade>, threshold: f64, by: usize) -> Vec<Candle> {

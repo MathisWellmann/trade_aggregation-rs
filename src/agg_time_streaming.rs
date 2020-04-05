@@ -112,7 +112,6 @@ mod tests {
         for i in 0..trades.len() {
             let new_candle = agg_time.update(&trades[i]);
             if new_candle {
-                println!("agg_time: {:?}", agg_time);
                 common::test_candle(agg_time.last());
             }
         }
