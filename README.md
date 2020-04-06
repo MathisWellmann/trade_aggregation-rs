@@ -12,6 +12,12 @@ It enables a clear view of the market state without using arbitrary time aggrega
 See [MathisWellmann/go_trade_aggregation](https://github.com/MathisWellmann/go_trade_aggregation) for a go implementation.
 
 ### How to use:
+in Cargo.toml:
+```
+[dependencies]
+trade_aggregation = { git = "https://github.com/MathisWellmann/rust_trade_aggregation" }
+```
+
 aggregate all trades by volume at once
 ```
 extern crate trade_aggregation;
@@ -31,6 +37,7 @@ fn main() {
     }
 }
 ```
+
 Use streaming trades to update with each tick
 ```
 extern crate trade_aggregation;
