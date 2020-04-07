@@ -14,14 +14,14 @@ pub const D1: i64 = 86400;  // 1 day candle constant
 pub const ASSET: usize = 0;
 pub const BASE: usize = 0;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Trade {
     pub timestamp: i64,
     pub price: f64,
     pub size: f64,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Candle {
     pub timestamp: i64,
     pub open: f64,
