@@ -17,13 +17,13 @@ pub fn agg_volume(trades: &Vec<Trade>, threshold: f64, by: usize) -> Vec<Candle>
     let mut welford_prices = welford_online::new();
     let mut welford_sizes = welford_online::new();
 
-    for i in 1..trades.len() {
+    for t in trades.iter() {
         if init {
             init = false;
 
-            open = trades[i].price;
-            high = trades[i].price;
-            low = trades[i].price;
+            open = t.price;
+            high = t.price;
+            low = t.price;
             volume = 0.0;
             buy_volume = 0.0;
             num_buys = 0;
@@ -33,40 +33,40 @@ pub fn agg_volume(trades: &Vec<Trade>, threshold: f64, by: usize) -> Vec<Candle>
             welford_sizes.reset();
         }
 
-        if trades[i].price > high {
-            high = trades[i].price
-        } else if trades[i].price < low {
-            low = trades[i].price
+        if t.price > high {
+            high = t.price
+        } else if t.price < low {
+            low = t.price
         }
         if by == ASSET {
-            volume += trades[i].size.abs() / trades[i].price;
-            if trades[i].size > 0.0 {
-                buy_volume += trades[i].size.abs() / trades[i].price;
+            volume += t.size.abs() / t.price;
+            if t.size > 0.0 {
+                buy_volume += t.size.abs() / t.price;
             }
-            wp += trades[i].size.abs();
+            wp += t.size.abs();
         } else if by == BASE {
-            volume += trades[i].size.abs();
-            if trades[i].size > 0.0 {
-                buy_volume += trades[i].size.abs();
+            volume += t.size.abs();
+            if t.size > 0.0 {
+                buy_volume += t.size.abs();
             }
-            wp += trades[i].size.abs() * trades[i].price;
+            wp += t.size.abs() * t.price;
         }
 
         num_trades += 1;
-        if trades[i].size > 0.0 {
+        if t.size > 0.0 {
             num_buys += 1;
         }
-        welford_prices.add(trades[i].price);
-        welford_sizes.add(trades[i].size);
+        welford_prices.add(t.price);
+        welford_sizes.add(t.size);
 
         if volume > threshold {
             // create new candle
             let c = Candle{
-                timestamp: trades[i].timestamp,
+                timestamp: t.timestamp,
                 open,
                 high,
                 low,
-                close: trades[i].price,
+                close: t.price,
                 volume,
                 volume_direction_ratio: buy_volume / volume,
                 trade_direction_ratio: num_buys as f64 / num_trades as f64,

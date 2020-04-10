@@ -19,13 +19,13 @@ pub fn agg_time(trades: &Vec<Trade>, threshold: i64) -> Vec<Candle> {
     let mut welford_prices = welford_online::new();
     let mut welford_sizes = welford_online::new();
 
-    for i in 0..trades.len() {
+    for t in trades.iter() {
         if init {
             init = false;
-            init_timestamp = trades[i].timestamp;
-            open = trades[i].price;
-            high = trades[i].price;
-            low = trades[i].price;
+            init_timestamp = t.timestamp;
+            open = t.price;
+            high = t.price;
+            low = t.price;
             volume = 0.0;
             buy_volume = 0.0;
             num_buys = 0;
@@ -34,31 +34,31 @@ pub fn agg_time(trades: &Vec<Trade>, threshold: i64) -> Vec<Candle> {
             welford_prices.reset();
             welford_sizes.reset();
         }
-        if trades[i].price > high {
-            high = trades[i].price
-        } else if trades[i].price < low {
-            low = trades[i].price
+        if t.price > high {
+            high = t.price
+        } else if t.price < low {
+            low = t.price
         }
-        volume += trades[i].size.abs();
+        volume += t.size.abs();
         num_trades += 1;
-        if trades[i].size > 0.0 {
+        if t.size > 0.0 {
             num_buys += 1;
-            buy_volume += trades[i].size.abs()
+            buy_volume += t.size.abs()
         }
-        wp += trades[i].price * trades[i].size.abs();
+        wp += t.price * t.size.abs();
 
-        welford_prices.add(trades[i].price);
-        welford_sizes.add(trades[i].size);
+        welford_prices.add(t.price);
+        welford_sizes.add(t.size);
 
         // convert threshold from seconds to milliseconds
-        if trades[i].timestamp - init_timestamp > threshold * 1000 {
+        if t.timestamp - init_timestamp > threshold * 1000 {
             // create new candle
             let c = Candle{
-                timestamp: trades[i].timestamp,
+                timestamp: t.timestamp,
                 open,
                 high,
                 low,
-                close: trades[i].price,
+                close: t.price,
                 volume,
                 volume_direction_ratio: buy_volume / volume,
                 trade_direction_ratio: num_buys as f64 / num_trades as f64,
@@ -79,8 +79,6 @@ pub fn agg_time(trades: &Vec<Trade>, threshold: i64) -> Vec<Candle> {
 mod tests {
     use super::*;
     use crate::common;
-    // extern crate test;
-    // use test::Bencher;
 
     #[test]
     fn test_agg_time() {
@@ -91,12 +89,4 @@ mod tests {
             common::test_candle(&candles[i]);
         }
     }
-
-    // #[bench]
-    // fn bench_agg_time(b: &mut Bencher) {
-    //     let trades = common::load_trades_from_csv("data/Bitmex_XBTUSD_1M.csv");
-    //
-    //     // benchmark time for aggregating 1 million real trades into 5 minute candles
-    //     b.iter(|| gg_time(&trades, common::M5));
-    // }
 }
