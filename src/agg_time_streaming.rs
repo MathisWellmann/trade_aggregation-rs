@@ -1,4 +1,6 @@
 use crate::common::{Trade, Candle};
+use crate::welford_online;
+
 
 #[derive(Debug)]
 pub struct AggTimeStreaming {
@@ -14,6 +16,8 @@ pub struct AggTimeStreaming {
     num_trades: i32,
     num_buys: i32,
     last_candle: Candle,
+    welford_prices: welford_online::WelfordOnline,
+    welford_sizes: welford_online::WelfordOnline,
 }
 
 pub fn new(candle_period: i64) -> AggTimeStreaming {
@@ -40,7 +44,11 @@ pub fn new(candle_period: i64) -> AggTimeStreaming {
             volume_direction_ratio: 0.0,
             num_trades: 0,
             weighted_price: 0.0,
-        }
+            std_dev_prices: 0.0,
+            std_dev_sizes: 0.0,
+        },
+        welford_prices: welford_online::new(),
+        welford_sizes: welford_online::new(),
     }
 }
 
@@ -57,6 +65,8 @@ impl AggTimeStreaming {
             self.num_trades = 0;
             self.num_buys = 0;
             self.wp = 0.0;
+            self.welford_sizes.reset();
+            self.welford_prices.reset();
         }
 
         if trade.price > self.high {
@@ -73,6 +83,9 @@ impl AggTimeStreaming {
         }
         self.wp += trade.price * trade.size.abs();
 
+        self.welford_prices.add(trade.price);
+        self.welford_sizes.add(trade.size);
+
         if trade.timestamp - self.init_timestamp > self.period * 1000 {
             // create new candle
             let c = Candle{
@@ -86,6 +99,8 @@ impl AggTimeStreaming {
                 num_trades: self.num_trades,
                 trade_direction_ratio: self.num_buys as f64 / self.num_trades as f64,
                 weighted_price: self.wp / self.volume,
+                std_dev_prices: self.welford_prices.std_dev(),
+                std_dev_sizes: self.welford_sizes.std_dev(),
             };
             self.last_candle = c;
             self.init = true;

@@ -1,4 +1,6 @@
 use crate::common::{Trade, Candle, BASE, ASSET};
+use crate::welford_online;
+
 
 #[derive(Debug)]
 pub struct AggVolumeStreaming {
@@ -14,6 +16,8 @@ pub struct AggVolumeStreaming {
     init: bool,
     num_trades: i32,
     num_buys: i32,
+    welford_prices: welford_online::WelfordOnline,
+    welford_sizes: welford_online::WelfordOnline,
 }
 
 
@@ -32,6 +36,8 @@ pub fn new(vol_threshold: f64, by: usize) -> AggVolumeStreaming {
             num_trades: 0,
             trade_direction_ratio: 0.0,
             volume_direction_ratio: 0.0,
+            std_dev_prices: 0.0,
+            std_dev_sizes: 0.0,
         },
         open: 0.0,
         high: 0.0,
@@ -42,6 +48,8 @@ pub fn new(vol_threshold: f64, by: usize) -> AggVolumeStreaming {
         init: true,
         num_trades: 0,
         num_buys: 0,
+        welford_prices: welford_online::new(),
+        welford_sizes: welford_online::new(),
     }
 }
 
@@ -59,6 +67,8 @@ impl AggVolumeStreaming {
             self.wp = 0.0;
             self.num_trades = 0;
             self.num_buys = 0;
+            self.welford_sizes.reset();
+            self.welford_prices.reset();
         }
         if trade.price > self.high {
             self.high = trade.price;
@@ -81,6 +91,9 @@ impl AggVolumeStreaming {
         }
         self.num_trades += 1;
 
+        self.welford_sizes.add(trade.size);
+        self.welford_prices.add(trade.price);
+
         if self.volume > self.vol_threshold {
             // create new candle
             let c = Candle{
@@ -94,6 +107,8 @@ impl AggVolumeStreaming {
                 num_trades: self.num_trades,
                 trade_direction_ratio: self.num_buys as f64 / self.num_trades as f64,
                 volume_direction_ratio: self.buy_volume / self.volume,
+                std_dev_prices: self.welford_prices.std_dev(),
+                std_dev_sizes: self.welford_sizes.std_dev(),
             };
             self.last_candle = c;
             self.init = true;

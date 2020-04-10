@@ -1,4 +1,5 @@
 use crate::common::{Trade, Candle, BASE, ASSET};
+use crate::welford_online;
 
 // agg_volume aggregates trades by volume
 pub fn agg_volume(trades: &Vec<Trade>, threshold: f64, by: usize) -> Vec<Candle> {
@@ -13,6 +14,8 @@ pub fn agg_volume(trades: &Vec<Trade>, threshold: f64, by: usize) -> Vec<Candle>
     let mut num_trades: i32 = 0;
     let mut wp: f64 = 0.0;
     let mut init: bool = true;
+    let mut welford_prices = welford_online::new();
+    let mut welford_sizes = welford_online::new();
 
     for i in 1..trades.len() {
         if init {
@@ -26,6 +29,8 @@ pub fn agg_volume(trades: &Vec<Trade>, threshold: f64, by: usize) -> Vec<Candle>
             num_buys = 0;
             num_trades = 0;
             wp = 0.0;
+            welford_prices.reset();
+            welford_sizes.reset();
         }
 
         if trades[i].price > high {
@@ -51,6 +56,8 @@ pub fn agg_volume(trades: &Vec<Trade>, threshold: f64, by: usize) -> Vec<Candle>
         if trades[i].size > 0.0 {
             num_buys += 1;
         }
+        welford_prices.add(trades[i].price);
+        welford_sizes.add(trades[i].size);
 
         if volume > threshold {
             // create new candle
@@ -65,6 +72,8 @@ pub fn agg_volume(trades: &Vec<Trade>, threshold: f64, by: usize) -> Vec<Candle>
                 trade_direction_ratio: num_buys as f64 / num_trades as f64,
                 num_trades,
                 weighted_price: wp / volume,
+                std_dev_prices: welford_prices.std_dev(),
+                std_dev_sizes: welford_sizes.std_dev(),
             };
             out.push(c);
             init = true;

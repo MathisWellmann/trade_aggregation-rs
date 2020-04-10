@@ -6,6 +6,8 @@ Additional statistics inlcude:
 - trade direction ratio ( num_buys / num_trades )
 - volume direction ratio ( buyVolume / totalVolume )
 - weighted average price ( using abs(size) as weight)
+- StdDev of prices
+- StdDev of sizes
 
 This Aggregation package allows for the creation of highly sophisticated algorithm and ML models. By providing a streaming interface, one is able to build real-time trading agents.
 It enables a clear view of the market state without using arbitrary time aggregation.

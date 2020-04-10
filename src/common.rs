@@ -33,6 +33,8 @@ pub struct Candle {
     pub trade_direction_ratio: f64,  // num_buys / num_trades // in range [0, 1]
     pub num_trades: i32,
     pub weighted_price: f64,
+    pub std_dev_prices: f64,
+    pub std_dev_sizes: f64,
 }
 
 // test_candle will assert if the candle violates any constraints
