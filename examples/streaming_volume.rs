@@ -1,5 +1,6 @@
 extern crate trade_aggregation;
 use trade_aggregation::{common, agg_volume_streaming};
+use trade_aggregation::agg_volume::agg_volume;
 
 fn main() {
     // load trades from file
@@ -9,6 +10,7 @@ fn main() {
     let threshold = 1000.0;  // threshold of volume in this case denoted in BASE currency which is USD
     let by = common::BASE;  // take USD as volume measure
     // let by = common::ASSET;  // take BTC as volume measure
+    let mut agg_volume = agg_volume_streaming::new(threshold, by);
 
     for i in 0..trades.len() {
         // update using the latest trade

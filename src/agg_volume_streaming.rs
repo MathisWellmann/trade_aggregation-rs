@@ -129,7 +129,7 @@ mod tests {
 
     #[test]
     fn test_agg_volume_streaming_base() {
-        let mut agg_volume = new(100.0, BASE);
+        let mut agg_volume = new(1000.0, BASE);
 
         let trades = common::load_trades_from_csv("data/Bitmex_XBTUSD_1M.csv");
         for i in 0..trades.len() {

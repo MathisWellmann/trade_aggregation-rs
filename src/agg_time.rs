@@ -16,8 +16,8 @@ pub fn agg_time(trades: &Vec<Trade>, threshold: i64) -> Vec<Candle> {
     let mut num_trades: i32 = 0;
     let mut wp: f64 = 0.0;
     let mut init: bool = true;
-    let mut welford_prices = welford::new();
-    let mut welford_sizes = welford::new();
+    let mut welford_prices = welford_online::new();
+    let mut welford_sizes = welford_online::new();
 
     for i in 0..trades.len() {
         if init {
@@ -79,6 +79,8 @@ pub fn agg_time(trades: &Vec<Trade>, threshold: i64) -> Vec<Candle> {
 mod tests {
     use super::*;
     use crate::common;
+    // extern crate test;
+    // use test::Bencher;
 
     #[test]
     fn test_agg_time() {
@@ -89,4 +91,12 @@ mod tests {
             common::test_candle(&candles[i]);
         }
     }
+
+    // #[bench]
+    // fn bench_agg_time(b: &mut Bencher) {
+    //     let trades = common::load_trades_from_csv("data/Bitmex_XBTUSD_1M.csv");
+    //
+    //     // benchmark time for aggregating 1 million real trades into 5 minute candles
+    //     b.iter(|| gg_time(&trades, common::M5));
+    // }
 }
