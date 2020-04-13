@@ -2,7 +2,7 @@ use crate::common::{Trade, Candle, BASE, ASSET};
 use crate::welford_online;
 
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct AggVolumeStreaming {
     pub last_candle: Candle,
     vol_threshold: f64,

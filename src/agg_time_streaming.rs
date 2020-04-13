@@ -2,7 +2,7 @@ use crate::common::{Trade, Candle};
 use crate::welford_online;
 
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct AggTimeStreaming {
     period: i64,
     init: bool,
