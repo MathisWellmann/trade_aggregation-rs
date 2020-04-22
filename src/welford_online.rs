@@ -1,9 +1,8 @@
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct WelfordOnline {
     count: u32,
     mean: f64,
     s: f64,
-    mean_deviation: f64,
 }
 
 pub fn new() -> WelfordOnline {
@@ -11,7 +10,6 @@ pub fn new() -> WelfordOnline {
         count: 0,
         mean: 0.0,
         s: 0.0,
-        mean_deviation: 0.0,
     }
 }
 
@@ -34,7 +32,6 @@ impl WelfordOnline {
         self.count = 0;
         self.mean = 0.0;
         self.s = 0.0;
-        self.mean_deviation = 0.0;
     }
 
     // add updates the statistics
@@ -43,6 +40,5 @@ impl WelfordOnline {
         let old_mean = self.mean;
         self.mean += (val - old_mean) / self.count as f64;
         self.s += (val - old_mean) * (val - self.mean);
-        self.mean_deviation += val - self.mean;
     }
 }
