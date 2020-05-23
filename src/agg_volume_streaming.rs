@@ -119,6 +119,13 @@ impl AggVolumeStreaming {
     pub fn last(&self) -> &Candle {
         return &self.last_candle
     }
+
+    // sets the volume threshold.
+    // caution is adviced as changing it in the middle of candle creation can have unexpected effects
+    // it is adviced to only set it after a new candle has been created
+    pub fn set_vol_threshold(&mut self, vol_threshold: f64) {
+        self.vol_threshold  = vol_threshold;
+    }
 }
 
 #[cfg(test)]
