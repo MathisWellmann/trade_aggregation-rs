@@ -20,40 +20,39 @@ pub struct AggVolumeStreaming {
     welford_sizes: welford_online::WelfordOnline,
 }
 
-
-pub fn new(vol_threshold: f64, by: usize) -> AggVolumeStreaming {
-    return AggVolumeStreaming {
-        vol_threshold: vol_threshold,
-        by: by,
-        last_candle: Candle{
-            timestamp: 0,
+impl AggVolumeStreaming {
+    pub fn new(vol_threshold: f64, by: usize) -> AggVolumeStreaming {
+        return AggVolumeStreaming {
+            vol_threshold,
+            by,
+            last_candle: Candle{
+                timestamp: 0,
+                open: 0.0,
+                high: 0.0,
+                low: 0.0,
+                close: 0.0,
+                volume: 0.0,
+                weighted_price: 0.0,
+                num_trades: 0,
+                trade_direction_ratio: 0.0,
+                volume_direction_ratio: 0.0,
+                std_dev_prices: 0.0,
+                std_dev_sizes: 0.0,
+            },
             open: 0.0,
             high: 0.0,
             low: 0.0,
-            close: 0.0,
             volume: 0.0,
-            weighted_price: 0.0,
+            buy_volume: 0.0,
+            wp: 0.0,
+            init: true,
             num_trades: 0,
-            trade_direction_ratio: 0.0,
-            volume_direction_ratio: 0.0,
-            std_dev_prices: 0.0,
-            std_dev_sizes: 0.0,
-        },
-        open: 0.0,
-        high: 0.0,
-        low: 0.0,
-        volume: 0.0,
-        buy_volume: 0.0,
-        wp: 0.0,
-        init: true,
-        num_trades: 0,
-        num_buys: 0,
-        welford_prices: welford_online::new(),
-        welford_sizes: welford_online::new(),
+            num_buys: 0,
+            welford_prices: welford_online::new(),
+            welford_sizes: welford_online::new(),
+        }
     }
-}
 
-impl AggVolumeStreaming {
     // update observes a trade and updates the aggregated candle
     // return true if new candle has been created
     pub fn update(&mut self, trade: &Trade) -> bool {
@@ -129,7 +128,7 @@ mod tests {
 
     #[test]
     fn test_agg_volume_streaming_base() {
-        let mut agg_volume = new(1000.0, BASE);
+        let mut agg_volume = AggVolumeStreaming::new(1000.0, BASE);
 
         let trades = common::load_trades_from_csv("data/Bitmex_XBTUSD_1M.csv");
         for i in 0..trades.len() {
@@ -142,7 +141,7 @@ mod tests {
 
     #[test]
     fn test_agg_volume_streaming_asset() {
-        let mut agg_volume = new(1000.0, ASSET);
+        let mut agg_volume = AggVolumeStreaming::new(1000.0, ASSET);
 
         let trades = common::load_trades_from_csv("data/Bitmex_XBTUSD_1M.csv");
         for i in 0..trades.len() {

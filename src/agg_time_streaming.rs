@@ -20,39 +20,39 @@ pub struct AggTimeStreaming {
     welford_sizes: welford_online::WelfordOnline,
 }
 
-pub fn new(candle_period: i64) -> AggTimeStreaming {
-    return AggTimeStreaming{
-        period: candle_period,
-        init: true,
-        init_timestamp: 0,
-        open: 0.0,
-        high: 0.0,
-        low: 0.0,
-        volume: 0.0,
-        buy_volume: 0.0,
-        wp: 0.0,
-        num_trades: 0,
-        num_buys: 0,
-        last_candle: Candle{
-            timestamp: 0,
+impl AggTimeStreaming {
+    pub fn new(candle_period: i64) -> AggTimeStreaming {
+        return AggTimeStreaming{
+            period: candle_period,
+            init: true,
+            init_timestamp: 0,
             open: 0.0,
             high: 0.0,
             low: 0.0,
-            close: 0.0,
             volume: 0.0,
-            trade_direction_ratio: 0.0,
-            volume_direction_ratio: 0.0,
+            buy_volume: 0.0,
+            wp: 0.0,
             num_trades: 0,
-            weighted_price: 0.0,
-            std_dev_prices: 0.0,
-            std_dev_sizes: 0.0,
-        },
-        welford_prices: welford_online::new(),
-        welford_sizes: welford_online::new(),
+            num_buys: 0,
+            last_candle: Candle{
+                timestamp: 0,
+                open: 0.0,
+                high: 0.0,
+                low: 0.0,
+                close: 0.0,
+                volume: 0.0,
+                trade_direction_ratio: 0.0,
+                volume_direction_ratio: 0.0,
+                num_trades: 0,
+                weighted_price: 0.0,
+                std_dev_prices: 0.0,
+                std_dev_sizes: 0.0,
+            },
+            welford_prices: welford_online::new(),
+            welford_sizes: welford_online::new(),
+        }
     }
-}
 
-impl AggTimeStreaming {
     pub fn update(&mut self, trade: &Trade) -> bool {
         if self.init {
             self.init = false;
@@ -122,7 +122,7 @@ mod tests {
     #[test]
     fn test_agg_time_streaming() {
         let trades = common::load_trades_from_csv("data/Bitmex_XBTUSD_1M.csv");
-        let mut agg_time = new(common::H1);
+        let mut agg_time = AggTimeStreaming::new(common::H1);
 
         for i in 0..trades.len() {
             let new_candle = agg_time.update(&trades[i]);

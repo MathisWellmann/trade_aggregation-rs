@@ -1,5 +1,6 @@
 extern crate trade_aggregation;
 use trade_aggregation::{common, agg_time_streaming};
+use trade_aggregation::agg_time_streaming::AggTimeStreaming;
 
 fn main() {
     // load trades from file
@@ -8,7 +9,7 @@ fn main() {
     // create new streaming aggregator based on time
     // Candle period can be accessed with constants in common
     // H1 are hourly candles
-    let mut agg_time = agg_time_streaming::new(common::H1);
+    let mut agg_time = AggTimeStreaming::new(common::H1);
 
     for i in 0..trades.len() {
         // update using the latest trade
