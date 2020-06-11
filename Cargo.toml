@@ -8,6 +8,7 @@ edition = "2018"
 
 [dependencies]
 csv = "1.1"
+chrono = "0.4.11"
 
 [dev-dependencies]
 rust_timeseries_generator = { git = "https://github.com/MathisWellmann/rust_timeseries_generator"}

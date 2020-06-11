@@ -1,4 +1,6 @@
 use std::fs::File;
+use chrono::naive::NaiveDateTime;
+
 
 pub const M1: i64 = 60;  // 1 minute candle constant
 pub const M5: i64 = 300;
@@ -35,6 +37,25 @@ pub struct Candle {
     pub weighted_price: f64,
     pub std_dev_prices: f64,
     pub std_dev_sizes: f64,
+}
+
+impl std::fmt::Display for Candle {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "(ts: {:?}, o: {:.2}, h: {:.2}, l: {:.2}, c: {:.2}, wp: {:.2}, v: {:.2}, vdr: {:.2}, tdr: {:.2}, #t: {}, σ_price: {:.2}, σ_size: {:.2})",
+               NaiveDateTime::from_timestamp(self.timestamp / 1000, (self.timestamp % 1000) as u32),
+               self.open,
+               self.high,
+               self.low,
+               self.close,
+               self.weighted_price,
+               self.volume,
+               self.volume_direction_ratio,
+               self.trade_direction_ratio,
+               self.num_trades,
+               self.std_dev_prices,
+               self.std_dev_sizes,
+        )
+    }
 }
 
 // test_candle will assert if the candle violates any constraints
@@ -76,4 +97,31 @@ pub fn load_trades_from_csv(filename: &str) -> Vec<Trade> {
         out.push(trade);
     };
     return out
+}
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    #[ignore]
+    fn candle_display() {
+        let c = Candle {
+            timestamp: 1591889593548,
+            open: 9565.0,
+            high: 9566.5,
+            low: 9555.0,
+            close: 9555.0,
+            volume: 6.500301656683413,
+            volume_direction_ratio: 0.042005987543157944,
+            trade_direction_ratio: 0.0,
+            num_trades: 58,
+            weighted_price: 9556.479572933373,
+            std_dev_prices: 3.953000116537345,
+            std_dev_sizes: 6565.830432012996,
+        };
+        println!("c: {}", c);
+        assert!(false);
+    }
 }
