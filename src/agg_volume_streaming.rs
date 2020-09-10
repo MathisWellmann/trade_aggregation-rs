@@ -1,5 +1,5 @@
 use crate::common::{Trade, Candle, BASE, ASSET};
-use crate::welford_online;
+use crate::welford_online::WelfordOnline;
 
 
 #[derive(Debug, Clone)]
@@ -16,8 +16,8 @@ pub struct AggVolumeStreaming {
     init: bool,
     num_trades: i32,
     num_buys: i32,
-    welford_prices: welford_online::WelfordOnline,
-    welford_sizes: welford_online::WelfordOnline,
+    welford_prices: WelfordOnline,
+    welford_sizes: WelfordOnline,
 }
 
 impl AggVolumeStreaming {
@@ -48,8 +48,8 @@ impl AggVolumeStreaming {
             init: true,
             num_trades: 0,
             num_buys: 0,
-            welford_prices: welford_online::new(),
-            welford_sizes: welford_online::new(),
+            welford_prices: WelfordOnline::new(),
+            welford_sizes: WelfordOnline::new(),
         }
     }
 

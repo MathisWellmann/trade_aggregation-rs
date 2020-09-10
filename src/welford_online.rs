@@ -5,15 +5,15 @@ pub struct WelfordOnline {
     s: f64,
 }
 
-pub fn new() -> WelfordOnline {
-    return WelfordOnline{
-        count: 0,
-        mean: 0.0,
-        s: 0.0,
-    }
-}
-
 impl WelfordOnline {
+    pub fn new() -> Self {
+        return WelfordOnline{
+            count: 0,
+            mean: 0.0,
+            s: 0.0,
+        }
+    }
+
     // variance returns the variance
     pub fn variance(&self) -> f64 {
         if self.count > 1 {

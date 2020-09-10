@@ -1,5 +1,5 @@
 use crate::common::{Trade, Candle, BASE, ASSET};
-use crate::welford_online;
+use crate::welford_online::WelfordOnline;
 
 // agg_volume aggregates trades by volume
 pub fn agg_volume(trades: &Vec<Trade>, threshold: f64, by: usize) -> Vec<Candle> {
@@ -14,8 +14,8 @@ pub fn agg_volume(trades: &Vec<Trade>, threshold: f64, by: usize) -> Vec<Candle>
     let mut num_trades: i32 = 0;
     let mut wp: f64 = 0.0;
     let mut init: bool = true;
-    let mut welford_prices = welford_online::new();
-    let mut welford_sizes = welford_online::new();
+    let mut welford_prices = WelfordOnline::new();
+    let mut welford_sizes = WelfordOnline::new();
 
     for t in trades.iter() {
         if init {

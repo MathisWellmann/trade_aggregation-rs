@@ -1,5 +1,5 @@
 use crate::common::{Trade, Candle};
-use crate::welford_online;
+use crate::welford_online::WelfordOnline;
 
 
 #[derive(Debug, Clone)]
@@ -16,8 +16,8 @@ pub struct AggTimeStreaming {
     num_trades: i32,
     num_buys: i32,
     last_candle: Candle,
-    welford_prices: welford_online::WelfordOnline,
-    welford_sizes: welford_online::WelfordOnline,
+    welford_prices: WelfordOnline,
+    welford_sizes: WelfordOnline,
 }
 
 impl AggTimeStreaming {
@@ -48,8 +48,8 @@ impl AggTimeStreaming {
                 std_dev_prices: 0.0,
                 std_dev_sizes: 0.0,
             },
-            welford_prices: welford_online::new(),
-            welford_sizes: welford_online::new(),
+            welford_prices: WelfordOnline::new(),
+            welford_sizes: WelfordOnline::new(),
         }
     }
 

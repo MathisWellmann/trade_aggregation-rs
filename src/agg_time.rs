@@ -1,5 +1,5 @@
 use crate::common::{Trade, Candle};
-use crate::welford_online;
+use crate::welford_online::WelfordOnline;
 
 // agg_time aggregates trades by timestamp and returns a vector of candles
 // threshold in nano-seconds
@@ -16,8 +16,8 @@ pub fn agg_time(trades: &Vec<Trade>, threshold: i64) -> Vec<Candle> {
     let mut num_trades: i32 = 0;
     let mut wp: f64 = 0.0;
     let mut init: bool = true;
-    let mut welford_prices = welford_online::new();
-    let mut welford_sizes = welford_online::new();
+    let mut welford_prices = WelfordOnline::new();
+    let mut welford_sizes = WelfordOnline::new();
 
     for t in trades.iter() {
         if init {
