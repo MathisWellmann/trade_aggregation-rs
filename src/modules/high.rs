@@ -24,3 +24,17 @@ impl FeatureModule for ModuleHigh {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn module_high() {
+        let mut m = ModuleHigh::default();
+        for t in &crate::modules::tests::TRADES {
+            m.update(t, false);
+        }
+        assert_eq!(m.value(), 105.0);
+    }
+}

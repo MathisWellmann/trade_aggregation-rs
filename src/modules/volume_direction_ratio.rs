@@ -27,3 +27,18 @@ impl FeatureModule for ModuleVolumeDirectionRatio {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use round::round;
+
+    #[test]
+    fn module_volume_direction_ratio() {
+        let mut m = ModuleVolumeDirectionRatio::default();
+        for t in &crate::modules::tests::TRADES {
+            m.update(t, false);
+        }
+        assert_eq!(round(m.value(), 4), 0.7143);
+    }
+}

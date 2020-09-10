@@ -28,3 +28,17 @@ impl FeatureModule for ModuleTradeDirectionRatio {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn module_trade_direction_ratio() {
+        let mut m = ModuleTradeDirectionRatio::default();
+        for t in &crate::modules::tests::TRADES {
+            m.update(t, false);
+        }
+        assert_eq!(m.value(), 0.7);
+    }
+}

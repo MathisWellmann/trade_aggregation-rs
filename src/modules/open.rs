@@ -21,3 +21,19 @@ impl FeatureModule for ModuleOpen {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn module_open() {
+        let mut m = ModuleOpen::default();
+        let first_trade = &crate::modules::tests::TRADES[0];
+        m.update(first_trade, true);
+        for t in &crate::modules::tests::TRADES {
+            m.update(t, false);
+            assert_eq!(m.value(), first_trade.price);
+        }
+    }
+}

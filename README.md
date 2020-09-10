@@ -89,3 +89,8 @@ The more size is being traded the more likely a stronger move will be.
 This is more natural way to view the market and provides many advantages over time aggregation such as more well behaved volatility.
 In this mode of Aggregation, candles will be printed dynamically and will print more candles in times of higher volume / volatility,
 therefore providing the trader which an automatically scaling view, just like as if he would switch time periods, but way better.
+
+### TODO:
+- simple Candle type with only OHLCV for better performance
+- examples for modular candles
+- a way to include FeatureModules of different types for example timestamp or num_trades.

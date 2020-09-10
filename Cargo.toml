@@ -12,3 +12,4 @@ chrono = "0.4.11"
 
 [dev-dependencies]
 rust_timeseries_generator = { git = "https://github.com/MathisWellmann/rust_timeseries_generator"}
+round = "0.1.0"

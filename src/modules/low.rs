@@ -24,3 +24,18 @@ impl FeatureModule for ModuleLow {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn module_low() {
+        let mut m = ModuleLow::default();
+        m.update(&crate::modules::tests::TRADES[0], true);
+        for t in &crate::modules::tests::TRADES {
+            m.update(t, false);
+        }
+        assert_eq!(m.value(), 100.0);
+    }
+}

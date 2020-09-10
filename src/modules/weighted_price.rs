@@ -25,3 +25,17 @@ impl FeatureModule for ModuleWeightedPrice {
         self.sum += trade.price;
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn module_weighted_price() {
+        let mut m = ModuleWeightedPrice::default();
+        for t in &crate::modules::tests::TRADES {
+            m.update(t, false);
+        }
+        assert_eq!(m.value(), 102.0);
+    }
+}
