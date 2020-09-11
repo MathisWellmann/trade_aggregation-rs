@@ -96,3 +96,4 @@ therefore providing the trader which an automatically scaling view, just like as
 - agg_time_modular
 - agg_volume_modular
 - a way to include FeatureModules of different types for example timestamp or num_trades.
+- add average price to all extended candles

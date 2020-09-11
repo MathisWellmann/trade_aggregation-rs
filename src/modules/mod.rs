@@ -10,6 +10,7 @@ use crate::modules::volume_direction_ratio::ModuleVolumeDirectionRatio;
 use crate::modules::std_dev_prices::ModuleStdDevPrices;
 use crate::modules::std_dev_sizes::ModuleStdDevSizes;
 use crate::modules::volume::ModuleVolume;
+use crate::modules::average_price::ModuleAveragePrice;
 
 mod open;
 mod high;
@@ -57,6 +58,7 @@ pub enum FeatureModules {
     Low,
     Close,
     Volume,
+    AveragePrice,
     WeightedPrice,
     // NumTrades,
     TradeDirectionRatio,
@@ -74,6 +76,7 @@ impl FeatureModules {
             FeatureModules::Low => Box::new(ModuleLow::default()),
             FeatureModules::Close => Box::new(ModuleClose::default()),
             FeatureModules::Volume => Box::new(ModuleVolume::default()),
+            FeatureModules::AveragePrice => Box::new(ModuleAveragePrice::default()),
             FeatureModules::WeightedPrice => Box::new(ModuleWeightedPrice::default()),
             // FeatureModules::NumTrades => {},
             FeatureModules::TradeDirectionRatio => Box::new(ModuleTradeDirectionRatio::default()),
