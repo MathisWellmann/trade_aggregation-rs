@@ -49,6 +49,12 @@ pub struct CandleFeature {
     value: f64,
 }
 
+impl CandleFeature {
+    pub fn value(&self) -> f64 {
+        self.value
+    }
+}
+
 /// enumeration of all available features
 pub enum FeatureModules {
     // TODO: how to integrate different types for FeatureModule
