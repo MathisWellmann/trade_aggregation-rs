@@ -3,7 +3,7 @@ use crate::{By};
 use crate::modules::{FeatureModule, FeatureModules, ModularCandle};
 
 #[derive(Debug)]
-pub struct AggVolumeStreamingLight {
+pub struct AggVolumeStreamingModular {
     pub last_candle: ModularCandle,
     feature_modules: Vec<Box<dyn FeatureModule>>,
     vol_threshold: f64,
@@ -12,9 +12,9 @@ pub struct AggVolumeStreamingLight {
     init: bool,
 }
 
-impl AggVolumeStreamingLight {
+impl AggVolumeStreamingModular {
     pub fn new(vol_threshold: f64, by: By) -> Self {
-        return AggVolumeStreamingLight {
+        return AggVolumeStreamingModular {
             vol_threshold,
             by,
             last_candle: ModularCandle::default(),

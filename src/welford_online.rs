@@ -46,6 +46,7 @@ impl WelfordOnline {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use round::round;
 
     const vals: [f64; 4] = [
         1.0,
@@ -61,7 +62,6 @@ mod tests {
         for v in &vals {
             welford.add(*v);
         }
-        // TODO: update welford to properly work
-        assert_eq!(welford.std_dev(), 1.5);
+        assert_eq!(round(welford.std_dev(), 4), 0.5774);
     }
 }

@@ -80,7 +80,7 @@ cargo run --example streaming_volume
 Creates a candle every n seconds.
 This method of aggregating trades has a long history mostly due to humans interacting with the market with a perception of time.
 This is however not how the market works (especially 24/7 crypto markets).
-The markets doesnt care about the time, only about price and volume.
+The markets don't care about the time, only about price and volume.
 
 ### Volume Aggregation:
 Creates a candle every n traded contracts ( trade size)
@@ -92,5 +92,7 @@ therefore providing the trader which an automatically scaling view, just like as
 
 ### TODO:
 - simple Candle type with only OHLCV for better performance
-- examples for modular candles
+- agg_time_streaming_modular
+- agg_time_modular
+- agg_volume_modular
 - a way to include FeatureModules of different types for example timestamp or num_trades.
