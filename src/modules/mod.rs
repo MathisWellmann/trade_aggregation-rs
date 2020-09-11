@@ -21,6 +21,7 @@ mod trade_direction_ratio;
 mod std_dev_sizes;
 mod std_dev_prices;
 mod weighted_price;
+mod average_price;
 
 #[derive(Debug, Default)]
 pub struct ModularCandle {

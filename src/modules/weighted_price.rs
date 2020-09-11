@@ -3,8 +3,8 @@ use crate::common::Trade;
 
 #[derive(Debug, Default)]
 pub struct ModuleWeightedPrice {
-    count: usize,
-    sum: f64,
+    total_weights: f64,
+    weighted_sum: f64,
 }
 
 impl FeatureModule for ModuleWeightedPrice {
@@ -13,16 +13,16 @@ impl FeatureModule for ModuleWeightedPrice {
     }
 
     fn value(&self) -> f64 {
-        self.sum / self.count as f64
+        self.weighted_sum / self.total_weights
     }
 
     fn update(&mut self, trade: &Trade, init: bool) {
         if init {
-            self.count = 0;
-            self.sum = 0.0;
+            self.total_weights = 0.0;
+            self.weighted_sum = 0.0;
         }
-        self.count += 1;
-        self.sum += trade.price;
+        self.total_weights += trade.size.abs();
+        self.weighted_sum += trade.price * trade.size.abs();
     }
 }
 

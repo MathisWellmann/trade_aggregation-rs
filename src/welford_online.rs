@@ -42,3 +42,26 @@ impl WelfordOnline {
         self.s += (val - old_mean) * (val - self.mean);
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    const vals: [f64; 4] = [
+        1.0,
+        2.0,
+        1.0,
+        2.0,
+    ];
+
+    #[test]
+    fn welford_online() {
+        let mut welford = WelfordOnline::new();
+
+        for v in &vals {
+            welford.add(*v);
+        }
+        // TODO: update welford to properly work
+        assert_eq!(welford.std_dev(), 1.5);
+    }
+}
