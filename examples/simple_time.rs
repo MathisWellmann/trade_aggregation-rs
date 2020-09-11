@@ -8,7 +8,7 @@ fn main() {
     let candle_period = common::H1;
     let candles = agg_time::agg_time(&trades, candle_period);
 
-    for i in 0..candles.len() {
-        println!("candle: {:?}", candles[i]);
+    for c in &candles {
+        println!("candle: {:?}", c);
     }
 }

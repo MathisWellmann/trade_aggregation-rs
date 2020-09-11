@@ -13,9 +13,9 @@ fn main() {
     // let by = common::ASSET;  // take BTC as volume measure
     let mut agg_volume = AggVolumeStreaming::new(threshold, by);
 
-    for i in 0..trades.len() {
+    for t in &trades {
         // update using the latest trade
-        let new_candle = agg_volume.update(&trades[i]);
+        let new_candle = agg_volume.update(t);
         // if new candle has been created
         if new_candle {
             // access latest candle

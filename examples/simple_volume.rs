@@ -10,7 +10,7 @@ fn main() {
     // let by = common::ASSET;  // take BTC as volume measure
     let candles = agg_volume::agg_volume(&trades, threshold, by);
 
-    for i in 0..candles.len() {
-        println!("candle: {:?}", candles[i]);
+    for c in &candles {
+        println!("candle: {:?}", c);
     }
 }

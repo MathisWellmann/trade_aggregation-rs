@@ -11,9 +11,9 @@ fn main() {
     // H1 are hourly candles
     let mut agg_time = AggTimeStreaming::new(common::H1);
 
-    for i in 0..trades.len() {
+    for t in &trades {
         // update using the latest trade
-        let new_candle = agg_time.update(&trades[i]);
+        let new_candle = agg_time.update(t);
         // if new candle has been created
         if new_candle {
             // access latest candle

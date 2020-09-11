@@ -106,9 +106,4 @@ mod tests {
         Trade{ timestamp: 8, price: 102.0, size: 30.0 },
         Trade{ timestamp: 9, price: 105.0, size: 10.0 },
     ];
-
-    #[test]
-    fn get_module() {
-        // TODO:
-    }
 }
