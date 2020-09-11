@@ -48,7 +48,7 @@ mod tests {
     use super::*;
     use round::round;
 
-    const vals: [f64; 4] = [
+    const VALS: [f64; 4] = [
         1.0,
         2.0,
         1.0,
@@ -59,7 +59,7 @@ mod tests {
     fn welford_online() {
         let mut welford = WelfordOnline::new();
 
-        for v in &vals {
+        for v in &VALS {
             welford.add(*v);
         }
         assert_eq!(round(welford.std_dev(), 4), 0.5774);

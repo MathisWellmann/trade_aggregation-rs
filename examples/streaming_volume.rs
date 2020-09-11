@@ -1,6 +1,5 @@
 extern crate trade_aggregation;
-use trade_aggregation::{common, agg_volume_streaming};
-use trade_aggregation::agg_volume::agg_volume;
+use trade_aggregation::{common};
 use trade_aggregation::agg_volume_streaming::AggVolumeStreaming;
 
 fn main() {

@@ -1,6 +1,6 @@
 extern crate trade_aggregation;
-use trade_aggregation::{common, agg_time_streaming};
-use trade_aggregation::agg_time_streaming::AggTimeStreaming;
+use trade_aggregation::{common};
+use trade_aggregation::AggTimeStreaming;
 
 fn main() {
     // load trades from file

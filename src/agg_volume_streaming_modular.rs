@@ -68,10 +68,3 @@ impl AggVolumeStreamingModular {
         self.vol_threshold  = vol_threshold;
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    // TODO:
-}
