@@ -1,4 +1,4 @@
-use crate::common::{Trade, Candle, BASE, ASSET};
+use crate::{Trade, Candle, By};
 use crate::welford_online::WelfordOnline;
 
 
@@ -6,7 +6,7 @@ use crate::welford_online::WelfordOnline;
 pub struct AggVolumeStreaming {
     pub last_candle: Candle,
     vol_threshold: f64,
-    by: usize,
+    by: By,
     open: f64,
     high: f64,
     low: f64,
@@ -21,7 +21,7 @@ pub struct AggVolumeStreaming {
 }
 
 impl AggVolumeStreaming {
-    pub fn new(vol_threshold: f64, by: usize) -> AggVolumeStreaming {
+    pub fn new(vol_threshold: f64, by: By) -> AggVolumeStreaming {
         return AggVolumeStreaming {
             vol_threshold,
             by,
@@ -75,19 +75,24 @@ impl AggVolumeStreaming {
         if trade.price < self.low {
             self.low = trade.price;
         }
-        if self.by == ASSET {
-            self.volume += trade.size.abs() / trade.price;
-            if trade.size > 0.0 {
-                self.buy_volume += trade.size.abs() / trade.price;
+
+        match self.by {
+            By::Base => {
+                self.volume += trade.size.abs() / trade.price;
+                if trade.size > 0.0 {
+                    self.buy_volume += trade.size.abs() / trade.price;
+                }
+                self.wp += trade.size.abs();
+            },
+            By::Quote => {
+                self.volume += trade.size.abs();
+                if trade.size > 0.0 {
+                    self.buy_volume += trade.size.abs();
+                }
+                self.wp += trade.price * trade.size.abs();
             }
-            self.wp += trade.size.abs();
-        } else if self.by == BASE {
-            self.volume += trade.size.abs();
-            if trade.size > 0.0 {
-                self.buy_volume += trade.size.abs();
-            }
-            self.wp += trade.price * trade.size.abs();
         }
+
         self.num_trades += 1;
 
         self.welford_sizes.add(trade.size);
