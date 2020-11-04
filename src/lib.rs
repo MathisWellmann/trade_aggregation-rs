@@ -13,6 +13,9 @@ pub use agg_volume::agg_volume;
 pub use agg_volume_streaming::AggVolumeStreaming;
 pub use agg_volume_streaming_modular::AggVolumeStreamingModular;
 pub use modules::FeatureModules;
+pub use modules::ModularCandle;
+pub use common::Candle;
+pub use common::Trade;
 
 /// Defines how to aggregate trade size
 /// either by Base currency or Quote Currency
