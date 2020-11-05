@@ -11,6 +11,8 @@ use crate::modules::std_dev_prices::ModuleStdDevPrices;
 use crate::modules::std_dev_sizes::ModuleStdDevSizes;
 use crate::modules::volume::ModuleVolume;
 use crate::modules::average_price::ModuleAveragePrice;
+use crate::modules::last_spread::ModuleLastSpread;
+use crate::modules::avg_spread::ModuleAvgSpread;
 
 mod open;
 mod high;
@@ -23,6 +25,8 @@ mod std_dev_sizes;
 mod std_dev_prices;
 mod weighted_price;
 mod average_price;
+mod last_spread;
+mod avg_spread;
 
 #[derive(Debug, Default)]
 pub struct ModularCandle {
@@ -71,6 +75,8 @@ pub enum FeatureModules {
     VolumeDirectionRatio,
     StdDevPrices,
     StdDevSizes,
+    LastSpread,
+    AvgSpread,
 }
 
 impl FeatureModules {
@@ -89,6 +95,8 @@ impl FeatureModules {
             FeatureModules::VolumeDirectionRatio => Box::new(ModuleVolumeDirectionRatio::default()),
             FeatureModules::StdDevPrices => Box::new(ModuleStdDevPrices::new()),
             FeatureModules::StdDevSizes => Box::new(ModuleStdDevSizes::new()),
+            FeatureModules::LastSpread => Box::new(ModuleLastSpread::default()),
+            FeatureModules::AvgSpread => Box::new(ModuleAvgSpread::default()),
         }
     }
 }

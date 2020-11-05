@@ -140,20 +140,7 @@ mod tests {
 
     #[test]
     fn test_agg_volume_streaming_base() {
-        let mut agg_volume = AggVolumeStreaming::new(1000.0, BASE);
-
-        let trades = common::load_trades_from_csv("data/Bitmex_XBTUSD_1M.csv");
-        for i in 0..trades.len() {
-            let new_candle = agg_volume.update(&trades[i]);
-            if new_candle {
-                common::test_candle(&agg_volume.last_candle);
-            }
-        }
-    }
-
-    #[test]
-    fn test_agg_volume_streaming_asset() {
-        let mut agg_volume = AggVolumeStreaming::new(1000.0, ASSET);
+        let mut agg_volume = AggVolumeStreaming::new(1000.0, By::Base);
 
         let trades = common::load_trades_from_csv("data/Bitmex_XBTUSD_1M.csv");
         for i in 0..trades.len() {
