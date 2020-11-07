@@ -13,6 +13,8 @@ use crate::modules::volume::ModuleVolume;
 use crate::modules::average_price::ModuleAveragePrice;
 use crate::modules::last_spread::ModuleLastSpread;
 use crate::modules::avg_spread::ModuleAvgSpread;
+use crate::modules::trade_direction_entropy::ModuleTradeDirectionEntropy;
+use crate::modules::volume_direction_entropy::ModuleVolumeDirectionEntropy;
 
 mod open;
 mod high;
@@ -27,6 +29,8 @@ mod weighted_price;
 mod average_price;
 mod last_spread;
 mod avg_spread;
+mod trade_direction_entropy;
+mod volume_direction_entropy;
 
 #[derive(Debug, Default)]
 pub struct ModularCandle {

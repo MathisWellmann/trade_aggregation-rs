@@ -23,7 +23,7 @@ impl FeatureModule for ModuleVolumeDirectionRatio {
         }
         self.volume += trade.size.abs();
         if trade.size > 0.0 {
-            self.buy_volume += trade.size.abs();
+            self.buy_volume += trade.size;
         }
     }
 }
