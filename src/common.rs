@@ -13,9 +13,6 @@ pub const H8: i64 = 28800;
 pub const H12: i64 = 43200;
 pub const D1: i64 = 86400;  // 1 day candle constant
 
-pub const ASSET: usize = 0;
-pub const BASE: usize = 0;
-
 #[derive(Debug, Clone)]
 pub struct Trade {
     pub timestamp: i64,
