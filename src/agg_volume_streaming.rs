@@ -18,6 +18,9 @@ pub struct AggVolumeStreaming {
     num_buys: i32,
     welford_prices: WelfordOnline,
     welford_sizes: WelfordOnline,
+    bid: f64,
+    ask: f64,
+    spread_sum: f64,
 }
 
 impl AggVolumeStreaming {
@@ -38,6 +41,8 @@ impl AggVolumeStreaming {
                 volume_direction_ratio: 0.0,
                 std_dev_prices: 0.0,
                 std_dev_sizes: 0.0,
+                last_spread: 0.0,
+                avg_spread: 0.0,
             },
             open: 0.0,
             high: 0.0,
@@ -50,6 +55,9 @@ impl AggVolumeStreaming {
             num_buys: 0,
             welford_prices: WelfordOnline::new(),
             welford_sizes: WelfordOnline::new(),
+            bid: 0.0,
+            ask: 0.0,
+            spread_sum: 0.0,
         }
     }
 
@@ -68,6 +76,8 @@ impl AggVolumeStreaming {
             self.num_buys = 0;
             self.welford_sizes.reset();
             self.welford_prices.reset();
+            self.bid = trade.price;
+            self.ask = trade.price;
         }
         if trade.price > self.high {
             self.high = trade.price;
@@ -75,6 +85,13 @@ impl AggVolumeStreaming {
         if trade.price < self.low {
             self.low = trade.price;
         }
+        
+        if trade.size > 0.0 {
+            self.ask = trade.price;
+        } else {
+            self.bid = trade.price;
+        }
+        self.spread_sum += self.ask - self.bid;
 
         match self.by {
             By::Base => {
@@ -113,6 +130,8 @@ impl AggVolumeStreaming {
                 volume_direction_ratio: self.buy_volume / self.volume,
                 std_dev_prices: self.welford_prices.std_dev(),
                 std_dev_sizes: self.welford_sizes.std_dev(),
+                last_spread: self.ask - self.bid,
+                avg_spread: self.spread_sum / self.num_trades as f64,
             };
             self.last_candle = c;
             self.init = true;

@@ -34,6 +34,8 @@ pub struct Candle {
     pub weighted_price: f64,
     pub std_dev_prices: f64,
     pub std_dev_sizes: f64,
+    pub last_spread: f64,
+    pub avg_spread: f64,
 }
 
 impl std::fmt::Display for Candle {
@@ -88,8 +90,8 @@ pub fn load_trades_from_csv(filename: &str) -> Vec<Trade> {
         // convert to Trade
         let trade = Trade{
             timestamp: ts,
-            price: price,
-            size: size,
+            price,
+            size,
         };
         out.push(trade);
     };
@@ -117,6 +119,8 @@ mod tests {
             weighted_price: 9556.479572933373,
             std_dev_prices: 3.953000116537345,
             std_dev_sizes: 6565.830432012996,
+            last_spread: 0.5,
+            avg_spread: 0.5,
         };
         println!("c: {}", c);
         assert!(false);

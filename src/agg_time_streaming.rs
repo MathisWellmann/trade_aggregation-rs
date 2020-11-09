@@ -18,6 +18,9 @@ pub struct AggTimeStreaming {
     last_candle: Candle,
     welford_prices: WelfordOnline,
     welford_sizes: WelfordOnline,
+    bid: f64,
+    ask: f64,
+    spread_sum: f64,
 }
 
 impl AggTimeStreaming {
@@ -47,9 +50,14 @@ impl AggTimeStreaming {
                 weighted_price: 0.0,
                 std_dev_prices: 0.0,
                 std_dev_sizes: 0.0,
+                last_spread: 0.0,
+                avg_spread: 0.0,
             },
             welford_prices: WelfordOnline::new(),
             welford_sizes: WelfordOnline::new(),
+            bid: 0.0,
+            ask: 0.0,
+            spread_sum: 0.0,
         }
     }
 
@@ -67,6 +75,8 @@ impl AggTimeStreaming {
             self.wp = 0.0;
             self.welford_sizes.reset();
             self.welford_prices.reset();
+            self.bid = trade.price;
+            self.ask = trade.price;
         }
 
         if trade.price > self.high {
@@ -80,7 +90,12 @@ impl AggTimeStreaming {
         if trade.size > 0.0 {
             self.num_buys += 1;
             self.buy_volume += trade.size.abs();
+            self.ask = trade.price;
+        } else {
+            self.bid = trade.price;
         }
+        self.spread_sum += self.ask - self.bid;
+
         self.wp += trade.price * trade.size.abs();
 
         self.welford_prices.add(trade.price);
@@ -101,6 +116,8 @@ impl AggTimeStreaming {
                 weighted_price: self.wp / self.volume,
                 std_dev_prices: self.welford_prices.std_dev(),
                 std_dev_sizes: self.welford_sizes.std_dev(),
+                last_spread: self.ask - self.bid,
+                avg_spread: self.spread_sum / self.num_trades as f64,
             };
             self.last_candle = c;
             self.init = true;
