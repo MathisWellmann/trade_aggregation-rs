@@ -22,7 +22,7 @@ See [MathisWellmann/go_trade_aggregation](https://github.com/MathisWellmann/go_t
 in Cargo.toml:
 ```
 [dependencies]
-trade_aggregation = { git = "https://github.com/MathisWellmann/rust_trade_aggregation" }
+trade_aggregation = { git = "https://github.com/MathisWellmann/trade_aggregation-rs" }
 ```
 
 aggregate all trades by volume at once
