@@ -28,19 +28,22 @@ pub struct Candle {
     pub low: f64,
     pub close: f64,
     pub volume: f64,
-    pub volume_direction_ratio: f64,  // buy_volume / volume // in range [0, 1]
-    pub trade_direction_ratio: f64,  // num_buys / num_trades // in range [0, 1]
+    pub directional_trade_ratio: f64,  // num_buys / num_trades // in range [0, 1]
+    pub directional_volume_ratio: f64,  // buy_volume / volume // in range [0, 1]
     pub num_trades: i32,
     pub weighted_price: f64,
     pub std_dev_prices: f64,
     pub std_dev_sizes: f64,
     pub last_spread: f64,
     pub avg_spread: f64,
+    pub directional_trade_entropy: f64,
+    pub directional_volume_entropy: f64,
+    pub time_velocity: f64,  // 1.0 / t , where t is time measured in minutes
 }
 
 impl std::fmt::Display for Candle {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "(ts: {:?}, o: {:.2}, h: {:.2}, l: {:.2}, c: {:.2}, wp: {:.2}, v: {:.2}, vdr: {:.2}, tdr: {:.2}, #t: {}, σ_price: {:.2}, σ_size: {:.2})",
+        write!(f, "(ts: {:?}, o: {:.2}, h: {:.2}, l: {:.2}, c: {:.2}, wp: {:.2}, v: {:.2}, dtr: {:.2}, dvr: {:.2}, #t: {}, σ_price: {:.2}, σ_size: {:.2}, dte: {:.2}, dve: {:.2}, tv: {:.4})",
                NaiveDateTime::from_timestamp(self.timestamp / 1000, (self.timestamp % 1000) as u32),
                self.open,
                self.high,
@@ -48,11 +51,14 @@ impl std::fmt::Display for Candle {
                self.close,
                self.weighted_price,
                self.volume,
-               self.volume_direction_ratio,
-               self.trade_direction_ratio,
+               self.directional_trade_ratio,
+               self.directional_volume_ratio,
                self.num_trades,
                self.std_dev_prices,
                self.std_dev_sizes,
+               self.directional_trade_entropy,
+               self.directional_volume_entropy,
+               self.time_velocity,
         )
     }
 }
@@ -68,10 +74,10 @@ pub fn test_candle(candle: &Candle) {
     assert!(candle.weighted_price <= candle.high);
     assert!(candle.weighted_price >= candle.low);
     assert!(candle.timestamp > 0);
-    assert!(candle.volume_direction_ratio <= 1.0);
-    assert!(candle.volume_direction_ratio >= 0.0);
-    assert!(candle.trade_direction_ratio <= 1.0);
-    assert!(candle.trade_direction_ratio >= 0.0);
+    assert!(candle.directional_volume_ratio <= 1.0);
+    assert!(candle.directional_volume_ratio >= 0.0);
+    assert!(candle.directional_trade_ratio <= 1.0);
+    assert!(candle.directional_trade_ratio >= 0.0);
     assert!(candle.num_trades > 0);
 }
 
@@ -113,14 +119,17 @@ mod tests {
             low: 9555.0,
             close: 9555.0,
             volume: 6.500301656683413,
-            volume_direction_ratio: 0.042005987543157944,
-            trade_direction_ratio: 0.0,
+            directional_volume_ratio: 0.042005987543157944,
+            directional_trade_ratio: 0.0,
             num_trades: 58,
             weighted_price: 9556.479572933373,
             std_dev_prices: 3.953000116537345,
             std_dev_sizes: 6565.830432012996,
             last_spread: 0.5,
             avg_spread: 0.5,
+            directional_trade_entropy: 0.4,
+            directional_volume_entropy: 0.4,
+            time_velocity: 0.1,
         };
         println!("c: {}", c);
         assert!(false);

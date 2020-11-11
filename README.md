@@ -3,17 +3,16 @@ Convert trade data into candles using different forms of aggregation.
 The Candles provide more detailed statistics than the usual OHLCV candles.
 Additional statistics inlcude:
 - number of trades
-- trade direction ratio ( #buys / #trades )
-- volume direction ratio ( buyVolume / totalVolume )
+- directional trade ratio ( #buys / #trades )
+- directional volume ratio ( buyVolume / totalVolume )
 - weighted average price ( using abs(size) as weight)
 - StdDev of prices
 - StdDev of sizes
-
-# as modules
 - last spread ( estimated based on trades )
 - average spread ( estimated based on trades )
-- trade direction entropy ( entropy of probability of buy direction )
-- volume direction entropy ( entropy of probability of buy volume )
+- directional trade entropy ( entropy of probability of buy direction )
+- directional volume entropy ( entropy of probability of buy volume )
+- time velocity ( 1.0 / t ; where t is time in minutes )
 
 This Aggregation package allows for the creation of highly sophisticated algorithm and ML models. By providing a streaming interface, one is able to build real-time trading agents.
 It enables a clear view of the market state without using arbitrary time aggregation.

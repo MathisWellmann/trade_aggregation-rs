@@ -21,6 +21,7 @@ pub struct AggVolumeStreaming {
     bid: f64,
     ask: f64,
     spread_sum: f64,
+    init_time: i64,
 }
 
 impl AggVolumeStreaming {
@@ -37,12 +38,15 @@ impl AggVolumeStreaming {
                 volume: 0.0,
                 weighted_price: 0.0,
                 num_trades: 0,
-                trade_direction_ratio: 0.0,
-                volume_direction_ratio: 0.0,
+                directional_trade_ratio: 0.0,
+                directional_volume_ratio: 0.0,
                 std_dev_prices: 0.0,
                 std_dev_sizes: 0.0,
                 last_spread: 0.0,
                 avg_spread: 0.0,
+                directional_trade_entropy: 0.0,
+                directional_volume_entropy: 0.0,
+                time_velocity: 0.0,
             },
             open: 0.0,
             high: 0.0,
@@ -58,6 +62,7 @@ impl AggVolumeStreaming {
             bid: 0.0,
             ask: 0.0,
             spread_sum: 0.0,
+            init_time: 0,
         }
     }
 
@@ -78,6 +83,7 @@ impl AggVolumeStreaming {
             self.welford_prices.reset();
             self.bid = trade.price;
             self.ask = trade.price;
+            self.init_time = trade.timestamp;
         }
         if trade.price > self.high {
             self.high = trade.price;
@@ -116,6 +122,23 @@ impl AggVolumeStreaming {
         self.welford_prices.add(trade.price);
 
         if self.volume > self.vol_threshold {
+            let pb: f64 = self.num_buys as f64 / self.num_trades as f64;  // probability of buy direction
+            let ps: f64 = 1.0 - pb;  // probability of sell direction
+            let mut directional_trade_entropy: f64 = pb * pb.log2() + ps * ps.log2();
+            if directional_trade_entropy.is_nan() {
+                directional_trade_entropy = 0.0;
+            }
+
+            let pb: f64 = self.buy_volume / self.volume;
+            let ps: f64 = 1.0 - pb;
+            let mut directional_volume_entropy: f64 = pb * pb.log2() + ps * ps.log2();
+            if directional_volume_entropy.is_nan() {
+                directional_volume_entropy = 0.0;
+            }
+
+            let elapsed_m: f64 = (trade.timestamp - self.init_time) as f64 / 60_000.0;
+            let time_velocity = 1.0 / elapsed_m;
+
             // create new candle
             let c = Candle{
                 timestamp: trade.timestamp,
@@ -126,12 +149,15 @@ impl AggVolumeStreaming {
                 volume: self.volume,
                 weighted_price: self.wp / self.volume,
                 num_trades: self.num_trades,
-                trade_direction_ratio: self.num_buys as f64 / self.num_trades as f64,
-                volume_direction_ratio: self.buy_volume / self.volume,
+                directional_trade_ratio: self.num_buys as f64 / self.num_trades as f64,
+                directional_volume_ratio: self.buy_volume / self.volume,
                 std_dev_prices: self.welford_prices.std_dev(),
                 std_dev_sizes: self.welford_sizes.std_dev(),
                 last_spread: self.ask - self.bid,
                 avg_spread: self.spread_sum / self.num_trades as f64,
+                directional_trade_entropy,
+                directional_volume_entropy ,
+                time_velocity,
             };
             self.last_candle = c;
             self.init = true;

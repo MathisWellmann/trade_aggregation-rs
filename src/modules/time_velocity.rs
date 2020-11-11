@@ -6,8 +6,8 @@ use crate::Trade;
 /// The higher the velocity the faster the candle has been created
 #[derive(Debug, Default)]
 pub struct ModuleTimeVelocity {
-    init_time: u64,
-    last_time: u64,
+    init_time: i64,
+    last_time: i64,
 }
 
 impl FeatureModule for ModuleTimeVelocity {

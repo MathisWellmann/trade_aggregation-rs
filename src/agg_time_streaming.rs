@@ -44,14 +44,17 @@ impl AggTimeStreaming {
                 low: 0.0,
                 close: 0.0,
                 volume: 0.0,
-                trade_direction_ratio: 0.0,
-                volume_direction_ratio: 0.0,
+                directional_trade_ratio: 0.0,
+                directional_volume_ratio: 0.0,
                 num_trades: 0,
                 weighted_price: 0.0,
                 std_dev_prices: 0.0,
                 std_dev_sizes: 0.0,
                 last_spread: 0.0,
                 avg_spread: 0.0,
+                directional_trade_entropy: 0.0,
+                directional_volume_entropy: 0.0,
+                time_velocity: 1.0,
             },
             welford_prices: WelfordOnline::new(),
             welford_sizes: WelfordOnline::new(),
@@ -102,6 +105,23 @@ impl AggTimeStreaming {
         self.welford_sizes.add(trade.size);
 
         if trade.timestamp - self.init_timestamp > self.period * 1000 {
+            let pb: f64 = self.num_buys as f64 / self.num_trades as f64;
+            let ps: f64 = 1.0 - pb;
+            let mut directional_trade_entropy: f64 = pb * pb.log2() + ps * ps.log2();
+            if directional_trade_entropy.is_nan() {
+                directional_trade_entropy = 0.0;
+            }
+
+            let pb: f64 = self.buy_volume / self.volume;
+            let ps: f64 = 1.0 - pb;
+            let mut directional_volume_entropy: f64 = pb * pb.log2() + ps * ps.log2();
+            if directional_volume_entropy.is_nan() {
+                directional_volume_entropy = 0.0;
+            }
+
+            let elapsed_m: f64 = (trade.timestamp - self.init_timestamp) as f64 / 60_000.0;
+            let time_velocity: f64 = 1.0 / elapsed_m;
+
             // create new candle
             let c = Candle{
                 timestamp: trade.timestamp,
@@ -110,14 +130,17 @@ impl AggTimeStreaming {
                 low: self.low,
                 close: trade.price,
                 volume: self.volume,
-                volume_direction_ratio: self.buy_volume / self.volume,
+                directional_trade_ratio: self.num_buys as f64 / self.num_trades as f64,
+                directional_volume_ratio: self.buy_volume / self.volume,
                 num_trades: self.num_trades,
-                trade_direction_ratio: self.num_buys as f64 / self.num_trades as f64,
                 weighted_price: self.wp / self.volume,
                 std_dev_prices: self.welford_prices.std_dev(),
                 std_dev_sizes: self.welford_sizes.std_dev(),
                 last_spread: self.ask - self.bid,
                 avg_spread: self.spread_sum / self.num_trades as f64,
+                directional_trade_entropy,
+                directional_volume_entropy,
+                time_velocity,
             };
             self.last_candle = c;
             self.init = true;

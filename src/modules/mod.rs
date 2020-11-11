@@ -5,34 +5,36 @@ use crate::modules::high::ModuleHigh;
 use crate::modules::low::ModuleLow;
 use std::fmt::{Debug};
 use crate::modules::weighted_price::ModuleWeightedPrice;
-use crate::modules::trade_direction_ratio::ModuleTradeDirectionRatio;
-use crate::modules::volume_direction_ratio::ModuleVolumeDirectionRatio;
+use crate::modules::directional_trade_ratio::ModuleDirectionalTradeRatio;
+use crate::modules::directional_volume_ratio::ModuleDirectionalVolumeRatio;
 use crate::modules::std_dev_prices::ModuleStdDevPrices;
 use crate::modules::std_dev_sizes::ModuleStdDevSizes;
 use crate::modules::volume::ModuleVolume;
 use crate::modules::average_price::ModuleAveragePrice;
 use crate::modules::last_spread::ModuleLastSpread;
 use crate::modules::avg_spread::ModuleAvgSpread;
-use crate::modules::trade_direction_entropy::ModuleTradeDirectionEntropy;
-use crate::modules::volume_direction_entropy::ModuleVolumeDirectionEntropy;
+use crate::modules::directional_trade_entropy::ModuleDirectionalTradeEntropy;
+use crate::modules::directional_volume_entropy::ModuleDirectionalVolumeEntropy;
 use crate::modules::time_velocity::ModuleTimeVelocity;
+use crate::modules::num_trades::ModuleNumTrades;
 
 mod open;
 mod high;
 mod low;
 mod close;
 mod volume;
-mod volume_direction_ratio;
-mod trade_direction_ratio;
+mod directional_trade_ratio;
+mod directional_volume_ratio;
 mod std_dev_sizes;
 mod std_dev_prices;
 mod weighted_price;
 mod average_price;
 mod last_spread;
 mod avg_spread;
-mod trade_direction_entropy;
-mod volume_direction_entropy;
+mod directional_trade_entropy;
+mod directional_volume_entropy;
 mod time_velocity;
+mod num_trades;
 
 #[derive(Debug, Default)]
 pub struct ModularCandle {
@@ -76,15 +78,15 @@ pub enum FeatureModules {
     Volume,
     AveragePrice,
     WeightedPrice,
-    // NumTrades,
-    TradeDirectionRatio,
-    VolumeDirectionRatio,
+    NumTrades,
+    DirectionalTradeRatio,
+    DirectionalVolumeRatio,
     StdDevPrices,
     StdDevSizes,
     LastSpread,
     AvgSpread,
-    TradeDirectionEntropy,
-    VolumeDirectionEntropy,
+    DirectionalTradeEntropy,
+    DirectionalVolumeEntropy,
     TimeVelocity,
 }
 
@@ -99,16 +101,16 @@ impl FeatureModules {
             FeatureModules::Volume => Box::new(ModuleVolume::default()),
             FeatureModules::AveragePrice => Box::new(ModuleAveragePrice::default()),
             FeatureModules::WeightedPrice => Box::new(ModuleWeightedPrice::default()),
-            // FeatureModules::NumTrades => {},
-            FeatureModules::TradeDirectionRatio => Box::new(ModuleTradeDirectionRatio::default()),
-            FeatureModules::VolumeDirectionRatio => Box::new(ModuleVolumeDirectionRatio::default()),
+            FeatureModules::NumTrades => Box::new(ModuleNumTrades::default()),
+            FeatureModules::DirectionalTradeRatio => Box::new(ModuleDirectionalTradeRatio::default()),
+            FeatureModules::DirectionalVolumeRatio => Box::new(ModuleDirectionalVolumeRatio::default()),
             FeatureModules::StdDevPrices => Box::new(ModuleStdDevPrices::new()),
             FeatureModules::StdDevSizes => Box::new(ModuleStdDevSizes::new()),
             FeatureModules::LastSpread => Box::new(ModuleLastSpread::default()),
             FeatureModules::AvgSpread => Box::new(ModuleAvgSpread::default()),
-            FeatureModules::TradeDirectionEntropy => Box::new(TradeDirectionEntropy::default()),
-            FeatureModules::VolumeDirectionEntropy => Box::new(VolumeDirectionEntropy::default()),
-            FeatureModules::TimeVelocity => Box::new(TimeVelocity::default()),
+            FeatureModules::DirectionalTradeEntropy => Box::new(ModuleDirectionalTradeEntropy::default()),
+            FeatureModules::DirectionalVolumeEntropy => Box::new(ModuleDirectionalVolumeEntropy::default()),
+            FeatureModules::TimeVelocity => Box::new(ModuleTimeVelocity::default()),
         }
     }
 }
