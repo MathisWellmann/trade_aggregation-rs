@@ -15,6 +15,7 @@ use crate::modules::last_spread::ModuleLastSpread;
 use crate::modules::avg_spread::ModuleAvgSpread;
 use crate::modules::trade_direction_entropy::ModuleTradeDirectionEntropy;
 use crate::modules::volume_direction_entropy::ModuleVolumeDirectionEntropy;
+use crate::modules::time_velocity::ModuleTimeVelocity;
 
 mod open;
 mod high;
@@ -31,6 +32,7 @@ mod last_spread;
 mod avg_spread;
 mod trade_direction_entropy;
 mod volume_direction_entropy;
+mod time_velocity;
 
 #[derive(Debug, Default)]
 pub struct ModularCandle {
@@ -81,6 +83,9 @@ pub enum FeatureModules {
     StdDevSizes,
     LastSpread,
     AvgSpread,
+    TradeDirectionEntropy,
+    VolumeDirectionEntropy,
+    TimeVelocity,
 }
 
 impl FeatureModules {
@@ -101,6 +106,9 @@ impl FeatureModules {
             FeatureModules::StdDevSizes => Box::new(ModuleStdDevSizes::new()),
             FeatureModules::LastSpread => Box::new(ModuleLastSpread::default()),
             FeatureModules::AvgSpread => Box::new(ModuleAvgSpread::default()),
+            FeatureModules::TradeDirectionEntropy => Box::new(TradeDirectionEntropy::default()),
+            FeatureModules::VolumeDirectionEntropy => Box::new(VolumeDirectionEntropy::default()),
+            FeatureModules::TimeVelocity => Box::new(TimeVelocity::default()),
         }
     }
 }
