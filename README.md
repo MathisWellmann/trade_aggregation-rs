@@ -20,13 +20,13 @@ See [MathisWellmann/go_trade_aggregation](https://github.com/MathisWellmann/go_t
 
 ### How to use:
 in Cargo.toml:
-```
+```rust
 [dependencies]
 trade_aggregation = { git = "https://github.com/MathisWellmann/trade_aggregation-rs" }
 ```
 
 aggregate all trades by volume at once
-```
+```rust
 extern crate trade_aggregation;
 use trade_aggregation::{common, agg_volume};
 
@@ -46,7 +46,7 @@ fn main() {
 ```
 
 Use streaming trades to update with each tick
-```
+```rust
 extern crate trade_aggregation;
 use trade_aggregation::{common, agg_volume_streaming};
 
@@ -102,3 +102,6 @@ therefore providing the trader which an automatically scaling view, just like as
 - agg_volume_modular
 - a way to include FeatureModules of different types for example timestamp or num_trades.
 - add average price to all extended candles
+
+### License
+This crate is licensed under GNU AGPLv3, see LICENSE in this repo
