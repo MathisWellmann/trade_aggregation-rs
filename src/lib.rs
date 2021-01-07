@@ -21,7 +21,7 @@ pub use common::Trade;
 /// either by Base currency or Quote Currency
 /// assumes trades sizes are denoted in Quote
 /// e.g.: buy 10 contracts of BTC would be trade size of 10
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub enum By {
     Base,
     Quote,
