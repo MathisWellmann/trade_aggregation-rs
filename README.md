@@ -10,9 +10,7 @@ Additional statistics inlcude:
 - StdDev of sizes
 - last spread ( estimated based on trades )
 - average spread ( estimated based on trades )
-- directional trade entropy ( entropy of probability of buy direction )
-- directional volume entropy ( entropy of probability of buy volume )
-- time velocity ( 1.0 / t ; where t is time in minutes )
+- time velocity ( 1.0 / t ; where t is time in seconds, capped to min 1s )
 
 This Aggregation package allows for the creation of highly sophisticated algorithm and ML models. By providing a streaming interface, one is able to build real-time trading agents.
 It enables a clear view of the market state without using arbitrary time aggregation.

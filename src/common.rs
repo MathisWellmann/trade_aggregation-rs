@@ -36,14 +36,12 @@ pub struct Candle {
     pub std_dev_sizes: f64,
     pub last_spread: f64,
     pub avg_spread: f64,
-    pub directional_trade_entropy: f64,
-    pub directional_volume_entropy: f64,
     pub time_velocity: f64,  // 1.0 / t , where t is time measured in minutes
 }
 
 impl std::fmt::Display for Candle {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "(ts: {:?}, o: {:.2}, h: {:.2}, l: {:.2}, c: {:.2}, wp: {:.2}, v: {:.2}, dtr: {:.2}, dvr: {:.2}, #t: {}, σ_price: {:.2}, σ_size: {:.2}, dte: {:.2}, dve: {:.2}, tv: {:.4})",
+        write!(f, "(ts: {:?}, o: {:.2}, h: {:.2}, l: {:.2}, c: {:.2}, wp: {:.2}, v: {:.2}, dtr: {:.2}, dvr: {:.2}, #t: {}, σ_price: {:.2}, σ_size: {:.2}, tv: {:.4})",
                NaiveDateTime::from_timestamp(self.timestamp / 1000, (self.timestamp % 1000) as u32),
                self.open,
                self.high,
@@ -56,8 +54,6 @@ impl std::fmt::Display for Candle {
                self.num_trades,
                self.std_dev_prices,
                self.std_dev_sizes,
-               self.directional_trade_entropy,
-               self.directional_volume_entropy,
                self.time_velocity,
         )
     }
@@ -127,8 +123,6 @@ mod tests {
             std_dev_sizes: 6565.830432012996,
             last_spread: 0.5,
             avg_spread: 0.5,
-            directional_trade_entropy: 0.4,
-            directional_volume_entropy: 0.4,
             time_velocity: 0.1,
         };
         println!("c: {}", c);

@@ -52,8 +52,6 @@ impl AggTimeStreaming {
                 std_dev_sizes: 0.0,
                 last_spread: 0.0,
                 avg_spread: 0.0,
-                directional_trade_entropy: 0.0,
-                directional_volume_entropy: 0.0,
                 time_velocity: 1.0,
             },
             welford_prices: WelfordOnline::new(),
@@ -105,22 +103,12 @@ impl AggTimeStreaming {
         self.welford_sizes.add(trade.size);
 
         if trade.timestamp - self.init_timestamp > self.period * 1000 {
-            let pb: f64 = self.num_buys as f64 / self.num_trades as f64;
-            let ps: f64 = 1.0 - pb;
-            let mut directional_trade_entropy: f64 = pb * pb.log2() + ps * ps.log2();
-            if directional_trade_entropy.is_nan() {
-                directional_trade_entropy = 0.0;
+            let mut elapsed_s: f64 = (trade.timestamp - self.init_timestamp) as f64 / 1000.0;
+            if elapsed_s < 1.0 {
+                // cap elapsed_s to avoid time_velocity being infinite
+                elapsed_s = 1.0;
             }
-
-            let pb: f64 = self.buy_volume / self.volume;
-            let ps: f64 = 1.0 - pb;
-            let mut directional_volume_entropy: f64 = pb * pb.log2() + ps * ps.log2();
-            if directional_volume_entropy.is_nan() {
-                directional_volume_entropy = 0.0;
-            }
-
-            let elapsed_m: f64 = (trade.timestamp - self.init_timestamp) as f64 / 60_000.0;
-            let time_velocity: f64 = 1.0 / elapsed_m;
+            let time_velocity: f64 = 1.0 / elapsed_s;
 
             // create new candle
             let c = Candle{
@@ -138,8 +126,6 @@ impl AggTimeStreaming {
                 std_dev_sizes: self.welford_sizes.std_dev(),
                 last_spread: self.ask - self.bid,
                 avg_spread: self.spread_sum / self.num_trades as f64,
-                directional_trade_entropy,
-                directional_volume_entropy,
                 time_velocity,
             };
             self.last_candle = c;
