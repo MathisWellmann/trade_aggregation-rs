@@ -94,6 +94,7 @@ impl AggVolumeStreaming {
         
         if trade.size > 0.0 {
             self.ask = trade.price;
+            self.num_buys += 1;
         } else {
             self.bid = trade.price;
         }
