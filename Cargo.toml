@@ -1,15 +1,28 @@
 [package]
 name = "trade_aggregation"
-version = "0.3.2"
+version = "1.0.0"
 authors = ["MathisWellmann <wellmannmathis@gmail.com>"]
 edition = "2018"
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+license-file = "LICENSE"
+description = "Aggregate raw trades into candles using different methods"
+repository = "https://github.com/MathisWellmann/trade_aggregation-rs"
+readme = "README.md"
+keywords = [
+    "trading",
+    "candles",
+]
+categories = [
+    "algorithms"
+]
+exclude = [
+    "/img",
+    "/.idea",
+]
 
 [dependencies]
 csv = "1.1"
 chrono = "0.4.11"
 
 [dev-dependencies]
-rust_timeseries_generator = { git = "https://github.com/MathisWellmann/rust_timeseries_generator"}
+time_series_generator = "0.2"
 round = "0.1.0"

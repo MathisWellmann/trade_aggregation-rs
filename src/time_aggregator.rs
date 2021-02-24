@@ -1,9 +1,10 @@
-use crate::common::{Trade, Candle};
+use crate::{Trade, Candle, Aggregator};
 use crate::welford_online::WelfordOnline;
 
 
 #[derive(Debug, Clone)]
-pub struct AggTimeStreaming {
+/// Struct used for aggregating trades by time in an online (streaming) manner
+pub struct TimeAggregator {
     period: i64,
     init: bool,
     init_timestamp: i64,
@@ -13,19 +14,18 @@ pub struct AggTimeStreaming {
     volume: f64,
     buy_volume: f64,
     wp: f64,
+    price_sum: f64,
     num_trades: i32,
     num_buys: i32,
-    last_candle: Candle,
     welford_prices: WelfordOnline,
     welford_sizes: WelfordOnline,
-    bid: f64,
-    ask: f64,
-    spread_sum: f64,
 }
 
-impl AggTimeStreaming {
-    pub fn new(candle_period: i64) -> AggTimeStreaming {
-        return AggTimeStreaming{
+impl TimeAggregator {
+    /// Create a new streaming aggregator using timestamps to aggregate candles
+    /// with a given candle_period, measured in seconds
+    pub fn new(candle_period: i64) -> Self {
+        return TimeAggregator {
             period: candle_period,
             init: true,
             init_timestamp: 0,
@@ -35,34 +35,17 @@ impl AggTimeStreaming {
             volume: 0.0,
             buy_volume: 0.0,
             wp: 0.0,
+            price_sum: 0.0,
             num_trades: 0,
             num_buys: 0,
-            last_candle: Candle{
-                timestamp: 0,
-                open: 0.0,
-                high: 0.0,
-                low: 0.0,
-                close: 0.0,
-                volume: 0.0,
-                directional_trade_ratio: 0.0,
-                directional_volume_ratio: 0.0,
-                num_trades: 0,
-                weighted_price: 0.0,
-                std_dev_prices: 0.0,
-                std_dev_sizes: 0.0,
-                last_spread: 0.0,
-                avg_spread: 0.0,
-                time_velocity: 1.0,
-            },
             welford_prices: WelfordOnline::new(),
             welford_sizes: WelfordOnline::new(),
-            bid: 0.0,
-            ask: 0.0,
-            spread_sum: 0.0,
         }
     }
+}
 
-    pub fn update(&mut self, trade: &Trade) -> bool {
+impl Aggregator for TimeAggregator {
+    fn update(&mut self, trade: &Trade) -> Option<Candle> {
         if self.init {
             self.init = false;
             self.init_timestamp = trade.timestamp;
@@ -74,10 +57,9 @@ impl AggTimeStreaming {
             self.num_trades = 0;
             self.num_buys = 0;
             self.wp = 0.0;
+            self.price_sum = 0.0;
             self.welford_sizes.reset();
             self.welford_prices.reset();
-            self.bid = trade.price;
-            self.ask = trade.price;
         }
 
         if trade.price > self.high {
@@ -91,13 +73,10 @@ impl AggTimeStreaming {
         if trade.size > 0.0 {
             self.num_buys += 1;
             self.buy_volume += trade.size.abs();
-            self.ask = trade.price;
-        } else {
-            self.bid = trade.price;
         }
-        self.spread_sum += self.ask - self.bid;
 
         self.wp += trade.price * trade.size.abs();
+        self.price_sum += trade.price;
 
         self.welford_prices.add(trade.price);
         self.welford_sizes.add(trade.size);
@@ -121,39 +100,34 @@ impl AggTimeStreaming {
                 directional_trade_ratio: self.num_buys as f64 / self.num_trades as f64,
                 directional_volume_ratio: self.buy_volume / self.volume,
                 num_trades: self.num_trades,
+                arithmetic_mean_price: self.price_sum / self.num_trades as f64,
                 weighted_price: self.wp / self.volume,
                 std_dev_prices: self.welford_prices.std_dev(),
                 std_dev_sizes: self.welford_sizes.std_dev(),
-                last_spread: self.ask - self.bid,
-                avg_spread: self.spread_sum / self.num_trades as f64,
                 time_velocity,
             };
-            self.last_candle = c;
             self.init = true;
-            return true
+            return Some(c)
         }
-        return false
-    }
-
-    pub fn last(&self) -> &Candle {
-        return &self.last_candle
+        return None
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::common;
+    use crate::{H1, load_trades_from_csv};
+    use crate::tests::{test_candle};
 
     #[test]
     fn test_agg_time_streaming() {
-        let trades = common::load_trades_from_csv("data/Bitmex_XBTUSD_1M.csv");
-        let mut agg_time = AggTimeStreaming::new(common::H1);
+        let trades = load_trades_from_csv("data/Bitmex_XBTUSD_1M.csv");
+        let mut agg_time = TimeAggregator::new(H1);
 
         for i in 0..trades.len() {
-            let new_candle = agg_time.update(&trades[i]);
-            if new_candle {
-                common::test_candle(agg_time.last());
+            match agg_time.update(&trades[i]) {
+                Some(candle) => test_candle(&candle),
+                None => {}
             }
         }
     }

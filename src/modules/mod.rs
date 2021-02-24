@@ -1,4 +1,4 @@
-use crate::common::Trade;
+use crate::Trade;
 use crate::modules::close::ModuleClose;
 use crate::modules::open::ModuleOpen;
 use crate::modules::high::ModuleHigh;
@@ -10,11 +10,7 @@ use crate::modules::directional_volume_ratio::ModuleDirectionalVolumeRatio;
 use crate::modules::std_dev_prices::ModuleStdDevPrices;
 use crate::modules::std_dev_sizes::ModuleStdDevSizes;
 use crate::modules::volume::ModuleVolume;
-use crate::modules::average_price::ModuleAveragePrice;
-use crate::modules::last_spread::ModuleLastSpread;
-use crate::modules::avg_spread::ModuleAvgSpread;
-use crate::modules::directional_trade_entropy::ModuleDirectionalTradeEntropy;
-use crate::modules::directional_volume_entropy::ModuleDirectionalVolumeEntropy;
+use crate::modules::arithmetic_mean_price::ModuleArithmeticMeanPrice;
 use crate::modules::time_velocity::ModuleTimeVelocity;
 use crate::modules::num_trades::ModuleNumTrades;
 
@@ -28,42 +24,31 @@ mod directional_volume_ratio;
 mod std_dev_sizes;
 mod std_dev_prices;
 mod weighted_price;
-mod average_price;
-mod last_spread;
-mod avg_spread;
-mod directional_trade_entropy;
-mod directional_volume_entropy;
+mod arithmetic_mean_price;
 mod time_velocity;
 mod num_trades;
 
 #[derive(Debug, Default)]
+/// Holds candle features in a vector
 pub struct ModularCandle {
-    pub features: Vec<CandleFeature>,
+    features: Vec<f64>,
 }
 
 impl ModularCandle {
+    /// Create a new ModularCandle from feature modules
     pub fn from_modules(modules: &Vec<Box<dyn FeatureModule>>) -> Self {
-        let mut features: Vec<CandleFeature> = Vec::new();
+        let mut features: Vec<f64> = Vec::new();
         for m in modules {
-            let f = CandleFeature{
-                value: m.value(),
-            };
-            features.push(f);
+            features.push(m.value());
         }
         Self {
             features,
         }
     }
-}
 
-#[derive(Debug)]
-pub struct CandleFeature {
-    value: f64,
-}
-
-impl CandleFeature {
-    pub fn value(&self) -> f64 {
-        self.value
+    /// Return a reference to the features of the modular candle
+    pub fn get_features(&self) -> &Vec<f64> {
+        &self.features
     }
 }
 
@@ -71,26 +56,36 @@ impl CandleFeature {
 pub enum FeatureModules {
     // TODO: how to integrate different types for FeatureModule
     // Timestamp,
+    /// The open price of a candle
     Open,
+    /// The high price of a candle
     High,
+    /// The low price of a candle
     Low,
+    /// The close price of a candle
     Close,
+    /// The sum of trade sizes of a candle
     Volume,
-    AveragePrice,
+    /// Equally weighted price of a candle
+    ArithmeticMeanPrice,
+    /// Volume weighted price of a candle
     WeightedPrice,
+    /// Number of trades that happened during that candle
     NumTrades,
+    /// #buys / #trades
     DirectionalTradeRatio,
+    /// buy_volume / total_volume
     DirectionalVolumeRatio,
+    /// Standard deviation of prices from trades that happened during the candle
     StdDevPrices,
+    /// Standard deviation of sizes from trades that happened during the candle
     StdDevSizes,
-    LastSpread,
-    AvgSpread,
-    DirectionalTradeEntropy,
-    DirectionalVolumeEntropy,
+    /// Measures the speed of candle creation: 1.0 / elapsed_m
     TimeVelocity,
 }
 
 impl FeatureModules {
+    /// Return the associated boxed Struct for a module
     pub fn get_module(&self) -> Box<dyn FeatureModule> {
         return match self {
             // FeatureModules::Timestamp => Box::new(ModuleTimestamp::default()),
@@ -99,17 +94,13 @@ impl FeatureModules {
             FeatureModules::Low => Box::new(ModuleLow::default()),
             FeatureModules::Close => Box::new(ModuleClose::default()),
             FeatureModules::Volume => Box::new(ModuleVolume::default()),
-            FeatureModules::AveragePrice => Box::new(ModuleAveragePrice::default()),
+            FeatureModules::ArithmeticMeanPrice => Box::new(ModuleArithmeticMeanPrice::default()),
             FeatureModules::WeightedPrice => Box::new(ModuleWeightedPrice::default()),
             FeatureModules::NumTrades => Box::new(ModuleNumTrades::default()),
             FeatureModules::DirectionalTradeRatio => Box::new(ModuleDirectionalTradeRatio::default()),
             FeatureModules::DirectionalVolumeRatio => Box::new(ModuleDirectionalVolumeRatio::default()),
             FeatureModules::StdDevPrices => Box::new(ModuleStdDevPrices::new()),
             FeatureModules::StdDevSizes => Box::new(ModuleStdDevSizes::new()),
-            FeatureModules::LastSpread => Box::new(ModuleLastSpread::default()),
-            FeatureModules::AvgSpread => Box::new(ModuleAvgSpread::default()),
-            FeatureModules::DirectionalTradeEntropy => Box::new(ModuleDirectionalTradeEntropy::default()),
-            FeatureModules::DirectionalVolumeEntropy => Box::new(ModuleDirectionalVolumeEntropy::default()),
             FeatureModules::TimeVelocity => Box::new(ModuleTimeVelocity::default()),
         }
     }
@@ -123,7 +114,7 @@ pub trait FeatureModule: Debug {
 
 #[cfg(test)]
 mod tests {
-    use crate::common::Trade;
+    use crate::Trade;
 
     pub const TRADES: [Trade; 10] = [
         Trade{ timestamp: 0, price: 100.0, size: 10.0 },

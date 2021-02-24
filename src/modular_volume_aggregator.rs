@@ -1,10 +1,9 @@
-use crate::common::Trade;
-use crate::{By};
+use crate::{Trade, By};
 use crate::modules::{FeatureModule, FeatureModules, ModularCandle};
 
 #[derive(Debug)]
-pub struct AggVolumeStreamingModular {
-    pub last_candle: ModularCandle,
+/// The modular equivalent of VolumeAggregator
+pub struct ModularVolumeAggregator {
     feature_modules: Vec<Box<dyn FeatureModule>>,
     vol_threshold: f64,
     by: By,
@@ -12,26 +11,31 @@ pub struct AggVolumeStreamingModular {
     init: bool,
 }
 
-impl AggVolumeStreamingModular {
+impl ModularVolumeAggregator {
+    /// Create a new modular volume aggregator
+    /// # Parameters
+    /// - vol_threshold: create a new candle after this total volume has been reached
+    /// - by: determines how to interpret the trade size, either as denoted in QUOTE or in BASE
     pub fn new(vol_threshold: f64, by: By) -> Self {
-        return AggVolumeStreamingModular {
+        return ModularVolumeAggregator {
             vol_threshold,
             by,
-            last_candle: ModularCandle::default(),
             feature_modules: vec![],
             volume: 0.0,
             init: true,
         }
     }
 
+    /// Add a feature module to gain a new candle feature
     pub fn add_feature(&mut self, feature: FeatureModules) {
         let m: Box<dyn FeatureModule> = feature.get_module();
         self.feature_modules.push(m);
     }
 
-    // update observes a trade and updates the aggregated candle
-    // return true if new candle has been created
-    pub fn update(&mut self, trade: &Trade) -> bool {
+    /// Adds a new trade to aggregation
+    /// Returns Some(Candle) only when a new candle has been created,
+    /// otherwise it returns None
+    pub fn update(&mut self, trade: &Trade) -> Option<ModularCandle> {
         if self.init {
             self.init = false;
             self.volume = 0.0;
@@ -50,21 +54,9 @@ impl AggVolumeStreamingModular {
         if self.volume > self.vol_threshold {
             // create new candle
             let c = ModularCandle::from_modules(&self.feature_modules);
-            self.last_candle = c;
             self.init = true;
-            return true
+            return Some(c)
         }
-        return false
-    }
-
-    pub fn last(&self) -> &ModularCandle {
-        return &self.last_candle
-    }
-
-    // sets the volume threshold.
-    // caution is adviced as changing it in the middle of candle creation can have unexpected effects
-    // it is adviced to only set it after a new candle has been created
-    pub fn set_vol_threshold(&mut self, vol_threshold: f64) {
-        self.vol_threshold  = vol_threshold;
+        return None
     }
 }

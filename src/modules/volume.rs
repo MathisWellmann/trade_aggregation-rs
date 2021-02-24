@@ -1,5 +1,5 @@
 use crate::modules::FeatureModule;
-use crate::common::Trade;
+use crate::Trade;
 
 #[derive(Debug, Default)]
 pub struct ModuleVolume {
