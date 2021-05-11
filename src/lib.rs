@@ -2,6 +2,9 @@
 
 //! This crate is used for aggregating raw trade data into candles using various methods
 
+#[macro_use]
+extern crate serde;
+
 use chrono::naive::NaiveDateTime;
 use std::fs::File;
 
@@ -37,7 +40,7 @@ pub const H12: i64 = 43200;
 /// 1 Day candle period
 pub const D1: i64 = 86400;
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 /// Defines a taker trade
 pub struct Trade {
     /// Timestamp usually denoted in milliseconds
@@ -123,19 +126,20 @@ pub trait Aggregator {
     fn update(&mut self, trade: &Trade) -> Option<Candle>;
 }
 
-/// Determine the candle volume which produces the same number of candles
-/// as the given time aggregation equivalent
-/// # Parameters:
-///     - total_volume: sum of traded volume over entire time period
-///     - total_time_days: total number of days
-///     - target_time_minutes: time aggregated candle period which to target
-/// # Returns:
-///     - target candle volume for which volume aggregation produces
-///     the same number of candles as the time aggregation did
-/// e.g.:
-///     10 days of 1h candle -> 640 candles
-///     assuming 9840 volume traded over 10 days
-///     -> each candle should have 41 volume to produce 640 candles using volume aggregation
+/** Determine the candle volume which produces the same number of candles
+as the given time aggregation equivalent
+# Parameters:
+- total_volume - sum of traded volume over entire time period
+- total_time_days - total number of days
+- target_time_minutes - time aggregated candle period which to target
+# Returns:
+- target candle volume for which volume aggregation produces
+the same number of candles as the time aggregation did
+e.g.:
+10 days of 1h candle -> 640 candles
+assuming 9840 volume traded over 10 days
+-> each candle should have 41 volume to produce 640 candles using volume aggregation
+**/
 pub fn candle_volume_from_time_period(
     total_volume: f64,
     total_time_days: f64,

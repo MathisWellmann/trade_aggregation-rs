@@ -1,6 +1,6 @@
 [package]
 name = "trade_aggregation"
-version = "1.0.0"
+version = "1.0.1"
 authors = ["MathisWellmann <wellmannmathis@gmail.com>"]
 edition = "2018"
 license-file = "LICENSE"
@@ -22,6 +22,7 @@ exclude = [
 [dependencies]
 csv = "1.1"
 chrono = "0.4.11"
+serde = {version = "1.0.125", features = ["derive"] }
 
 [dev-dependencies]
 time_series_generator = "0.2"
