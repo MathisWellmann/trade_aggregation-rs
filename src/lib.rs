@@ -47,7 +47,7 @@ pub struct Trade {
     pub timestamp: i64,
     /// Price of the asset
     pub price: f64,
-    /// Size of the trade usually denoted in QUOTE currency
+    /// Size of the trade
     /// negative values indicate a taker Sell order
     pub size: f64,
 }
@@ -136,9 +136,9 @@ as the given time aggregation equivalent
 - target candle volume for which volume aggregation produces
 the same number of candles as the time aggregation did
 e.g.:
-10 days of 1h candle -> 640 candles
+10 days of 1h candle -> 240 candles
 assuming 9840 volume traded over 10 days
--> each candle should have 41 volume to produce 640 candles using volume aggregation
+-> each candle should have 41 volume to produce 240 candles using volume aggregation
 **/
 pub fn candle_volume_from_time_period(
     total_volume: f64,

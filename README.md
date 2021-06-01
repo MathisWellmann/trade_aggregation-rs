@@ -1,14 +1,5 @@
 # Trade Aggregation
-Convert trade data into candles using different forms of aggregation.
-The Candles provide more detailed statistics than the usual OHLCV candles.
-Additional statistics inlcude:
-- number of trades
-- directional trade ratio ( #buys / #trades )
-- directional volume ratio ( buyVolume / totalVolume )
-- weighted average price ( using abs(size) as weight)
-- Standard deviation of prices
-- Standard deviation of sizes
-- time velocity ( 1.0 / t ; where t is time in seconds, capped to min 1s )
+Convert trade data into candles.
 
 See [MathisWellmann/go_trade_aggregation](https://github.com/MathisWellmann/go_trade_aggregation) for a go implementation with less features though.
 
@@ -17,7 +8,7 @@ To use this crate in your project, add the following to your Cargo.toml:
 
 ```toml
 [dependencies]
-trade_aggregation = "1.0"
+trade_aggregation = "1.0.1"
 ```
 
 Aggregate all trades by volume at once:
