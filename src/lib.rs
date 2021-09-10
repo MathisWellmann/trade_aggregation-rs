@@ -87,7 +87,7 @@ pub struct Candle {
 
 impl std::fmt::Display for Candle {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "(ts: {:?}, o: {:.2}, h: {:.2}, l: {:.2}, c: {:.2}, wp: {:.2}, v: {:.2}, dtr: {:.2}, dvr: {:.2}, #t: {}, σ_price: {:.2}, σ_size: {:.2}, tv: {:.4})",
+        write!(f, "(ts: {:?}, o: {:.8}, h: {:.8}, l: {:.8}, c: {:.8}, wp: {:.8}, v: {:.2}, dtr: {:.4}, dvr: {:.4}, #t: {}, σ_price: {:.4}, σ_size: {:.4}, tv: {:.4})",
                NaiveDateTime::from_timestamp(self.timestamp / 1000, (self.timestamp % 1000) as u32),
                self.open,
                self.high,
