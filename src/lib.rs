@@ -52,7 +52,7 @@ pub struct Trade {
     pub size: f64,
 }
 
-#[derive(Default, Debug, Clone)]
+#[derive(Default, Debug, Clone, Serialize, Deserialize)]
 /// Defines a Candle
 pub struct Candle {
     /// latest timestamp of last received trade
@@ -109,7 +109,7 @@ impl std::fmt::Display for Candle {
 /// either by Base currency or Quote Currency
 /// assumes trades sizes are denoted in Quote
 /// e.g.: buy 10 contracts of BTC would be trade size of 10
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub enum By {
     /// when aggregating by Base, divide size by price for volume sum
     Base,
