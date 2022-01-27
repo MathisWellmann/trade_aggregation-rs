@@ -1,3 +1,4 @@
 /target
+/vendor
 /.idea
 Cargo.lock

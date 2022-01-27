@@ -7,24 +7,24 @@ pub struct WelfordOnline {
 
 impl WelfordOnline {
     pub fn new() -> Self {
-        return WelfordOnline{
+        return WelfordOnline {
             count: 0,
             mean: 0.0,
             s: 0.0,
-        }
+        };
     }
 
     // variance returns the variance
     pub fn variance(&self) -> f64 {
         if self.count > 1 {
-            return self.s / (self.count as f64 - 1.0)
+            return self.s / (self.count as f64 - 1.0);
         }
-        return 0.0
+        return 0.0;
     }
 
     // std_dev returns the standard deviation
     pub fn std_dev(&self) -> f64 {
-        return self.variance().sqrt()
+        return self.variance().sqrt();
     }
 
     // reset to defaults
@@ -48,12 +48,7 @@ mod tests {
     use super::*;
     use round::round;
 
-    const VALS: [f64; 4] = [
-        1.0,
-        2.0,
-        1.0,
-        2.0,
-    ];
+    const VALS: [f64; 4] = [1.0, 2.0, 1.0, 2.0];
 
     #[test]
     fn welford_online() {

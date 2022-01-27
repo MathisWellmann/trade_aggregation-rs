@@ -1,5 +1,5 @@
 extern crate trade_aggregation;
-use trade_aggregation::{load_trades_from_csv, Aggregator, VolumeAggregator, By};
+use trade_aggregation::{load_trades_from_csv, Aggregator, By, VolumeAggregator};
 
 fn main() {
     // load trades from file
@@ -14,7 +14,7 @@ fn main() {
             Some(candle) => {
                 // do something with the latest candle
                 println!("candle: {:?}", candle);
-            },
+            }
             None => {}
         }
     }

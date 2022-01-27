@@ -1,5 +1,5 @@
-use crate::{Trade, By};
 use crate::modules::{FeatureModule, FeatureModules, ModularCandle};
+use crate::{By, Trade};
 
 #[derive(Debug)]
 /// The modular equivalent of VolumeAggregator
@@ -23,7 +23,7 @@ impl ModularVolumeAggregator {
             feature_modules: vec![],
             volume: 0.0,
             init: true,
-        }
+        };
     }
 
     /// Add a feature module to gain a new candle feature
@@ -55,8 +55,8 @@ impl ModularVolumeAggregator {
             // create new candle
             let c = ModularCandle::from_modules(&self.feature_modules);
             self.init = true;
-            return Some(c)
+            return Some(c);
         }
-        return None
+        return None;
     }
 }

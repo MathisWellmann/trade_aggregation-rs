@@ -8,16 +8,16 @@ extern crate serde;
 use chrono::naive::NaiveDateTime;
 use std::fs::File;
 
-mod time_aggregator;
-mod volume_aggregator;
 mod modular_volume_aggregator;
 mod modules;
+mod time_aggregator;
+mod volume_aggregator;
 mod welford_online;
 
-pub use time_aggregator::TimeAggregator;
-pub use volume_aggregator::VolumeAggregator;
 pub use modular_volume_aggregator::ModularVolumeAggregator;
 pub use modules::{FeatureModules, ModularCandle};
+pub use time_aggregator::TimeAggregator;
+pub use volume_aggregator::VolumeAggregator;
 
 /// 1 Minute candle period
 pub const M1: i64 = 60;
@@ -40,7 +40,7 @@ pub const H12: i64 = 43200;
 /// 1 Day candle period
 pub const D1: i64 = 86400;
 
-#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+#[derive(Default, Debug, Clone, Copy, Serialize, Deserialize)]
 /// Defines a taker trade
 pub struct Trade {
     /// Timestamp usually denoted in milliseconds
@@ -52,7 +52,7 @@ pub struct Trade {
     pub size: f64,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Default, Debug, Clone)]
 /// Defines a Candle
 pub struct Candle {
     /// latest timestamp of last received trade
@@ -70,7 +70,7 @@ pub struct Candle {
     /// #buys / #trades
     pub directional_trade_ratio: f64,
     /// buy_volume / volume
-    pub directional_volume_ratio: f64,  // buy_volume / volume // in range [0, 1]
+    pub directional_volume_ratio: f64, // buy_volume / volume // in range [0, 1]
     /// number of taker trades observed in candle
     pub num_trades: i32,
     /// arithmetic mean of price
@@ -150,10 +150,7 @@ pub fn candle_volume_from_time_period(
 }
 
 /// apply an aggregator for all trades at once
-pub fn aggregate_all_trades(
-    trades: &Vec<Trade>,
-    aggregator: &mut impl Aggregator
-) -> Vec<Candle> {
+pub fn aggregate_all_trades(trades: &Vec<Trade>, aggregator: &mut impl Aggregator) -> Vec<Candle> {
     let mut out: Vec<Candle> = vec![];
 
     for t in trades {
@@ -180,21 +177,21 @@ pub fn load_trades_from_csv(filename: &str) -> Vec<Trade> {
         let price = row[1].parse::<f64>().unwrap();
         let size = row[2].parse::<f64>().unwrap();
         // convert to Trade
-        let trade = Trade{
+        let trade = Trade {
             timestamp: ts,
             price,
             size,
         };
         out.push(trade);
-    };
-    return out
+    }
+    return out;
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use round::round;
     use crate::By;
+    use round::round;
 
     /// test_candle will assert if the candle violates any constraints
     pub fn test_candle(candle: &Candle) {
@@ -217,10 +214,7 @@ mod tests {
     #[test]
     fn test_aggregate_all_trades() {
         let trades = load_trades_from_csv("data/Bitmex_XBTUSD_1M.csv");
-        let mut aggregator = VolumeAggregator::new(
-            100.0,
-            By::Quote
-        );
+        let mut aggregator = VolumeAggregator::new(100.0, By::Quote);
         let candles = aggregate_all_trades(&trades, &mut aggregator);
         assert!(candles.len() > 0);
     }
@@ -230,61 +224,43 @@ mod tests {
         let total_volume = 100.0;
         let time_days = 10.0;
         let target_time_minutes = 5.0;
-        let vol_threshold = candle_volume_from_time_period(
-            total_volume,
-            time_days,
-            target_time_minutes
-        );
+        let vol_threshold =
+            candle_volume_from_time_period(total_volume, time_days, target_time_minutes);
         assert_eq!(round(vol_threshold, 3), 0.035);
 
         let total_volume = 100.0;
         let time_days = 10.0;
         let target_time_minutes = 10.0;
-        let vol_threshold = candle_volume_from_time_period(
-            total_volume,
-            time_days,
-            target_time_minutes
-        );
+        let vol_threshold =
+            candle_volume_from_time_period(total_volume, time_days, target_time_minutes);
         assert_eq!(round(vol_threshold, 3), 0.069);
 
         let total_volume = 200.0;
         let time_days = 10.0;
         let target_time_minutes = 10.0;
-        let vol_threshold = candle_volume_from_time_period(
-            total_volume,
-            time_days,
-            target_time_minutes
-        );
+        let vol_threshold =
+            candle_volume_from_time_period(total_volume, time_days, target_time_minutes);
         assert_eq!(round(vol_threshold, 3), 0.139);
 
         let total_volume = 50.0;
         let time_days = 10.0;
         let target_time_minutes = 10.0;
-        let vol_threshold = candle_volume_from_time_period(
-            total_volume,
-            time_days,
-            target_time_minutes
-        );
+        let vol_threshold =
+            candle_volume_from_time_period(total_volume, time_days, target_time_minutes);
         assert_eq!(round(vol_threshold, 3), 0.035);
 
         let total_volume = 100.0;
         let time_days = 5.0;
         let target_time_minutes = 5.0;
-        let vol_threshold = candle_volume_from_time_period(
-            total_volume,
-            time_days,
-            target_time_minutes
-        );
+        let vol_threshold =
+            candle_volume_from_time_period(total_volume, time_days, target_time_minutes);
         assert_eq!(round(vol_threshold, 3), 0.069);
 
         let total_volume = 100.0;
         let time_days = 5.0;
         let target_time_minutes = 10.0;
-        let vol_threshold = candle_volume_from_time_period(
-            total_volume,
-            time_days,
-            target_time_minutes
-        );
+        let vol_threshold =
+            candle_volume_from_time_period(total_volume, time_days, target_time_minutes);
         assert_eq!(round(vol_threshold, 3), 0.139);
     }
 

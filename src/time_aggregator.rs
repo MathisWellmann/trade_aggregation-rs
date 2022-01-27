@@ -1,6 +1,5 @@
-use crate::{Trade, Candle, Aggregator};
 use crate::welford_online::WelfordOnline;
-
+use crate::{Aggregator, Candle, Trade};
 
 #[derive(Debug, Clone)]
 /// Struct used for aggregating trades by time in an online (streaming) manner
@@ -40,7 +39,7 @@ impl TimeAggregator {
             num_buys: 0,
             welford_prices: WelfordOnline::new(),
             welford_sizes: WelfordOnline::new(),
-        }
+        };
     }
 }
 
@@ -90,7 +89,7 @@ impl Aggregator for TimeAggregator {
             let time_velocity: f64 = 1.0 / elapsed_s;
 
             // create new candle
-            let c = Candle{
+            let c = Candle {
                 timestamp: trade.timestamp,
                 open: self.open,
                 high: self.high,
@@ -107,17 +106,17 @@ impl Aggregator for TimeAggregator {
                 time_velocity,
             };
             self.init = true;
-            return Some(c)
+            return Some(c);
         }
-        return None
+        return None;
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{H1, load_trades_from_csv};
-    use crate::tests::{test_candle};
+    use crate::tests::test_candle;
+    use crate::{load_trades_from_csv, H1};
 
     #[test]
     fn test_agg_time_streaming() {

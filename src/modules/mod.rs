@@ -1,32 +1,32 @@
-use crate::Trade;
+use crate::modules::arithmetic_mean_price::ModuleArithmeticMeanPrice;
 use crate::modules::close::ModuleClose;
-use crate::modules::open::ModuleOpen;
-use crate::modules::high::ModuleHigh;
-use crate::modules::low::ModuleLow;
-use std::fmt::{Debug};
-use crate::modules::weighted_price::ModuleWeightedPrice;
 use crate::modules::directional_trade_ratio::ModuleDirectionalTradeRatio;
 use crate::modules::directional_volume_ratio::ModuleDirectionalVolumeRatio;
+use crate::modules::high::ModuleHigh;
+use crate::modules::low::ModuleLow;
+use crate::modules::num_trades::ModuleNumTrades;
+use crate::modules::open::ModuleOpen;
 use crate::modules::std_dev_prices::ModuleStdDevPrices;
 use crate::modules::std_dev_sizes::ModuleStdDevSizes;
-use crate::modules::volume::ModuleVolume;
-use crate::modules::arithmetic_mean_price::ModuleArithmeticMeanPrice;
 use crate::modules::time_velocity::ModuleTimeVelocity;
-use crate::modules::num_trades::ModuleNumTrades;
+use crate::modules::volume::ModuleVolume;
+use crate::modules::weighted_price::ModuleWeightedPrice;
+use crate::Trade;
+use std::fmt::Debug;
 
-mod open;
-mod high;
-mod low;
+mod arithmetic_mean_price;
 mod close;
-mod volume;
 mod directional_trade_ratio;
 mod directional_volume_ratio;
-mod std_dev_sizes;
-mod std_dev_prices;
-mod weighted_price;
-mod arithmetic_mean_price;
-mod time_velocity;
+mod high;
+mod low;
 mod num_trades;
+mod open;
+mod std_dev_prices;
+mod std_dev_sizes;
+mod time_velocity;
+mod volume;
+mod weighted_price;
 
 #[derive(Debug, Default)]
 /// Holds candle features in a vector
@@ -41,9 +41,7 @@ impl ModularCandle {
         for m in modules {
             features.push(m.value());
         }
-        Self {
-            features,
-        }
+        Self { features }
     }
 
     /// Return a reference to the features of the modular candle
@@ -97,12 +95,16 @@ impl FeatureModules {
             FeatureModules::ArithmeticMeanPrice => Box::new(ModuleArithmeticMeanPrice::default()),
             FeatureModules::WeightedPrice => Box::new(ModuleWeightedPrice::default()),
             FeatureModules::NumTrades => Box::new(ModuleNumTrades::default()),
-            FeatureModules::DirectionalTradeRatio => Box::new(ModuleDirectionalTradeRatio::default()),
-            FeatureModules::DirectionalVolumeRatio => Box::new(ModuleDirectionalVolumeRatio::default()),
+            FeatureModules::DirectionalTradeRatio => {
+                Box::new(ModuleDirectionalTradeRatio::default())
+            }
+            FeatureModules::DirectionalVolumeRatio => {
+                Box::new(ModuleDirectionalVolumeRatio::default())
+            }
             FeatureModules::StdDevPrices => Box::new(ModuleStdDevPrices::new()),
             FeatureModules::StdDevSizes => Box::new(ModuleStdDevSizes::new()),
             FeatureModules::TimeVelocity => Box::new(ModuleTimeVelocity::default()),
-        }
+        };
     }
 }
 
@@ -117,15 +119,55 @@ mod tests {
     use crate::Trade;
 
     pub const TRADES: [Trade; 10] = [
-        Trade{ timestamp: 0, price: 100.0, size: 10.0 },
-        Trade{ timestamp: 1, price: 101.0, size: -10.0 },
-        Trade{ timestamp: 2, price: 100.0, size: 20.0 },
-        Trade{ timestamp: 3, price: 102.0, size: 10.0 },
-        Trade{ timestamp: 4, price: 103.0, size: 10.0 },
-        Trade{ timestamp: 5, price: 104.0, size: -20.0 },
-        Trade{ timestamp: 6, price: 102.0, size: -10.0 },
-        Trade{ timestamp: 7, price: 101.0, size: 10.0 },
-        Trade{ timestamp: 8, price: 102.0, size: 30.0 },
-        Trade{ timestamp: 9, price: 105.0, size: 10.0 },
+        Trade {
+            timestamp: 0,
+            price: 100.0,
+            size: 10.0,
+        },
+        Trade {
+            timestamp: 1,
+            price: 101.0,
+            size: -10.0,
+        },
+        Trade {
+            timestamp: 2,
+            price: 100.0,
+            size: 20.0,
+        },
+        Trade {
+            timestamp: 3,
+            price: 102.0,
+            size: 10.0,
+        },
+        Trade {
+            timestamp: 4,
+            price: 103.0,
+            size: 10.0,
+        },
+        Trade {
+            timestamp: 5,
+            price: 104.0,
+            size: -20.0,
+        },
+        Trade {
+            timestamp: 6,
+            price: 102.0,
+            size: -10.0,
+        },
+        Trade {
+            timestamp: 7,
+            price: 101.0,
+            size: 10.0,
+        },
+        Trade {
+            timestamp: 8,
+            price: 102.0,
+            size: 30.0,
+        },
+        Trade {
+            timestamp: 9,
+            price: 105.0,
+            size: 10.0,
+        },
     ];
 }

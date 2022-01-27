@@ -1,5 +1,5 @@
-use crate::{Trade, Candle, Aggregator, By};
 use crate::welford_online::WelfordOnline;
+use crate::{Aggregator, By, Candle, Trade};
 
 #[derive(Debug, Clone)]
 /// Used for aggregating trades based on volume
@@ -43,7 +43,7 @@ impl VolumeAggregator {
             welford_prices: WelfordOnline::new(),
             welford_sizes: WelfordOnline::new(),
             init_time: 0,
-        }
+        };
     }
 }
 
@@ -82,7 +82,7 @@ impl Aggregator for VolumeAggregator {
                     self.buy_volume += trade.size.abs() / trade.price;
                 }
                 self.wp += trade.size.abs();
-            },
+            }
             By::Quote => {
                 self.volume += trade.size.abs();
                 if trade.size > 0.0 {
@@ -107,7 +107,7 @@ impl Aggregator for VolumeAggregator {
             let time_velocity = 1.0 / elapsed_s;
 
             // create new candle
-            let c = Candle{
+            let c = Candle {
                 timestamp: trade.timestamp,
                 open: self.open,
                 high: self.high,
@@ -124,17 +124,17 @@ impl Aggregator for VolumeAggregator {
                 time_velocity,
             };
             self.init = true;
-            return Some(c)
+            return Some(c);
         }
-        return None
+        return None;
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::tests::{test_candle};
     use crate::load_trades_from_csv;
+    use crate::tests::test_candle;
 
     #[test]
     fn test_agg_volume_streaming_base() {

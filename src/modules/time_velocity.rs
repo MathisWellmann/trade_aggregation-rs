@@ -31,4 +31,3 @@ impl FeatureModule for ModuleTimeVelocity {
         self.last_time = trade.timestamp;
     }
 }
-

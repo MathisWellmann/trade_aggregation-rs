@@ -1,6 +1,6 @@
 use crate::modules::FeatureModule;
-use crate::Trade;
 use crate::welford_online::WelfordOnline;
+use crate::Trade;
 
 #[derive(Debug)]
 pub struct ModuleStdDevPrices {
