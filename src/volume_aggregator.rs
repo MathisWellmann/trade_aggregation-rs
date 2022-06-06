@@ -23,9 +23,11 @@ pub struct VolumeAggregator {
 
 impl VolumeAggregator {
     /// Create a new streaming volume aggregator
+    ///
     /// # Arguments:
-    /// - vol_threshold: create a new candle after this total volume has been reached
-    /// - by: determines how to interpret the trade size, either as denoted in QUOTE or in BASE
+    /// vol_threshold: create a new candle after this total volume has been reached
+    /// by: determines how to interpret the trade size, either as denoted in QUOTE or in BASE
+    ///
     pub fn new(vol_threshold: f64, by: By) -> Self {
         return VolumeAggregator {
             vol_threshold,
@@ -44,6 +46,12 @@ impl VolumeAggregator {
             welford_sizes: WelfordOnline::new(),
             init_time: 0,
         };
+    }
+
+    /// Return the currently set volume threshold
+    #[inline(always)]
+    pub fn volume_threshold(&self) -> f64 {
+        self.vol_threshold
     }
 }
 
