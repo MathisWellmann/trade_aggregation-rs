@@ -8,7 +8,7 @@ To use this crate in your project, add the following to your Cargo.toml:
 
 ```toml
 [dependencies]
-trade_aggregation = "1.0.1"
+trade_aggregation = "2.0.0"
 ```
 
 Aggregate all trades by volume at once:
@@ -19,7 +19,7 @@ use trade_aggregation::{aggregate_all_trades, load_trades_from_csv, By, VolumeAg
 
 fn main() {
     // load trades from file
-    let trades = load_trades_from_csv("data/Bitmex_XBTUSD_1M.csv");
+    let trades = load_trades_from_csv("data/Bitmex_XBTUSD_1M.csv").unwrap();
     // create the desired volume aggregator with parameters
     let mut aggregator = VolumeAggregator::new(1000.0, By::Base);
 
@@ -39,7 +39,7 @@ use trade_aggregation::{load_trades_from_csv, Aggregator, VolumeAggregator, By};
 
 fn main() {
     // load trades from file
-    let trades = load_trades_from_csv("data/Bitmex_XBTUSD_1M.csv");
+    let trades = load_trades_from_csv("data/Bitmex_XBTUSD_1M.csv").unwrap();
 
     // create new streaming aggregator based on volume
     let mut agg_volume = VolumeAggregator::new(1000.0, By::Base);
