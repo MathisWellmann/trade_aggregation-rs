@@ -85,7 +85,7 @@ pub enum FeatureModules {
 impl FeatureModules {
     /// Return the associated boxed Struct for a module
     pub fn get_module(&self) -> Box<dyn FeatureModule> {
-        return match self {
+        match self {
             // FeatureModules::Timestamp => Box::new(ModuleTimestamp::default()),
             FeatureModules::Open => Box::new(ModuleOpen::default()),
             FeatureModules::High => Box::new(ModuleHigh::default()),
@@ -104,7 +104,7 @@ impl FeatureModules {
             FeatureModules::StdDevPrices => Box::new(ModuleStdDevPrices::new()),
             FeatureModules::StdDevSizes => Box::new(ModuleStdDevSizes::new()),
             FeatureModules::TimeVelocity => Box::new(ModuleTimeVelocity::default()),
-        };
+        }
     }
 }
 

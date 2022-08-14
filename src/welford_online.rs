@@ -7,11 +7,11 @@ pub struct WelfordOnline {
 
 impl WelfordOnline {
     pub fn new() -> Self {
-        return WelfordOnline {
+        WelfordOnline {
             count: 0,
             mean: 0.0,
             s: 0.0,
-        };
+        }
     }
 
     // variance returns the variance
@@ -19,12 +19,13 @@ impl WelfordOnline {
         if self.count > 1 {
             return self.s / (self.count as f64 - 1.0);
         }
-        return 0.0;
+
+        0.0
     }
 
     // std_dev returns the standard deviation
     pub fn std_dev(&self) -> f64 {
-        return self.variance().sqrt();
+        self.variance().sqrt()
     }
 
     // reset to defaults

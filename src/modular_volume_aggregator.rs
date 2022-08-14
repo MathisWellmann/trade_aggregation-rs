@@ -13,17 +13,18 @@ pub struct ModularVolumeAggregator {
 
 impl ModularVolumeAggregator {
     /// Create a new modular volume aggregator
-    /// # Parameters
+    ///
+    /// # Parameters:
     /// - vol_threshold: create a new candle after this total volume has been reached
     /// - by: determines how to interpret the trade size, either as denoted in QUOTE or in BASE
     pub fn new(vol_threshold: f64, by: By) -> Self {
-        return ModularVolumeAggregator {
+        ModularVolumeAggregator {
             vol_threshold,
             by,
             feature_modules: vec![],
             volume: 0.0,
             init: true,
-        };
+        }
     }
 
     /// Add a feature module to gain a new candle feature
@@ -57,6 +58,6 @@ impl ModularVolumeAggregator {
             self.init = true;
             return Some(c);
         }
-        return None;
+        None
     }
 }

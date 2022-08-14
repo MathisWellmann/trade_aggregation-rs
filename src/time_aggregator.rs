@@ -24,7 +24,7 @@ impl TimeAggregator {
     /// Create a new streaming aggregator using timestamps to aggregate candles
     /// with a given candle_period, measured in seconds
     pub fn new(candle_period: i64) -> Self {
-        return TimeAggregator {
+        TimeAggregator {
             period: candle_period,
             init: true,
             init_timestamp: 0,
@@ -39,7 +39,7 @@ impl TimeAggregator {
             num_buys: 0,
             welford_prices: WelfordOnline::new(),
             welford_sizes: WelfordOnline::new(),
-        };
+        }
     }
 }
 
@@ -108,19 +108,20 @@ impl Aggregator for TimeAggregator {
             self.init = true;
             return Some(c);
         }
-        return None;
+
+        None
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::tests::test_candle;
+    use crate::types::tests::test_candle;
     use crate::{load_trades_from_csv, H1};
 
     #[test]
     fn test_agg_time_streaming() {
-        let trades = load_trades_from_csv("data/Bitmex_XBTUSD_1M.csv");
+        let trades = load_trades_from_csv("data/Bitmex_XBTUSD_1M.csv").unwrap();
         let mut agg_time = TimeAggregator::new(H1);
 
         for i in 0..trades.len() {

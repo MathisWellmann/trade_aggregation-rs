@@ -3,7 +3,8 @@ use trade_aggregation::{load_trades_from_csv, Aggregator, By, VolumeAggregator};
 
 fn main() {
     // load trades from file
-    let trades = load_trades_from_csv("data/Bitmex_XBTUSD_1M.csv");
+    let trades =
+        load_trades_from_csv("data/Bitmex_XBTUSD_1M.csv").expect("Trade data file not found!");
 
     // create new streaming aggregator based on volume
     let mut agg_volume = VolumeAggregator::new(1000.0, By::Base);

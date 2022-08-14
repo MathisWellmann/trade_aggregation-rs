@@ -29,7 +29,7 @@ impl VolumeAggregator {
     /// by: determines how to interpret the trade size, either as denoted in QUOTE or in BASE
     ///
     pub fn new(vol_threshold: f64, by: By) -> Self {
-        return VolumeAggregator {
+        VolumeAggregator {
             vol_threshold,
             by,
             open: 0.0,
@@ -45,7 +45,7 @@ impl VolumeAggregator {
             welford_prices: WelfordOnline::new(),
             welford_sizes: WelfordOnline::new(),
             init_time: 0,
-        };
+        }
     }
 
     /// Return the currently set volume threshold
@@ -134,7 +134,8 @@ impl Aggregator for VolumeAggregator {
             self.init = true;
             return Some(c);
         }
-        return None;
+
+        None
     }
 }
 
@@ -148,7 +149,7 @@ mod tests {
     fn test_agg_volume_streaming_base() {
         let mut agg_volume = VolumeAggregator::new(1000.0, By::Base);
 
-        let trades = load_trades_from_csv("data/Bitmex_XBTUSD_1M.csv");
+        let trades = load_trades_from_csv("data/Bitmex_XBTUSD_1M.csv").unwrap();
         for i in 0..trades.len() {
             match agg_volume.update(&trades[i]) {
                 Some(candle) => test_candle(&candle),
