@@ -1,6 +1,6 @@
 [package]
 name = "trade_aggregation"
-version = "2.0.0"
+version = "2.0.1"
 authors = ["MathisWellmann <wellmannmathis@gmail.com>"]
 edition = "2018"
 license-file = "LICENSE"
@@ -28,3 +28,8 @@ thiserror = "^1"
 [dev-dependencies]
 time_series_generator = "^0.2"
 round = "^0.1"
+criterion = "^0.3"
+
+[[bench]]
+name = "candle_aggregation"
+harness = false
