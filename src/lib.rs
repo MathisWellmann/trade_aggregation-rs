@@ -5,20 +5,22 @@
 #[macro_use]
 extern crate serde;
 
+mod aggregator;
 mod constants;
 mod errors;
-mod modular_volume_aggregator;
-mod modules;
-mod time_aggregator;
+// mod modular_volume_aggregator;
+mod candle_components;
+// mod time_aggregator;
 mod types;
 mod utils;
-mod volume_aggregator;
+// mod volume_aggregator;
 mod welford_online;
 
 pub use constants::*;
-pub use modular_volume_aggregator::ModularVolumeAggregator;
-pub use modules::{FeatureModules, ModularCandle};
-pub use time_aggregator::TimeAggregator;
+// pub use modular_volume_aggregator::ModularVolumeAggregator;
+// pub use modules::{FeatureModules, ModularCandle};
+// pub use time_aggregator::TimeAggregator;
+pub use aggregator::*;
 pub use types::*;
 pub use utils::*;
-pub use volume_aggregator::VolumeAggregator;
+// pub use volume_aggregator::VolumeAggregator;

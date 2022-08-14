@@ -3,16 +3,19 @@ use chrono::naive::NaiveDateTime;
 #[derive(Default, Debug, Clone, Copy, Serialize, Deserialize)]
 /// Defines a taker trade
 pub struct Trade {
-    /// Timestamp usually denoted in milliseconds
+    /// Timestamp, assumed to be in milliseconds
     pub timestamp: i64,
+
     /// Price of the asset
     pub price: f64,
+
     /// Size of the trade
     /// negative values indicate a taker Sell order
     pub size: f64,
 }
 
 #[derive(Default, Debug, Clone, Serialize, Deserialize)]
+#[deprecated]
 /// Defines a Candle
 pub struct Candle {
     /// latest timestamp of last received trade
@@ -76,14 +79,6 @@ pub enum By {
     /// when aggregating by Quote, take the raw trade size for volume sum
     /// as the assumption is that Trade size is denoted in Quote
     Quote,
-}
-
-/// Defines the needed methods for any online aggregator
-pub trait Aggregator {
-    /// Adds a new trade to aggregation
-    /// Returns Some(Candle) only when a new candle has been created,
-    /// otherwise it returns None
-    fn update(&mut self, trade: &Trade) -> Option<Candle>;
 }
 
 #[cfg(test)]

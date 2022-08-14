@@ -1,7 +1,7 @@
 # Trade Aggregation
-Convert trade data into candles.
+A high performance trade aggregation crate, producing Candle data, suitable for low-latency applications.
 
-See [MathisWellmann/go_trade_aggregation](https://github.com/MathisWellmann/go_trade_aggregation) for a go implementation with less features though.
+See [MathisWellmann/go_trade_aggregation](https://github.com/MathisWellmann/go_trade_aggregation) for a go implementation with less features and performance.
 
 ### How to use:
 To use this crate in your project, add the following to your Cargo.toml:
@@ -31,7 +31,7 @@ fn main() {
 }
 ```
 
-Use streaming trades to update with each tick:
+Or Use streaming trades to update with each tick:
 
 ```rust
 extern crate trade_aggregation;
@@ -66,6 +66,13 @@ cargo run --example streaming_time
 cargo run --example streaming_volume
 ```
 
+### Performance:
+To run the benchmarks, written using criterion, run:
+```shell
+cargo bench
+```
+On a 12th gen Intel Core i7-12800H, 1 million trades can be aggregated into 1 minute candles in about 6ms
+
 ### Donations :moneybag: :money_with_wings:
 I you would like to support the development of this crate, feel free to send over a donation:
 
@@ -75,6 +82,7 @@ Monero (XMR) address:
 ```
 
 ![monero](img/monero_donations_qrcode.png)
+
 
 ### License
 Copyright (C) 2020  <Mathis Wellmann wellmannmathis@gmail.com>
@@ -93,3 +101,7 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 ![GNU AGPLv3](img/agplv3.png)
+
+### Commercial License
+If you'd like to use this crate legally without the restrictions of the GNU AGPLv3 license, 
+please contact me so we can arrange a custom license.
