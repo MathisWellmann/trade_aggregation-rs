@@ -1,5 +1,6 @@
 # Trade Aggregation
-A high performance, modular and flexible trade aggregation crate, producing Candle data, suitable for low-latency applications.
+A high performance, modular and flexible trade aggregation crate, producing Candle data, 
+suitable for low-latency applications and incremental updates.
 It allows the user to choose the rule dictating how a new candle is created 
 through the [AggregationRule](src/aggregation_rules/aggregation_rule_trait.rs) trait, 
 e.g: Time, Volume based or some other information driven rule.
@@ -18,59 +19,48 @@ To use this crate in your project, add the following to your Cargo.toml:
 trade_aggregation = "^3"
 ```
 
-Aggregate all trades by volume at once:
+Lets aggregate all trades into time based 1 minute candles, consisting of open, high, low and close information.
+Notice how easy it is to specify the 'AggregationRule' and 'ModularCandle' being used in the process.
+One can easily plug in their own implementation of those trait for full customization.
 
 ```rust
-extern crate trade_aggregation;
-use trade_aggregation::{aggregate_all_trades, load_trades_from_csv, By, VolumeAggregator};
+use trade_aggregation::{
+    candle_components::{Close, High, Low, Open},
+    *,
+};
+use trade_aggregation_derive::Candle;
+
+#[derive(Debug, Default, Clone, Candle)]
+struct MyCandle {
+    open: Open,
+    high: High,
+    low: Low,
+    close: Close,
+}
 
 fn main() {
-    // load trades from file
-    let trades = load_trades_from_csv("data/Bitmex_XBTUSD_1M.csv").unwrap();
-    // create the desired volume aggregator with parameters
-    let mut aggregator = VolumeAggregator::new(1000.0, By::Base);
+    let trades = load_trades_from_csv("data/Bitmex_XBTUSD_1M.csv")
+        .expect("Could not load trades from file!");
+
+    // specify the aggregation rule to be time based
+    let time_rule = TimeRule::new(M1);
+    let mut aggregator = GenericAggregator::<MyCandle, TimeRule>::new(time_rule);
 
     let candles = aggregate_all_trades(&trades, &mut aggregator);
-
-    for c in &candles {
-        println!("candle: {:?}", c);
-    }
+    println!("got {} candles", candles.len());
 }
 ```
 
-Or Use streaming trades to update with each tick:
+Alternatively, use an online updating approach to update with each tick:
 
 ```rust
-extern crate trade_aggregation;
-use trade_aggregation::{load_trades_from_csv, Aggregator, VolumeAggregator, By};
-
-fn main() {
-    // load trades from file
-    let trades = load_trades_from_csv("data/Bitmex_XBTUSD_1M.csv").unwrap();
-
-    // create new streaming aggregator based on volume
-    let mut agg_volume = VolumeAggregator::new(1000.0, By::Base);
-
-    for t in &trades {
-        // update using the latest trade
-        match agg_volume.update(t) {
-            Some(candle) => {
-                // do something with the latest candle
-                println!("candle: {:?}", candle);
-            },
-            None => {}
-        }
-    }
-}
+todo!()
 ```
 
 See examples folder for more.
 Run examples using
 ```
-cargo run --example simple_volume
-cargo run --example simple_time
-cargo run --example streaming_time
-cargo run --example streaming_volume
+cargo run --release --example aggregate_all_ohlc
 ```
 
 ### Performance:

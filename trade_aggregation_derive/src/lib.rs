@@ -2,7 +2,18 @@
 //! It combines multiple types that implement 'CandleComponent'
 //! into a single 'ModularCandle' struct
 //! which can then be used as the output type of some aggregation process.
-//! It also exposes getter functions for each 'CandleComponent' for convenience
+//! It also exposes getter methods for each 'CandleComponent' for convenience.
+//! The name of the getter method is equivalent to the field name.
+//! e.g.:
+//! struct MyCandle {
+//!    open: Open,
+//! }
+//! with the derive macro will create a "fn open(&self)" method which gets the inner value
+//!
+//! When deriving the 'Candle' macro, make sure the following things are in scope:
+//! - Trade
+//! - ModularCandle
+//! - CandleComponent
 
 #![deny(missing_docs)]
 
