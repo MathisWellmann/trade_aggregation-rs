@@ -1,7 +1,7 @@
 use crate::{AggregationRule, ModularCandle, Trade};
 
 /// The classic time based aggregation rule,
-/// creating a new candle every n milliseconds
+/// creating a new candle every n seconds
 pub struct TimeRule {
     /// If true, the reference timestamp needs to be reset
     init: bool,

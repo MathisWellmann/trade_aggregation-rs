@@ -4,4 +4,4 @@ mod volume_rule;
 
 pub use aggregation_rule_trait::AggregationRule;
 pub use time_rule::TimeRule;
-// pub use volume_rule::VolumeRule;
+pub use volume_rule::VolumeRule;
