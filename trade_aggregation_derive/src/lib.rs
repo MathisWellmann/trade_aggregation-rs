@@ -54,7 +54,7 @@ fn impl_candle_macro(ast: &syn::DeriveInput) -> TokenStream {
     let gen = quote! {
         impl #name {
             #(
-                fn #fn_names0(&self) -> f64 {
+                pub fn #fn_names0(&self) -> f64 {
                     self.#fn_names0.value()
                 }
             )*
