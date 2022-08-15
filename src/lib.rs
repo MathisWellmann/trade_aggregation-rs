@@ -7,22 +7,20 @@ extern crate serde;
 #[macro_use]
 extern crate trade_aggregation_derive;
 
+mod aggregation_rules;
 mod aggregator;
+pub mod candle_components;
 mod constants;
 mod errors;
-// mod modular_volume_aggregator;
-mod candle_components;
-// mod time_aggregator;
+mod modular_candle_trait;
 mod types;
 mod utils;
-// mod volume_aggregator;
 mod welford_online;
 
-pub use constants::*;
-// pub use modular_volume_aggregator::ModularVolumeAggregator;
-// pub use modules::{FeatureModules, ModularCandle};
-// pub use time_aggregator::TimeAggregator;
+pub use aggregation_rules::*;
 pub use aggregator::*;
+pub use candle_components::CandleComponent;
+pub use constants::*;
+pub use modular_candle_trait::ModularCandle;
 pub use types::*;
 pub use utils::*;
-// pub use volume_aggregator::VolumeAggregator;

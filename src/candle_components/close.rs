@@ -1,8 +1,9 @@
 use crate::{CandleComponent, Trade};
 
+/// This 'CandleComponent' keeps track of the close price
 #[derive(Default, Debug, Clone)]
 pub struct Close {
-    pub value: f64,
+    value: f64,
 }
 
 impl CandleComponent for Close {

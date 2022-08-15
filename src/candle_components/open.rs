@@ -1,6 +1,6 @@
-use crate::{aggregator::CandleComponent, Trade};
+use crate::{CandleComponent, Trade};
 
-/// The Candle component "Open" keeps track of the opening price
+/// This 'CandleComponent' keeps track of the opening price of a Candle
 #[derive(Debug, Clone)]
 pub struct Open {
     init: bool,

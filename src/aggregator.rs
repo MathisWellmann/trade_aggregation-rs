@@ -1,4 +1,4 @@
-use crate::Trade;
+use crate::{AggregationRule, ModularCandle, Trade};
 
 /// Defines the needed methods for any online aggregator
 pub trait Aggregator<Candle> {
@@ -11,20 +11,6 @@ pub trait Aggregator<Candle> {
     /// Some output only when a new candle has been created,
     /// otherwise it returns None
     fn update(&mut self, trade: &Trade) -> Option<Candle>;
-}
-
-/// Defines under what conditions one aggregation period is finished
-pub trait AggregationRule<C> {
-    /// The main method defining when the aggregation is done
-    ///
-    /// # Arguments:
-    /// trade: The most recent taker trade (tick) information
-    /// candle: Some generic Candle, allowing for information driven decision making
-    ///
-    /// # Returns:
-    /// if true, the aggregation period is finished and a Candle can be emitted
-    /// else the aggregation needs to continue
-    fn should_trigger(&mut self, trade: &Trade, candle: &C) -> bool;
 }
 
 /// An aggregator that is generic over
@@ -70,78 +56,11 @@ where
     }
 }
 
-/// The classic time based aggregation rule,
-/// creating a new candle every n milliseconds
-pub struct TimeRule {
-    /// If true, the reference timestamp needs to be reset
-    init: bool,
-
-    // The timestamp this rule uses as a reference
-    reference_timestamp: i64,
-
-    // The period for the candle in seconds
-    // constants can be used nicely here from constants.rs
-    // e.g.: M1 -> 1 minute candles
-    period_s: i64,
-}
-
-impl TimeRule {
-    /// Create a new instance of the time rule,
-    /// with a given candle period in seconds
-    pub fn new(period_s: i64) -> Self {
-        Self {
-            init: true,
-            reference_timestamp: 0,
-            period_s,
-        }
-    }
-}
-
-impl<C> AggregationRule<C> for TimeRule
-where
-    C: ModularCandle,
-{
-    fn should_trigger(&mut self, trade: &Trade, _candle: &C) -> bool {
-        if self.init {
-            self.reference_timestamp = trade.timestamp;
-            self.init = false;
-        }
-        let should_trigger = trade.timestamp - self.reference_timestamp > self.period_s * 1000;
-        if should_trigger {
-            self.init = true;
-        }
-
-        should_trigger
-    }
-}
-
-/// A modular candle that can be composed of multiple components
-pub trait ModularCandle: Clone + Default {
-    /// Updates the candle information with trade information
-    fn update(&mut self, trade: &Trade);
-
-    /// Resets the state of the candle
-    fn reset(&mut self);
-}
-
-/// Each component of a Candle must fullfill this trait
-pub trait CandleComponent {
-    /// The current value of the component
-    // TODO: make output type generic
-    fn value(&self) -> f64;
-
-    /// Updates the state with newest trade information
-    fn update(&mut self, trade: &Trade);
-
-    /// Resets the component state to its default
-    fn reset(&mut self);
-}
-
 #[cfg(test)]
 mod tests {
     use crate::{
-        candle_components::{Close, Open},
-        load_trades_from_csv, M1,
+        candle_components::{CandleComponent, Close, Open},
+        load_trades_from_csv, ModularCandle, TimeRule, M1,
     };
     use trade_aggregation_derive::Candle;
 
@@ -150,11 +69,11 @@ mod tests {
     #[derive(Default, Debug, Clone, Candle)]
     struct MyCandle {
         open: Open,
+        close: Close,
     }
 
     #[test]
     fn generic_aggregator() {
-        /*
         let trades = load_trades_from_csv("data/Bitmex_XBTUSD_1M.csv")
             .expect("Could not load trades from file!");
 
@@ -169,13 +88,15 @@ mod tests {
             }
         }
         assert_eq!(candle_counter, 5704);
-        */
     }
 
     #[test]
     fn candle_macro() {
         let my_candle = MyCandle::default();
         println!("my_candle: {:?}", my_candle);
+
+        // make sure the 'open' and 'close' getters have been generated
         println!("open: {}", my_candle.open());
+        println!("close: {}", my_candle.close());
     }
 }

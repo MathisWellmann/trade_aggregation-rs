@@ -1,3 +1,7 @@
+//! This module contains a bunch of ready to use 'CandleComponents'
+//! that can easily be combined to create a 'ModularCandle' using the 'Candle' macro.
+
+mod candle_component_trait;
 // mod arithmetic_mean_price;
 mod close;
 // mod directional_trade_ratio;
@@ -12,6 +16,7 @@ mod open;
 // mod volume;
 // mod weighted_price;
 
+pub use candle_component_trait::CandleComponent;
 pub use close::Close;
 pub use open::Open;
 
