@@ -4,8 +4,6 @@
 
 #[macro_use]
 extern crate serde;
-#[macro_use]
-extern crate trade_aggregation_derive;
 
 mod aggregation_rules;
 mod aggregator;
@@ -22,5 +20,6 @@ pub use aggregator::*;
 pub use candle_components::CandleComponent;
 pub use constants::*;
 pub use modular_candle_trait::ModularCandle;
+pub use trade_aggregation_derive::Candle;
 pub use types::*;
 pub use utils::*;

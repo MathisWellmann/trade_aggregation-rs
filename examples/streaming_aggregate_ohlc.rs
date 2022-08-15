@@ -1,10 +1,5 @@
-//! This example shows how to aggregate all trades into time based
-//! 1 minute candles all at once. The candle will contain the open, high, low and close price
+//! This example shows how to perform tick-by-tick streaming trade aggregation
 //!
-//! When deriving the 'Candle' macro, make sure the following things are in scope:
-//! - Trade
-//! - ModularCandle
-//! - CandleComponent
 
 use trade_aggregation::{
     candle_components::{Close, High, Low, Open},
@@ -27,6 +22,15 @@ fn main() {
     let time_rule = TimeRule::new(M1);
     let mut aggregator = GenericAggregator::<MyCandle, TimeRule>::new(time_rule);
 
-    let candles = aggregate_all_trades(&trades, &mut aggregator);
-    println!("got {} candles", candles.len());
+    for t in &trades {
+        if let Some(candle) = aggregator.update(t) {
+            println!(
+                "candle created with open: {}, high: {}, low: {}, close: {}",
+                candle.open(),
+                candle.high(),
+                candle.low(),
+                candle.close()
+            );
+        }
+    }
 }
