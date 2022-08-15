@@ -80,9 +80,15 @@ To run the benchmarks, written using criterion, run:
 cargo bench
 ```
 
-On a 12th gen Intel Core i7-12800H, 1 million trades can be aggregated into 1 minute OHLC candles in about 7ms.
-If using only the 'Open' 'CandleComponent' then it can be as fast as 1.8ms.
-The more 'CandleComponent's you use, the longer it takes obviously, so using all components currently takes about 16ms
+Here are some results running on a 12th gen Intel Core i7-12800H, aggregating 1 million trades into 1 minute candles:
+
+Candle | Time in ms
+-------|-----------
+Open   | 1.8
+OHLC   | 7
+All    | 16ms
+
+The more 'CandleComponent's you use, the longer it takes obviously.
 
 ### Donations :moneybag: :money_with_wings:
 I you would like to support the development of this crate, feel free to send over a donation:
@@ -115,4 +121,4 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 ### Commercial License
 If you'd like to use this crate legally without the restrictions of the GNU AGPLv3 license, 
-please contact me so we can arrange a custom license.
+please contact me so we can quickly arrange a custom license.
