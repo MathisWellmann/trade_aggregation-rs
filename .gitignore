@@ -1,4 +1,5 @@
 /target
 /vendor
 /.idea
+/trade_aggregation_derive/target
 Cargo.lock
