@@ -1,9 +1,12 @@
-use crate::{AggregationRule, ModularCandle, Trade};
+use crate::{AggregationRule, By, ModularCandle, Trade};
 
 /// Creates candles every n units of volume traded
 pub struct VolumeRule {
     // If true, the cumulative volume needs to be reset
     init: bool,
+
+    // See docs on By enum for details
+    by: By,
 
     // cumulative volume
     cum_vol: f64,
@@ -14,9 +17,10 @@ pub struct VolumeRule {
 
 impl VolumeRule {
     /// Create a new instance with the given volume threshold
-    pub fn new(threshold_vol: f64) -> Self {
+    pub fn new(threshold_vol: f64, by: By) -> Self {
         Self {
             init: true,
+            by,
             cum_vol: 0.0,
             threshold_vol,
         }
@@ -32,7 +36,10 @@ where
             self.cum_vol = 0.0;
             self.init = false;
         }
-        self.cum_vol += trade.size.abs();
+        self.cum_vol += match self.by {
+            By::Quote => trade.size.abs(),
+            By::Base => trade.size.abs() / trade.price,
+        };
 
         let should_trigger = self.cum_vol > self.threshold_vol;
         if should_trigger {

@@ -85,8 +85,6 @@ pub fn load_trades_from_csv(filename: &str) -> Result<Vec<Trade>> {
 
 #[cfg(test)]
 mod tests {
-    use crate::{aggregate_all_trades, By};
-
     use super::*;
     use round::round;
 

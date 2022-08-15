@@ -1,6 +1,6 @@
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
 use trade_aggregation::{
-    aggregate_all_trades, candle_components::*, load_trades_from_csv, By, CandleComponent,
+    aggregate_all_trades, candle_components::*, load_trades_from_csv, CandleComponent,
     GenericAggregator, ModularCandle, TimeRule, Trade, M1,
 };
 use trade_aggregation_derive::Candle;
