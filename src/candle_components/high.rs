@@ -1,27 +1,24 @@
-use crate::modules::FeatureModule;
-use crate::Trade;
+use crate::{CandleComponent, Trade};
 
-#[derive(Default, Debug)]
-pub struct ModuleHigh {
-    pub high: f64,
+/// This 'CandleComponent' keeps track of the high price
+#[derive(Default, Debug, Clone)]
+pub struct High {
+    high: f64,
 }
 
-impl FeatureModule for ModuleHigh {
-    fn name(&self) -> &str {
-        "High"
-    }
-
+impl CandleComponent for High {
     fn value(&self) -> f64 {
         self.high
     }
 
-    fn update(&mut self, trade: &Trade, init: bool) {
-        if init {
-            self.high = trade.price;
-        }
+    fn update(&mut self, trade: &Trade) {
         if trade.price > self.high {
             self.high = trade.price;
         }
+    }
+
+    fn reset(&mut self) {
+        self.high = std::f64::MIN;
     }
 }
 
@@ -30,10 +27,10 @@ mod tests {
     use super::*;
 
     #[test]
-    fn module_high() {
-        let mut m = ModuleHigh::default();
-        for t in &crate::modules::tests::TRADES {
-            m.update(t, false);
+    fn high() {
+        let mut m = High::default();
+        for t in &crate::candle_components::tests::TRADES {
+            m.update(t);
         }
         assert_eq!(m.value(), 105.0);
     }

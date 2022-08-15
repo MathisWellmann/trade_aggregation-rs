@@ -1,24 +1,35 @@
 //! This module contains a bunch of ready to use 'CandleComponents'
 //! that can easily be combined to create a 'ModularCandle' using the 'Candle' macro.
 
+mod average_price;
 mod candle_component_trait;
-// mod arithmetic_mean_price;
 mod close;
-// mod directional_trade_ratio;
-// mod directional_volume_ratio;
-// mod high;
-// mod low;
-// mod num_trades;
+mod directional_trade_ratio;
+mod directional_volume_ratio;
+mod high;
+mod low;
+mod num_trades;
 mod open;
-// mod std_dev_prices;
-// mod std_dev_sizes;
-// mod time_velocity;
-// mod volume;
-// mod weighted_price;
+mod std_dev_prices;
+mod std_dev_sizes;
+mod time_velocity;
+mod volume;
+mod weighted_price;
 
+pub use weighted_price::WeightedPrice;
+pub use average_price::AveragePrice;
 pub use candle_component_trait::CandleComponent;
 pub use close::Close;
+pub use directional_trade_ratio::DirectionalTradeRatio;
+pub use directional_volume_ratio::DirectionalVolumeRatio;
+pub use high::High;
+pub use low::Low;
+pub use num_trades::NumTrades;
+pub use std_dev_prices::StdDevPrices;
+pub use std_dev_sizes::StdDevSizes;
+pub use time_velocity::TimeVelocity;
 pub use open::Open;
+pub use volume::Volume;
 
 #[cfg(test)]
 mod tests {

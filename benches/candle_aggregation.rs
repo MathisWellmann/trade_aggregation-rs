@@ -1,6 +1,6 @@
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
 use trade_aggregation::{
-    aggregate_all_trades, candle_components::Open, load_trades_from_csv, By, CandleComponent,
+    aggregate_all_trades, candle_components::*, load_trades_from_csv, By, CandleComponent,
     GenericAggregator, ModularCandle, TimeRule, Trade, M1,
 };
 use trade_aggregation_derive::Candle;
@@ -10,7 +10,6 @@ struct CandleOpen {
     open: Open,
 }
 
-/*
 #[derive(Debug, Clone, Default, Candle)]
 struct CandleOHLC {
     open: Open,
@@ -18,7 +17,23 @@ struct CandleOHLC {
     low: Low,
     close: Close,
 }
-*/
+
+#[derive(Debug, Clone, Default, Candle)]
+struct CandleAll {
+    open: Open,
+    high: High,
+    low: Low,
+    close: Close,
+    volume: Volume,
+    num_trades: NumTrades,
+    directional_trade_ratio: DirectionalTradeRatio,
+    directional_volume_ratio: DirectionalVolumeRatio,
+    std_dev_prices: StdDevPrices,
+    std_dev_sizes: StdDevSizes,
+    weighted_price: WeightedPrice,
+    average_price: AveragePrice,
+    time_velocity: TimeVelocity,
+}
 
 fn time_aggregation_open(trades: &[Trade]) {
     let time_rule = TimeRule::new(M1);
@@ -26,25 +41,30 @@ fn time_aggregation_open(trades: &[Trade]) {
     let _candles = aggregate_all_trades(trades, &mut aggregator);
 }
 
-/*
-fn volume_aggregation(trades: &[Trade]) {
-    let volume_rule = VolumeRule::new(10.0, By::Base);
-    let mut aggregator = GenericAggregator::<CandleOpen, VolumeRule>::new(volume_rule);
+fn time_aggregation_ohlc(trades: &[Trade]) {
+    let time_rule = TimeRule::new(M1);
+    let mut aggregator = GenericAggregator::<CandleOHLC, TimeRule>::new(time_rule);
     let _candles = aggregate_all_trades(trades, &mut aggregator);
 }
-*/
+
+fn time_aggregation_all(trades: &[Trade]) {
+    let time_rule = TimeRule::new(M1);
+    let mut aggregator = GenericAggregator::<CandleAll, TimeRule>::new(time_rule);
+    let _candles = aggregate_all_trades(trades, &mut aggregator);
+}
 
 fn criterion_benchmark(c: &mut Criterion) {
     let trades =
         load_trades_from_csv("data/Bitmex_XBTUSD_1M.csv").expect("Could not open trade data file!");
-    c.bench_function("time_aggregation", |b| {
+    c.bench_function("time_aggregation_open", |b| {
         b.iter(|| time_aggregation_open(black_box(&trades)))
     });
-    /*
-    c.bench_function("volume_aggregation", |b| {
-        b.iter(|| volume_aggregation(black_box(&trades)))
+    c.bench_function("time_aggregation_ohlc", |b| {
+        b.iter(|| time_aggregation_ohlc(black_box(&trades)))
     });
-    */
+    c.bench_function("time_aggregation_all", |b| {
+        b.iter(|| time_aggregation_all(black_box(&trades)))
+    });
 }
 
 criterion_group!(benches, criterion_benchmark);

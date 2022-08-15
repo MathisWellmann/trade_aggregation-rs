@@ -41,7 +41,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn module_open() {
+    fn open() {
         let mut m = Open::default();
         let first_trade = &crate::candle_components::tests::TRADES[0];
         for t in &crate::candle_components::tests::TRADES {

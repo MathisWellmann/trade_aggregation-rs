@@ -1,25 +1,22 @@
-use crate::modules::FeatureModule;
-use crate::Trade;
+use crate::{CandleComponent, Trade};
 
-#[derive(Debug, Default)]
-pub struct ModuleVolume {
+/// This 'CandleComponent' keeps track of the cumulative volume
+#[derive(Debug, Default, Clone)]
+pub struct Volume {
     volume: f64,
 }
 
-impl FeatureModule for ModuleVolume {
-    fn name(&self) -> &str {
-        "Volume"
-    }
-
+impl CandleComponent for Volume {
     fn value(&self) -> f64 {
         self.volume
     }
 
-    fn update(&mut self, trade: &Trade, init: bool) {
-        if init {
-            self.volume = 0.0;
-        }
+    fn update(&mut self, trade: &Trade) {
         self.volume += trade.size.abs()
+    }
+
+    fn reset(&mut self) {
+        self.volume = 0.0;
     }
 }
 
@@ -28,12 +25,12 @@ mod tests {
     use super::*;
 
     #[test]
-    fn module_volume() {
-        let mut m = ModuleVolume::default();
+    fn volume() {
+        let mut m = Volume::default();
         let mut sum: f64 = 0.0;
-        for t in &crate::modules::tests::TRADES {
+        for t in &crate::candle_components::tests::TRADES {
             sum += t.size.abs();
-            m.update(t, false);
+            m.update(t);
             assert_eq!(m.value(), sum);
         }
     }

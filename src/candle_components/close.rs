@@ -23,7 +23,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn module_close() {
+    fn close() {
         let mut m = Close::default();
         for t in &crate::candle_components::tests::TRADES {
             m.update(t);
