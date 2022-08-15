@@ -4,6 +4,8 @@
 
 #[macro_use]
 extern crate serde;
+#[macro_use]
+extern crate trade_aggregation_derive;
 
 mod aggregator;
 mod constants;

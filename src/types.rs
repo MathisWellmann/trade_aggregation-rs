@@ -14,6 +14,7 @@ pub struct Trade {
     pub size: f64,
 }
 
+/*
 #[derive(Default, Debug, Clone, Serialize, Deserialize)]
 #[deprecated]
 /// Defines a Candle
@@ -67,6 +68,7 @@ impl std::fmt::Display for Candle {
         )
     }
 }
+*/
 
 /// Defines how to aggregate trade size
 /// either by Base currency or Quote Currency

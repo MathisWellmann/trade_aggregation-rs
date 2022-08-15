@@ -137,35 +137,29 @@ pub trait CandleComponent {
     fn reset(&mut self);
 }
 
-/// A ModularCandle with only the Open component
-#[derive(Default, Clone, Debug)]
-pub struct CandleOpen {
-    open: crate::candle_components::Open,
-}
-
-impl ModularCandle for CandleOpen {
-    fn update(&mut self, trade: &Trade) {
-        self.open.update(trade);
-    }
-
-    fn reset(&mut self) {
-        self.open.reset();
-    }
-}
-
 #[cfg(test)]
 mod tests {
-    use crate::{load_trades_from_csv, M1};
+    use crate::{
+        candle_components::{Close, Open},
+        load_trades_from_csv, M1,
+    };
+    use trade_aggregation_derive::Candle;
 
     use super::*;
 
+    #[derive(Default, Debug, Clone, Candle)]
+    struct MyCandle {
+        open: Open,
+    }
+
     #[test]
     fn generic_aggregator() {
+        /*
         let trades = load_trades_from_csv("data/Bitmex_XBTUSD_1M.csv")
             .expect("Could not load trades from file!");
 
         let rule = TimeRule::new(M1);
-        let mut a = GenericAggregator::<CandleOpen, TimeRule>::new(rule);
+        let mut a = GenericAggregator::<MyCandle, TimeRule>::new(rule);
 
         let mut candle_counter: usize = 0;
         for t in trades.iter() {
@@ -175,5 +169,13 @@ mod tests {
             }
         }
         assert_eq!(candle_counter, 5704);
+        */
+    }
+
+    #[test]
+    fn candle_macro() {
+        let my_candle = MyCandle::default();
+        println!("my_candle: {:?}", my_candle);
+        // println!("open: {}", my_candle.open());
     }
 }

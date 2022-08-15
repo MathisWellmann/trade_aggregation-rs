@@ -1,5 +1,5 @@
 // mod arithmetic_mean_price;
-// mod close;
+mod close;
 // mod directional_trade_ratio;
 // mod directional_volume_ratio;
 // mod high;
@@ -12,6 +12,7 @@ mod open;
 // mod volume;
 // mod weighted_price;
 
+pub use close::Close;
 pub use open::Open;
 
 #[cfg(test)]

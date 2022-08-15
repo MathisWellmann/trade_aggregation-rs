@@ -1,0 +1,26 @@
+[package]
+name = "trade_aggregation_derive"
+version = "0.1.0"
+edition = "2021"
+authors = ["MathisWellmann <wellmannmathis@gmail.com>"]
+license-file = "LICENSE"
+description = "The macros for trade_aggregation crate"
+repository = "https://github.com/MathisWellmann/trade_aggregation-rs"
+readme = "README.md"
+keywords = [
+    "trading",
+    "candles",
+    "macro",
+]
+categories = [
+    "algorithms"
+]
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[lib]
+proc-macro = true
+
+[dependencies]
+syn = "^1"
+quote = "^1"
