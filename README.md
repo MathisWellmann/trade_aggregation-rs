@@ -1,5 +1,12 @@
 # Trade Aggregation
-A high performance trade aggregation crate, producing Candle data, suitable for low-latency applications.
+A high performance, modular and flexible trade aggregation crate, producing Candle data, suitable for low-latency applications.
+It allows the user to choose the rule dictating how a new candle is created 
+through the [AggregationRule](src/aggregation_rules/aggregation_rule_trait.rs) trait, 
+e.g: Time, Volume based or some other information driven rule.
+It also allows the user to choose which type of candle will be created from the aggregation process
+through the [ModularCandle](src/modular_candle_trait.rs) trait. Combined with the [Candle](trade_aggregation_derive/src/lib.rs) macro, 
+it enables the user to flexibly create any type of Candle as long as each component implements 
+the [CandleComponent](src/candle_components/candle_component_trait.rs) trait.
 
 See [MathisWellmann/go_trade_aggregation](https://github.com/MathisWellmann/go_trade_aggregation) for a go implementation with less features and performance.
 
@@ -8,7 +15,7 @@ To use this crate in your project, add the following to your Cargo.toml:
 
 ```toml
 [dependencies]
-trade_aggregation = "2.0.0"
+trade_aggregation = "^3"
 ```
 
 Aggregate all trades by volume at once:
@@ -68,10 +75,14 @@ cargo run --example streaming_volume
 
 ### Performance:
 To run the benchmarks, written using criterion, run:
+
 ```shell
 cargo bench
 ```
-On a 12th gen Intel Core i7-12800H, 1 million trades can be aggregated into 1 minute candles in about 6ms
+
+On a 12th gen Intel Core i7-12800H, 1 million trades can be aggregated into 1 minute OHLC candles in about 7ms.
+If using only the 'Open' 'CandleComponent' then it can be as fast as 1.8ms.
+The more 'CandleComponent's you use, the longer it takes obviously, so using all components currently takes about 16ms
 
 ### Donations :moneybag: :money_with_wings:
 I you would like to support the development of this crate, feel free to send over a donation:
