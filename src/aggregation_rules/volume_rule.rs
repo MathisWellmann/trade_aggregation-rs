@@ -13,6 +13,7 @@ pub struct VolumeRule {
 }
 
 impl VolumeRule {
+    /// Create a new instance with the given volume threshold
     pub fn new(threshold_vol: f64) -> Self {
         Self {
             init: true,
@@ -26,7 +27,7 @@ impl<C> AggregationRule<C> for VolumeRule
 where
     C: ModularCandle,
 {
-    fn should_trigger(&mut self, trade: &Trade, candle: &C) -> bool {
+    fn should_trigger(&mut self, trade: &Trade, _candle: &C) -> bool {
         if self.init {
             self.cum_vol = 0.0;
             self.init = false;

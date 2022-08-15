@@ -16,7 +16,6 @@ mod time_velocity;
 mod volume;
 mod weighted_price;
 
-pub use weighted_price::WeightedPrice;
 pub use average_price::AveragePrice;
 pub use candle_component_trait::CandleComponent;
 pub use close::Close;
@@ -25,11 +24,12 @@ pub use directional_volume_ratio::DirectionalVolumeRatio;
 pub use high::High;
 pub use low::Low;
 pub use num_trades::NumTrades;
+pub use open::Open;
 pub use std_dev_prices::StdDevPrices;
 pub use std_dev_sizes::StdDevSizes;
 pub use time_velocity::TimeVelocity;
-pub use open::Open;
 pub use volume::Volume;
+pub use weighted_price::WeightedPrice;
 
 #[cfg(test)]
 mod tests {

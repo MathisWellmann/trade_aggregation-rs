@@ -25,16 +25,6 @@ impl CandleComponent for StdDevSizes {
     }
 
     fn reset(&mut self) {
-        self.welford = WelfordOnline::new();
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn std_dev_sizes() {
-        todo!("test needed")
+        self.welford.reset();
     }
 }

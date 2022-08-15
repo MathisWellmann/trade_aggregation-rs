@@ -3,11 +3,22 @@ use crate::{CandleComponent, Trade};
 /// Measures the velocity of candle creation based on the formula:
 /// 1.0 / t  , where t is measured in minutes
 /// The higher the velocity the faster the candle has been created
-#[derive(Debug, Default, Clone)]
+/// Assumes trade timestamps in milliseconds
+#[derive(Debug, Clone)]
 pub struct TimeVelocity {
     init: bool,
     init_time: i64,
     last_time: i64,
+}
+
+impl Default for TimeVelocity {
+    fn default() -> Self {
+        Self {
+            init: true,
+            init_time: 0,
+            last_time: 0,
+        }
+    }
 }
 
 impl CandleComponent for TimeVelocity {
@@ -29,15 +40,5 @@ impl CandleComponent for TimeVelocity {
 
     fn reset(&mut self) {
         self.init = true
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn time_velocity() {
-        todo!("test needed")
     }
 }

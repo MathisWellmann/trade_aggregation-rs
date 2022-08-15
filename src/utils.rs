@@ -1,6 +1,6 @@
 use std::fs::File;
 
-use crate::{errors::Result, AggregationRule, Aggregator, ModularCandle, Trade};
+use crate::{errors::Result, Aggregator, ModularCandle, Trade};
 
 /// Determine the candle volume which produces the same number of candles
 /// as the given time aggregation equivalent

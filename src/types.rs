@@ -1,5 +1,3 @@
-use chrono::naive::NaiveDateTime;
-
 #[derive(Default, Debug, Clone, Copy, Serialize, Deserialize)]
 /// Defines a taker trade
 pub struct Trade {
