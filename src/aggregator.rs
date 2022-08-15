@@ -176,6 +176,6 @@ mod tests {
     fn candle_macro() {
         let my_candle = MyCandle::default();
         println!("my_candle: {:?}", my_candle);
-        // println!("open: {}", my_candle.open());
+        println!("open: {}", my_candle.open());
     }
 }

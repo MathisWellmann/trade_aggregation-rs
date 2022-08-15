@@ -19,13 +19,10 @@ fn impl_candle_macro(ast: &syn::DeriveInput) -> TokenStream {
             fields: Fields::Named(fields),
             ..
         }) => &fields.named,
-        _ => panic!("Use a struct"),
+        _ => panic!("Use a named struct"),
     };
 
-    let fn_names = components
-        .iter()
-        .map(|v| v.ident.clone().unwrap().to_string().to_lowercase());
-    let fn_inner = components.iter().map(|v| v.ty.clone());
+    let fn_names = components.iter().map(|v| v.ident.clone().unwrap());
 
     let gen = quote! {
         impl #name {
@@ -36,7 +33,6 @@ fn impl_candle_macro(ast: &syn::DeriveInput) -> TokenStream {
             )*
         }
     };
-    println!("gen: {:?}", gen);
 
     gen.into()
 }
