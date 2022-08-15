@@ -82,11 +82,11 @@ cargo bench
 
 Here are some results running on a 12th gen Intel Core i7-12800H, aggregating 1 million trades into 1 minute candles:
 
-Candle | Time in ms
+Candle | Time
 -------|-----------
-Open   | 1.8
-OHLC   | 7
-All    | 16ms
+Open   |  1.8 ms
+OHLC   |  7   ms
+All    | 16   ms
 
 The more 'CandleComponent's you use, the longer it takes obviously.
 
