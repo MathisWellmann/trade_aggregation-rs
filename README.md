@@ -11,7 +11,37 @@ the [CandleComponent](src/candle_components/candle_component_trait.rs) trait.
 
 See [MathisWellmann/go_trade_aggregation](https://github.com/MathisWellmann/go_trade_aggregation) for a go implementation with less features and performance.
 
-### How to use:
+## Features:
+### AggregationRule:
+The pre-existing rules in this crate include:
+'AggregationRule' | Description
+------------------|-------------
+TimeRule          | Create candles every n seconds
+VolumeRule      | Create candles every n units trades
+
+If these don't satisfy your desires, just create your own by implementing the [AggregationRule](src/aggregation_rules/aggregation_rule_trait.rs) trait,
+and you can plug and play it into the [GenericAggregator](src/aggregator.rs).
+
+### CandleComponent:
+These pre-existing 'CandleComponents' exist out of the box:
+'CandleComponent' | Description
+------------------| ---
+Open              | Price at the beginning of a candle
+High              | Maximum price during the candle
+Low               | Minimum price during the candle
+Close             | Price at the end of a candle
+Volume            | The cumulative trading volume
+NumTrades         | The number of trades during the candle
+AveragePrice      | The equally weighted average price
+WeightedPrice     | The volume weighted price
+StdDevPrices      | Keeps track of the standard deviation of prices
+StdDevSizes       | Keeps track of the standard deviaton of sizes
+TimeVelocity      | Essentially how fast the candle was created time wise
+
+And again, if these don't satisfy your needs, just bring your own by implementing the 
+[CandleComponent](src/candle_components/candle_component_trait.rs) trait and you can plug them into your own candle struct.
+
+## How to use:
 To use this crate in your project, add the following to your Cargo.toml:
 
 ```toml
@@ -28,7 +58,6 @@ use trade_aggregation::{
     candle_components::{Close, High, Low, Open},
     *,
 };
-use trade_aggregation_derive::Candle;
 
 #[derive(Debug, Default, Clone, Candle)]
 struct MyCandle {
@@ -89,13 +118,17 @@ fn main() {
 }
 ```
 
+Notice how the code is calling the 'open()', 'high()', 'low()' and 'close()' 
+methods on the 'MyCandle' struct. These are automatically generated getters that have the same name as the field.
+
 See examples folder for more.
 Run examples using
 ```
 cargo run --release --example aggregate_all_ohlc
+cargo run --release --example streaming_aggregate_ohlc
 ```
 
-### Performance:
+## Performance:
 To run the benchmarks, written using criterion, run:
 
 ```shell
