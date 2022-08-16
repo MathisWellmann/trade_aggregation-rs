@@ -17,7 +17,7 @@ The pre-existing rules in this crate include:
 'AggregationRule' | Description
 ------------------|-------------
 TimeRule          | Create candles every n seconds
-VolumeRule      | Create candles every n units trades
+VolumeRule        | Create candles every n units traded
 
 If these don't satisfy your desires, just create your own by implementing the [AggregationRule](src/aggregation_rules/aggregation_rule_trait.rs) trait,
 and you can plug and play it into the [GenericAggregator](src/aggregator.rs).
