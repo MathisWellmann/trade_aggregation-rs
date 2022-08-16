@@ -8,15 +8,18 @@ pub struct AveragePrice {
 }
 
 impl CandleComponent for AveragePrice {
+    #[inline(always)]
     fn value(&self) -> f64 {
         self.price_sum / self.num_trades
     }
 
+    #[inline(always)]
     fn update(&mut self, trade: &Trade) {
         self.num_trades += 1.0;
         self.price_sum += trade.price;
     }
 
+    #[inline(always)]
     fn reset(&mut self) {
         self.num_trades = 0.0;
         self.price_sum = 0.0;

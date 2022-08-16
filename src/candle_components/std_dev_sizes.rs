@@ -16,14 +16,17 @@ impl Default for StdDevSizes {
 }
 
 impl CandleComponent for StdDevSizes {
+    #[inline(always)]
     fn value(&self) -> f64 {
         self.welford.std_dev()
     }
 
+    #[inline(always)]
     fn update(&mut self, trade: &Trade) {
         self.welford.add(trade.size);
     }
 
+    #[inline(always)]
     fn reset(&mut self) {
         self.welford.reset();
     }

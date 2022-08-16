@@ -7,14 +7,17 @@ pub struct Volume {
 }
 
 impl CandleComponent for Volume {
+    #[inline(always)]
     fn value(&self) -> f64 {
         self.volume
     }
 
+    #[inline(always)]
     fn update(&mut self, trade: &Trade) {
         self.volume += trade.size.abs()
     }
 
+    #[inline(always)]
     fn reset(&mut self) {
         self.volume = 0.0;
     }

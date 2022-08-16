@@ -8,10 +8,12 @@ pub struct DirectionalTradeRatio {
 }
 
 impl CandleComponent for DirectionalTradeRatio {
+    #[inline(always)]
     fn value(&self) -> f64 {
         self.num_buys as f64 / self.num_trades as f64
     }
 
+    #[inline(always)]
     fn update(&mut self, trade: &Trade) {
         self.num_trades += 1;
         if trade.size > 0.0 {
@@ -19,6 +21,7 @@ impl CandleComponent for DirectionalTradeRatio {
         }
     }
 
+    #[inline(always)]
     fn reset(&mut self) {
         self.num_buys = 0;
         self.num_trades = 0;

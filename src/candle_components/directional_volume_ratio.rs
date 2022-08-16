@@ -8,10 +8,12 @@ pub struct DirectionalVolumeRatio {
 }
 
 impl CandleComponent for DirectionalVolumeRatio {
+    #[inline(always)]
     fn value(&self) -> f64 {
         self.buy_volume / self.volume
     }
 
+    #[inline(always)]
     fn update(&mut self, trade: &Trade) {
         self.volume += trade.size.abs();
         if trade.size > 0.0 {
@@ -19,6 +21,7 @@ impl CandleComponent for DirectionalVolumeRatio {
         }
     }
 
+    #[inline(always)]
     fn reset(&mut self) {
         self.volume = 0.0;
         self.buy_volume = 0.0;

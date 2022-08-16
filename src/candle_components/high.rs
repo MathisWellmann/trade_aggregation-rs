@@ -7,16 +7,19 @@ pub struct High {
 }
 
 impl CandleComponent for High {
+    #[inline(always)]
     fn value(&self) -> f64 {
         self.high
     }
 
+    #[inline(always)]
     fn update(&mut self, trade: &Trade) {
         if trade.price > self.high {
             self.high = trade.price;
         }
     }
 
+    #[inline(always)]
     fn reset(&mut self) {
         self.high = std::f64::MIN;
     }

@@ -8,15 +8,18 @@ pub struct WeightedPrice {
 }
 
 impl CandleComponent for WeightedPrice {
+    #[inline(always)]
     fn value(&self) -> f64 {
         self.weighted_sum / self.total_weights
     }
 
+    #[inline(always)]
     fn update(&mut self, trade: &Trade) {
         self.total_weights += trade.size.abs();
         self.weighted_sum += trade.price * trade.size.abs();
     }
 
+    #[inline(always)]
     fn reset(&mut self) {
         self.total_weights = 0.0;
         self.weighted_sum = 0.0;

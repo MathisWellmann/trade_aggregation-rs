@@ -18,11 +18,13 @@ impl Default for Open {
 
 impl CandleComponent for Open {
     /// Returns the open price of the candle
+    #[inline(always)]
     fn value(&self) -> f64 {
         self.value
     }
 
     /// Only update the open price if this module is in init mode
+    #[inline(always)]
     fn update(&mut self, trade: &Trade) {
         if self.init {
             self.value = trade.price;
@@ -31,6 +33,7 @@ impl CandleComponent for Open {
     }
 
     /// This makes sure the next time "update" is called, the new open value is set
+    #[inline(always)]
     fn reset(&mut self) {
         self.init = true;
     }

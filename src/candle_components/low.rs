@@ -15,16 +15,19 @@ impl Default for Low {
 }
 
 impl CandleComponent for Low {
+    #[inline(always)]
     fn value(&self) -> f64 {
         self.low
     }
 
+    #[inline(always)]
     fn update(&mut self, trade: &Trade) {
         if trade.price < self.low {
             self.low = trade.price;
         }
     }
 
+    #[inline(always)]
     fn reset(&mut self) {
         self.low = f64::MAX;
     }

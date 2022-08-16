@@ -22,6 +22,7 @@ impl Default for TimeVelocity {
 }
 
 impl CandleComponent for TimeVelocity {
+    #[inline(always)]
     fn value(&self) -> f64 {
         let mut elapsed_s: f64 = (self.last_time - self.init_time) as f64 / 1000.0;
         if elapsed_s < 1.0 {
@@ -31,6 +32,7 @@ impl CandleComponent for TimeVelocity {
         1.0 / elapsed_s
     }
 
+    #[inline(always)]
     fn update(&mut self, trade: &Trade) {
         if self.init {
             self.init_time = trade.timestamp;
@@ -38,6 +40,7 @@ impl CandleComponent for TimeVelocity {
         self.last_time = trade.timestamp;
     }
 
+    #[inline(always)]
     fn reset(&mut self) {
         self.init = true
     }

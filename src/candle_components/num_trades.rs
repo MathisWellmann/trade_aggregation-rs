@@ -8,14 +8,17 @@ pub struct NumTrades {
 
 impl CandleComponent for NumTrades {
     /// NOTE: this returns f64 out of convenience, but this trait could be made generic in the future
+    #[inline(always)]
     fn value(&self) -> f64 {
         self.value
     }
 
+    #[inline(always)]
     fn update(&mut self, _: &Trade) {
         self.value += 1.0;
     }
 
+    #[inline(always)]
     fn reset(&mut self) {
         self.value = 0.0;
     }

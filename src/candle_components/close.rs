@@ -7,14 +7,17 @@ pub struct Close {
 }
 
 impl CandleComponent for Close {
+    #[inline(always)]
     fn value(&self) -> f64 {
         self.value
     }
 
+    #[inline(always)]
     fn update(&mut self, trade: &Trade) {
         self.value = trade.price
     }
 
+    #[inline(always)]
     fn reset(&mut self) {}
 }
 

@@ -144,9 +144,9 @@ Here are some results running on a 12th gen Intel Core i7-12800H, aggregating 1 
 
 Candle | Time
 -------|-----------
-Open   |  1.8 ms
-OHLC   |  7   ms
-All    | 16   ms
+Open   | 1     ms
+OHLC   | 2.5   ms
+All    | 8     ms
 
 The more 'CandleComponent's you use, the longer it takes obviously.
 
