@@ -3,24 +3,23 @@ use crate::{CandleComponent, Trade};
 /// This 'CandleComponent' keeps track of the number of trades
 #[derive(Debug, Default, Clone)]
 pub struct NumTrades {
-    value: f64,
+    value: usize,
 }
 
-impl CandleComponent for NumTrades {
-    /// NOTE: this returns f64 out of convenience, but this trait could be made generic in the future
+impl CandleComponent<usize> for NumTrades {
     #[inline(always)]
-    fn value(&self) -> f64 {
+    fn value(&self) -> usize {
         self.value
     }
 
     #[inline(always)]
     fn update(&mut self, _: &Trade) {
-        self.value += 1.0;
+        self.value += 1;
     }
 
     #[inline(always)]
     fn reset(&mut self) {
-        self.value = 0.0;
+        self.value = 0;
     }
 }
 
@@ -34,6 +33,6 @@ mod tests {
         for t in &crate::candle_components::tests::TRADES {
             m.update(t);
         }
-        assert_eq!(m.value(), 10.0);
+        assert_eq!(m.value(), 10);
     }
 }

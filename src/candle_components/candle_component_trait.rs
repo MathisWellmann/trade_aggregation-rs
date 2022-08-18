@@ -1,10 +1,9 @@
 use crate::Trade;
 
 /// Each component of a Candle must fullfill this trait
-pub trait CandleComponent {
+pub trait CandleComponent<T> {
     /// The current value of the component
-    // TODO: make output type generic
-    fn value(&self) -> f64;
+    fn value(&self) -> T;
 
     /// Updates the state with newest trade information
     fn update(&mut self, trade: &Trade);

@@ -1,20 +1,20 @@
 use crate::{CandleComponent, Trade};
 
-/// This 'CandleComponent' keeps track of the close price
+/// This 'CandleComponent' keeps track of the timestamp at the candle close
 #[derive(Default, Debug, Clone)]
-pub struct Close {
-    value: f64,
+pub struct TimestampClose {
+    value: i64,
 }
 
-impl CandleComponent<f64> for Close {
+impl CandleComponent<i64> for TimestampClose {
     #[inline(always)]
-    fn value(&self) -> f64 {
+    fn value(&self) -> i64 {
         self.value
     }
 
     #[inline(always)]
     fn update(&mut self, trade: &Trade) {
-        self.value = trade.price
+        self.value = trade.timestamp;
     }
 
     #[inline(always)]
@@ -26,11 +26,12 @@ mod tests {
     use super::*;
 
     #[test]
-    fn close() {
-        let mut m = Close::default();
+    fn timestamp_close() {
+        let mut m = TimestampClose::default();
+
         for t in &crate::candle_components::tests::TRADES {
             m.update(t);
-            assert_eq!(m.value(), t.price);
+            assert_eq!(m.value(), t.timestamp);
         }
     }
 }
