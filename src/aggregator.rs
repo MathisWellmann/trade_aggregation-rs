@@ -1,7 +1,7 @@
-use crate::{AggregationRule, ModularCandle, Trade};
+use crate::{AggregationRule, ModularCandle, TakerTrade, Trade};
 
 /// Defines the needed methods for any online aggregator
-pub trait Aggregator<Candle> {
+pub trait Aggregator<Candle, T: TakerTrade> {
     /// Updates the aggregation state with a new trade
     ///
     /// # Arguments:
@@ -10,7 +10,7 @@ pub trait Aggregator<Candle> {
     /// # Returns:
     /// Some output only when a new candle has been created,
     /// otherwise it returns None
-    fn update(&mut self, trade: &Trade) -> Option<Candle>;
+    fn update(&mut self, trade: &T) -> Option<Candle>;
 }
 
 /// An aggregator that is generic over
@@ -22,10 +22,11 @@ pub struct GenericAggregator<C, R> {
     aggregation_rule: R,
 }
 
-impl<C, R> GenericAggregator<C, R>
+impl<C, R, T> GenericAggregator<C, R>
 where
-    C: ModularCandle,
-    R: AggregationRule<C>,
+    C: ModularCandle<TradeType = T>,
+    R: AggregationRule<C, T>,
+    T: TakerTrade,
 {
     /// Create a new instance with a concrete aggregation rule
     /// and a default candle
@@ -37,12 +38,13 @@ where
     }
 }
 
-impl<C, R> Aggregator<C> for GenericAggregator<C, R>
+impl<C, R, T> Aggregator<C, T> for GenericAggregator<C, R>
 where
-    C: ModularCandle,
-    R: AggregationRule<C>,
+    C: ModularCandle<TradeType = T>,
+    R: AggregationRule<C, T>,
+    T: TakerTrade,
 {
-    fn update(&mut self, trade: &Trade) -> Option<C> {
+    fn update(&mut self, trade: &T) -> Option<C> {
         self.candle.update(trade);
 
         if self.aggregation_rule.should_trigger(trade, &self.candle) {
