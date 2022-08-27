@@ -37,7 +37,7 @@ pub fn candle_volume_from_time_period(
 pub fn aggregate_all_trades<A, C, T>(trades: &[T], aggregator: &mut A) -> Vec<C>
 where
     A: Aggregator<C, T>,
-    C: ModularCandle,
+    C: ModularCandle<T>,
     T: TakerTrade,
 {
     let mut out: Vec<C> = vec![];

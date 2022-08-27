@@ -29,7 +29,7 @@ impl VolumeRule {
 
 impl<C, T> AggregationRule<C, T> for VolumeRule
 where
-    C: ModularCandle<TradeType = T>,
+    C: ModularCandle<T>,
     T: TakerTrade,
 {
     fn should_trigger(&mut self, trade: &T, _candle: &C) -> bool {

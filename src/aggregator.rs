@@ -1,3 +1,5 @@
+use std::marker::PhantomData;
+
 use crate::{AggregationRule, ModularCandle, TakerTrade, Trade};
 
 /// Defines the needed methods for any online aggregator
@@ -17,14 +19,15 @@ pub trait Aggregator<Candle, T: TakerTrade> {
 /// the type of Candle being produced,
 /// as well as by which rule the candle is created
 #[derive(Debug, Clone)]
-pub struct GenericAggregator<C, R> {
+pub struct GenericAggregator<C, R, T> {
     candle: C,
     aggregation_rule: R,
+    trade_type: PhantomData<T>,
 }
 
-impl<C, R, T> GenericAggregator<C, R>
+impl<C, R, T> GenericAggregator<C, R, T>
 where
-    C: ModularCandle<TradeType = T>,
+    C: ModularCandle<T>,
     R: AggregationRule<C, T>,
     T: TakerTrade,
 {
@@ -34,13 +37,14 @@ where
         Self {
             candle: Default::default(),
             aggregation_rule,
+            trade_type: PhantomData,
         }
     }
 }
 
-impl<C, R, T> Aggregator<C, T> for GenericAggregator<C, R>
+impl<C, R, T> Aggregator<C, T> for GenericAggregator<C, R, T>
 where
-    C: ModularCandle<TradeType = T>,
+    C: ModularCandle<T>,
     R: AggregationRule<C, T>,
     T: TakerTrade,
 {
