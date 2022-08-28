@@ -60,8 +60,8 @@ fn impl_candle_macro(ast: &syn::DeriveInput) -> TokenStream {
             )*
         }
 
-        impl ModularCandle<T> for #name {
-            fn update(&mut self, trade: &T) {
+        impl ModularCandle<Trade> for #name {
+            fn update(&mut self, trade: &Trade) {
                 #(
                     self.#fn_names1.update(trade);
                 )*
