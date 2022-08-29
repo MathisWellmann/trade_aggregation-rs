@@ -84,7 +84,7 @@ mod tests {
             .expect("Could not load trades from file!");
 
         let rule = TimeRule::new(M1);
-        let mut a = GenericAggregator::<MyCandle, TimeRule>::new(rule);
+        let mut a = GenericAggregator::<MyCandle, TimeRule, Trade>::new(rule);
 
         let mut candle_counter: usize = 0;
         for t in trades.iter() {

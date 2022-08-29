@@ -46,6 +46,9 @@ fn impl_candle_macro(ast: &syn::DeriveInput) -> TokenStream {
         }) => &fields.named,
         _ => panic!("Use a named struct"),
     };
+    // let generics = match &ast.generics {
+    //     G
+    // }
 
     let fn_names0 = components.iter().map(|v| v.ident.clone().unwrap());
     let fn_names1 = fn_names0.clone();
