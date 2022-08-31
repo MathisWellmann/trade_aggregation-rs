@@ -25,7 +25,7 @@ chrono = "^0.4"
 serde = {version = "^1", features = ["derive"] }
 thiserror = "^1"
 
-trade_aggregation_derive = {path="trade_aggregation_derive"}
+trade_aggregation_derive = "^0.3"
 
 [dev-dependencies]
 time_series_generator = "^0.2"
