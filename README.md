@@ -8,7 +8,8 @@ It also allows the user to choose which type of candle will be created from the 
 through the [ModularCandle](src/modular_candle_trait.rs) trait. Combined with the [Candle](trade_aggregation_derive/src/lib.rs) macro, 
 it enables the user to flexibly create any type of Candle as long as each component implements 
 the [CandleComponent](src/candle_components/candle_component_trait.rs) trait.
-The aggregation process is also generic over the type of input trade data as long as it implements the TakerTrade trait, 
+The aggregation process is also generic over the type of input trade data
+as long as it implements the [TakerTrade](src/types.rs) trait, 
 allowing for greater flexibility for downstream projects.
 
 See [MathisWellmann/go_trade_aggregation](https://github.com/MathisWellmann/go_trade_aggregation) for a go implementation with less features and performance.
@@ -114,7 +115,7 @@ impl MyCandle {
         self.close.value()
     }
 }
-impl ModularCandle for MyCandle {
+impl ModularCandle<Trade> for MyCandle {
     fn update(&mut self, trade: &Trade) {
         self.open.update(trade);
         self.high.update(trade);
