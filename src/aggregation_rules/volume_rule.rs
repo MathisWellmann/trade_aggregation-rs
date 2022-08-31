@@ -1,4 +1,4 @@
-use crate::{AggregationRule, By, ModularCandle, Trade};
+use crate::{AggregationRule, By, ModularCandle, TakerTrade, Trade};
 
 /// Creates candles every n units of volume traded
 pub struct VolumeRule {
@@ -27,18 +27,19 @@ impl VolumeRule {
     }
 }
 
-impl<C> AggregationRule<C> for VolumeRule
+impl<C, T> AggregationRule<C, T> for VolumeRule
 where
-    C: ModularCandle,
+    C: ModularCandle<T>,
+    T: TakerTrade,
 {
-    fn should_trigger(&mut self, trade: &Trade, _candle: &C) -> bool {
+    fn should_trigger(&mut self, trade: &T, _candle: &C) -> bool {
         if self.init {
             self.cum_vol = 0.0;
             self.init = false;
         }
         self.cum_vol += match self.by {
-            By::Quote => trade.size.abs(),
-            By::Base => trade.size.abs() / trade.price,
+            By::Quote => trade.size().abs(),
+            By::Base => trade.size().abs() / trade.price(),
         };
 
         let should_trigger = self.cum_vol > self.threshold_vol;

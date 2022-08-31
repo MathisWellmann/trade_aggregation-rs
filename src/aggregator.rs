@@ -1,7 +1,9 @@
-use crate::{AggregationRule, ModularCandle, Trade};
+use std::marker::PhantomData;
+
+use crate::{AggregationRule, ModularCandle, TakerTrade, Trade};
 
 /// Defines the needed methods for any online aggregator
-pub trait Aggregator<Candle> {
+pub trait Aggregator<Candle, T: TakerTrade> {
     /// Updates the aggregation state with a new trade
     ///
     /// # Arguments:
@@ -10,22 +12,24 @@ pub trait Aggregator<Candle> {
     /// # Returns:
     /// Some output only when a new candle has been created,
     /// otherwise it returns None
-    fn update(&mut self, trade: &Trade) -> Option<Candle>;
+    fn update(&mut self, trade: &T) -> Option<Candle>;
 }
 
 /// An aggregator that is generic over
 /// the type of Candle being produced,
 /// as well as by which rule the candle is created
 #[derive(Debug, Clone)]
-pub struct GenericAggregator<C, R> {
+pub struct GenericAggregator<C, R, T> {
     candle: C,
     aggregation_rule: R,
+    trade_type: PhantomData<T>,
 }
 
-impl<C, R> GenericAggregator<C, R>
+impl<C, R, T> GenericAggregator<C, R, T>
 where
-    C: ModularCandle,
-    R: AggregationRule<C>,
+    C: ModularCandle<T>,
+    R: AggregationRule<C, T>,
+    T: TakerTrade,
 {
     /// Create a new instance with a concrete aggregation rule
     /// and a default candle
@@ -33,16 +37,18 @@ where
         Self {
             candle: Default::default(),
             aggregation_rule,
+            trade_type: PhantomData,
         }
     }
 }
 
-impl<C, R> Aggregator<C> for GenericAggregator<C, R>
+impl<C, R, T> Aggregator<C, T> for GenericAggregator<C, R, T>
 where
-    C: ModularCandle,
-    R: AggregationRule<C>,
+    C: ModularCandle<T>,
+    R: AggregationRule<C, T>,
+    T: TakerTrade,
 {
-    fn update(&mut self, trade: &Trade) -> Option<C> {
+    fn update(&mut self, trade: &T) -> Option<C> {
         self.candle.update(trade);
 
         if self.aggregation_rule.should_trigger(trade, &self.candle) {
@@ -78,7 +84,7 @@ mod tests {
             .expect("Could not load trades from file!");
 
         let rule = TimeRule::new(M1);
-        let mut a = GenericAggregator::<MyCandle, TimeRule>::new(rule);
+        let mut a = GenericAggregator::<MyCandle, TimeRule, Trade>::new(rule);
 
         let mut candle_counter: usize = 0;
         for t in trades.iter() {

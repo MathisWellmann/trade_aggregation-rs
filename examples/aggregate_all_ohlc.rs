@@ -25,7 +25,7 @@ fn main() {
 
     // specify the aggregation rule to be time based
     let time_rule = TimeRule::new(M1);
-    let mut aggregator = GenericAggregator::<MyCandle, TimeRule>::new(time_rule);
+    let mut aggregator = GenericAggregator::<MyCandle, TimeRule, Trade>::new(time_rule);
 
     let candles = aggregate_all_trades(&trades, &mut aggregator);
     println!("got {} candles", candles.len());

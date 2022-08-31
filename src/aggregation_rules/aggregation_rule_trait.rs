@@ -1,7 +1,7 @@
-use crate::Trade;
+use crate::{TakerTrade, Trade};
 
 /// Defines under what conditions one aggregation period is finished
-pub trait AggregationRule<C> {
+pub trait AggregationRule<C, T: TakerTrade> {
     /// The main method defining when the aggregation is done
     ///
     /// # Arguments:
@@ -11,5 +11,5 @@ pub trait AggregationRule<C> {
     /// # Returns:
     /// if true, the aggregation period is finished and a Candle can be emitted
     /// else the aggregation needs to continue
-    fn should_trigger(&mut self, trade: &Trade, candle: &C) -> bool;
+    fn should_trigger(&mut self, trade: &T, candle: &C) -> bool;
 }
