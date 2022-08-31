@@ -1,6 +1,6 @@
 [package]
 name = "trade_aggregation"
-version = "4.1.1"
+version = "5.0.0"
 authors = ["MathisWellmann <wellmannmathis@gmail.com>"]
 edition = "2021"
 license-file = "LICENSE"

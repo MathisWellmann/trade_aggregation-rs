@@ -13,14 +13,17 @@ pub struct Trade {
 }
 
 impl TakerTrade for Trade {
+    #[inline(always)]
     fn timestamp(&self) -> i64 {
         self.timestamp
     }
 
+    #[inline(always)]
     fn price(&self) -> f64 {
         self.price
     }
 
+    #[inline(always)]
     fn size(&self) -> f64 {
         self.size
     }
@@ -41,13 +44,15 @@ pub enum By {
 
 /// Trait to enable third party types to be passed into aggregators.
 pub trait TakerTrade {
-    /// Timestamp, should be in milliseconds
+    /// The timestamp of a trade,
+    /// For the built in time rule, this is expected to be in milliseconds
     fn timestamp(&self) -> i64;
 
-    /// Transaction price
+    /// Fill price of the transaction
     fn price(&self) -> f64;
 
-    /// Number of shares or contracts in this trade.  A negative value indicates
+    /// Number of shares or contracts in this trade.
+    /// A negative value indicates
     /// that the trade was executed on the bid (market sell order).
     fn size(&self) -> f64;
 }

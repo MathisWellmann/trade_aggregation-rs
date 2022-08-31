@@ -1,4 +1,4 @@
-use crate::{AggregationRule, ModularCandle, TakerTrade, Trade};
+use crate::{AggregationRule, ModularCandle, TakerTrade};
 
 /// The classic time based aggregation rule,
 /// creating a new candle every n seconds

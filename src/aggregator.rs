@@ -1,6 +1,6 @@
 use std::marker::PhantomData;
 
-use crate::{AggregationRule, ModularCandle, TakerTrade, Trade};
+use crate::{AggregationRule, ModularCandle, TakerTrade};
 
 /// Defines the needed methods for any online aggregator
 pub trait Aggregator<Candle, T: TakerTrade> {
@@ -66,7 +66,7 @@ where
 mod tests {
     use crate::{
         candle_components::{CandleComponent, Close, Open},
-        load_trades_from_csv, ModularCandle, TimeRule, M1,
+        load_trades_from_csv, ModularCandle, TimeRule, Trade, M1,
     };
     use trade_aggregation_derive::Candle;
 

@@ -8,6 +8,8 @@ It also allows the user to choose which type of candle will be created from the 
 through the [ModularCandle](src/modular_candle_trait.rs) trait. Combined with the [Candle](trade_aggregation_derive/src/lib.rs) macro, 
 it enables the user to flexibly create any type of Candle as long as each component implements 
 the [CandleComponent](src/candle_components/candle_component_trait.rs) trait.
+The aggregation process is also generic over the type of input trade data as long as it implements the TakerTrade trait, 
+allowing for greater flexibility for downstream projects.
 
 See [MathisWellmann/go_trade_aggregation](https://github.com/MathisWellmann/go_trade_aggregation) for a go implementation with less features and performance.
 
@@ -46,7 +48,7 @@ To use this crate in your project, add the following to your Cargo.toml:
 
 ```toml
 [dependencies]
-trade_aggregation = "^4"
+trade_aggregation = "^5"
 ```
 
 Lets aggregate all trades into time based 1 minute candles, consisting of open, high, low and close information.
@@ -74,7 +76,9 @@ fn main() {
 
     // specify the aggregation rule to be time based
     let time_rule = TimeRule::new(M1);
-    let mut aggregator = GenericAggregator::<MyCandle, TimeRule>::new(time_rule);
+    // Notice how the aggregator is generic over the output candle type, 
+    // the aggregation rule as well as the input trade data
+    let mut aggregator = GenericAggregator::<MyCandle, TimeRule, Trade>::new(time_rule);
 
     for t in &trades {
         if let Some(candle) = aggregator.update(t) {

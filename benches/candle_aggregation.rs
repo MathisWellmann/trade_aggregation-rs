@@ -37,19 +37,19 @@ struct CandleAll {
 
 fn time_aggregation_open(trades: &[Trade]) {
     let time_rule = TimeRule::new(M1);
-    let mut aggregator = GenericAggregator::<CandleOpen, TimeRule>::new(time_rule);
+    let mut aggregator = GenericAggregator::<CandleOpen, TimeRule, Trade>::new(time_rule);
     let _candles = aggregate_all_trades(trades, &mut aggregator);
 }
 
 fn time_aggregation_ohlc(trades: &[Trade]) {
     let time_rule = TimeRule::new(M1);
-    let mut aggregator = GenericAggregator::<CandleOHLC, TimeRule>::new(time_rule);
+    let mut aggregator = GenericAggregator::<CandleOHLC, TimeRule, Trade>::new(time_rule);
     let _candles = aggregate_all_trades(trades, &mut aggregator);
 }
 
 fn time_aggregation_all(trades: &[Trade]) {
     let time_rule = TimeRule::new(M1);
-    let mut aggregator = GenericAggregator::<CandleAll, TimeRule>::new(time_rule);
+    let mut aggregator = GenericAggregator::<CandleAll, TimeRule, Trade>::new(time_rule);
     let _candles = aggregate_all_trades(trades, &mut aggregator);
 }
 

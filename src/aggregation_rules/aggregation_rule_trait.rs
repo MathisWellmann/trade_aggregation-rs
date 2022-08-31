@@ -1,6 +1,8 @@
-use crate::{TakerTrade, Trade};
+use crate::TakerTrade;
 
 /// Defines under what conditions one aggregation period is finished
+/// Is generic over the type of candle being produced C,
+/// as well as the type of input trade T
 pub trait AggregationRule<C, T: TakerTrade> {
     /// The main method defining when the aggregation is done
     ///

@@ -1,4 +1,4 @@
-use crate::{AggregationRule, By, ModularCandle, TakerTrade, Trade};
+use crate::{AggregationRule, By, ModularCandle, TakerTrade};
 
 /// Creates candles every n units of volume traded
 pub struct VolumeRule {
