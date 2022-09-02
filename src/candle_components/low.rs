@@ -1,4 +1,4 @@
-use crate::{CandleComponent, Trade};
+use crate::{CandleComponent, TakerTrade};
 
 /// This 'CandleComponent' keeps track of the low price
 #[derive(Debug, Clone)]
@@ -14,16 +14,16 @@ impl Default for Low {
     }
 }
 
-impl CandleComponent for Low {
+impl<T: TakerTrade> CandleComponent<T> for Low {
     #[inline(always)]
     fn value(&self) -> f64 {
         self.low
     }
 
     #[inline(always)]
-    fn update(&mut self, trade: &Trade) {
-        if trade.price < self.low {
-            self.low = trade.price;
+    fn update(&mut self, trade: &T) {
+        if trade.price() < self.low {
+            self.low = trade.price();
         }
     }
 

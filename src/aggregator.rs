@@ -89,7 +89,7 @@ mod tests {
         let mut candle_counter: usize = 0;
         for t in trades.iter() {
             if let Some(candle) = a.update(t) {
-                println!("got candle: {:?}", candle);
+                // println!("got candle: {:?}", candle);
                 candle_counter += 1;
             }
         }

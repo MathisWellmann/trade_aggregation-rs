@@ -1,4 +1,4 @@
-use crate::{CandleComponent, Trade};
+use crate::{CandleComponent, TakerTrade, Trade};
 
 /// This 'CandleComponent' keeps track of the high price
 #[derive(Default, Debug, Clone)]
@@ -6,16 +6,16 @@ pub struct High {
     high: f64,
 }
 
-impl CandleComponent for High {
+impl<T: TakerTrade> CandleComponent<T> for High {
     #[inline(always)]
     fn value(&self) -> f64 {
         self.high
     }
 
     #[inline(always)]
-    fn update(&mut self, trade: &Trade) {
-        if trade.price > self.high {
-            self.high = trade.price;
+    fn update(&mut self, trade: &T) {
+        if trade.price() > self.high {
+            self.high = trade.price();
         }
     }
 
