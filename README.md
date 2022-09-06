@@ -14,6 +14,7 @@ allowing for greater flexibility for downstream projects.
 
 See [MathisWellmann/go_trade_aggregation](https://github.com/MathisWellmann/go_trade_aggregation) for a go implementation with less features and performance.
 
+Here is a sample trade series of Bitmex_XBTUSD aggregated into 15m candles:
 ![time_candles](img/time_candles_plot.png)
 
 ## Features:
