@@ -45,3 +45,26 @@ where
         should_trigger
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::{
+        aggregate_all_trades, load_trades_from_csv,
+        plot::{plot_ohlc_candles, OhlcCandle},
+        GenericAggregator, Trade, M15,
+    };
+
+    use super::*;
+
+    #[test]
+    fn time_candles_plot() {
+        let trades = load_trades_from_csv("data/Bitmex_XBTUSD_1M.csv").unwrap();
+
+        let mut aggregator =
+            GenericAggregator::<OhlcCandle, TimeRule, Trade>::new(TimeRule::new(M15));
+        let candles = aggregate_all_trades(&trades, &mut aggregator);
+        println!("got {} candles", candles.len());
+
+        plot_ohlc_candles(&candles, "img/time_candles_plot.png", (2560, 1440)).unwrap();
+    }
+}

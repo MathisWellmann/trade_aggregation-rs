@@ -31,6 +31,7 @@ trade_aggregation_derive = "^0.3"
 time_series_generator = "^0.3"
 round = "^0.1"
 criterion = "^0.3"
+plotters = "^0.3"
 
 [[bench]]
 name = "candle_aggregation"

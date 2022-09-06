@@ -5,6 +5,9 @@
 #[macro_use]
 extern crate serde;
 
+#[cfg(test)]
+mod plot;
+
 mod aggregation_rules;
 mod aggregator;
 pub mod candle_components;

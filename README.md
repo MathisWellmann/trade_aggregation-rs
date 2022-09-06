@@ -14,6 +14,8 @@ allowing for greater flexibility for downstream projects.
 
 See [MathisWellmann/go_trade_aggregation](https://github.com/MathisWellmann/go_trade_aggregation) for a go implementation with less features and performance.
 
+![time_candles](img/time_candles_plot.png)
+
 ## Features:
 ### AggregationRule:
 The pre-existing rules in this crate include:
