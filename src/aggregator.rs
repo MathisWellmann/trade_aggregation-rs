@@ -66,7 +66,7 @@ where
 mod tests {
     use crate::{
         candle_components::{CandleComponent, Close, Open},
-        load_trades_from_csv, ModularCandle, TimeRule, Trade, M1,
+        load_trades_from_csv, ModularCandle, TimeRule, TimestampResolution, Trade, M1,
     };
     use trade_aggregation_derive::Candle;
 
@@ -83,7 +83,7 @@ mod tests {
         let trades = load_trades_from_csv("data/Bitmex_XBTUSD_1M.csv")
             .expect("Could not load trades from file!");
 
-        let rule = TimeRule::new(M1);
+        let rule = TimeRule::new(M1, TimestampResolution::Millisecond);
         let mut a = GenericAggregator::<MyCandle, TimeRule, Trade>::new(rule);
 
         let mut candle_counter: usize = 0;
