@@ -1,4 +1,4 @@
-use crate::{CandleComponent, Trade};
+use crate::{CandleComponent, CandleComponentUpdate, TakerTrade};
 
 /// This 'CandleComponent' keeps track of the cumulative volume
 #[derive(Debug, Default, Clone)]
@@ -13,13 +13,15 @@ impl CandleComponent for Volume {
     }
 
     #[inline(always)]
-    fn update(&mut self, trade: &Trade) {
-        self.volume += trade.size.abs()
-    }
-
-    #[inline(always)]
     fn reset(&mut self) {
         self.volume = 0.0;
+    }
+}
+
+impl<T: TakerTrade> CandleComponentUpdate<T> for Volume {
+    #[inline(always)]
+    fn update(&mut self, trade: &T) {
+        self.volume += trade.size().abs()
     }
 }
 

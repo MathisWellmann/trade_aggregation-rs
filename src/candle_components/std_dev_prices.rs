@@ -1,5 +1,5 @@
 use crate::welford_online::WelfordOnline;
-use crate::{CandleComponent, Trade};
+use crate::{CandleComponent, CandleComponentUpdate, TakerTrade};
 
 /// This 'CandleComponent' keeps track of the standard deviation in trade prices
 #[derive(Debug, Clone)]
@@ -22,12 +22,14 @@ impl CandleComponent for StdDevPrices {
     }
 
     #[inline(always)]
-    fn update(&mut self, trade: &Trade) {
-        self.welford.add(trade.price);
-    }
-
-    #[inline(always)]
     fn reset(&mut self) {
         self.welford.reset();
+    }
+}
+
+impl<T: TakerTrade> CandleComponentUpdate<T> for StdDevPrices {
+    #[inline(always)]
+    fn update(&mut self, trade: &T) {
+        self.welford.add(trade.price());
     }
 }

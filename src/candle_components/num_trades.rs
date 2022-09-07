@@ -1,4 +1,4 @@
-use crate::{CandleComponent, Trade};
+use crate::{CandleComponent, CandleComponentUpdate, TakerTrade};
 
 /// This 'CandleComponent' keeps track of the number of trades
 #[derive(Debug, Default, Clone)]
@@ -14,13 +14,16 @@ impl CandleComponent for NumTrades {
     }
 
     #[inline(always)]
-    fn update(&mut self, _: &Trade) {
-        self.value += 1.0;
-    }
-
-    #[inline(always)]
     fn reset(&mut self) {
         self.value = 0.0;
+    }
+}
+impl<T: TakerTrade> CandleComponentUpdate<T> for NumTrades {
+    /// NOTE: this returns f64 out of convenience, but this trait could be made generic in the future
+
+    #[inline(always)]
+    fn update(&mut self, _: &T) {
+        self.value += 1.0;
     }
 }
 

@@ -2,7 +2,7 @@ use std::marker::PhantomData;
 
 use trade_aggregation::Trade;
 use trade_aggregation::{
-    candle_components::{CandleComponent, Close, Open},
+    candle_components::{CandleComponent, CandleComponentUpdate, Close, Open},
     load_trades_from_csv, ModularCandle, TimeRule, M1,
 };
 use trade_aggregation_derive::Candle;

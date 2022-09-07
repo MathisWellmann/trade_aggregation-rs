@@ -65,7 +65,7 @@ where
 #[cfg(test)]
 mod tests {
     use crate::{
-        candle_components::{CandleComponent, Close, Open},
+        candle_components::{CandleComponent, CandleComponentUpdate, Close, Open},
         load_trades_from_csv, ModularCandle, TimeRule, TimestampResolution, Trade, M1,
     };
     use trade_aggregation_derive::Candle;

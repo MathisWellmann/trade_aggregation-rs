@@ -1,4 +1,4 @@
-use crate::{CandleComponent, Trade};
+use crate::{CandleComponent, CandleComponentUpdate, TakerTrade};
 
 /// This 'CandleComponent' keeps track of the close price
 #[derive(Default, Debug, Clone)]
@@ -13,12 +13,14 @@ impl CandleComponent for Close {
     }
 
     #[inline(always)]
-    fn update(&mut self, trade: &Trade) {
-        self.value = trade.price
-    }
-
-    #[inline(always)]
     fn reset(&mut self) {}
+}
+
+impl<T: TakerTrade> CandleComponentUpdate<T> for Close {
+    #[inline(always)]
+    fn update(&mut self, trade: &T) {
+        self.value = trade.price()
+    }
 }
 
 #[cfg(test)]
