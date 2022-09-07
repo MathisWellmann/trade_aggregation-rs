@@ -29,10 +29,6 @@ pub struct TimeRule {
     // constants can be used nicely here from constants.rs
     // e.g.: M1 -> 1 minute candles
     period_s: i64,
-
-    // Multiplies each trade timestamp by this much,
-    // Used for handling differing timestamp resolutions
-    ts_multiplier: i64,
 }
 
 impl TimeRule {
@@ -54,8 +50,7 @@ impl TimeRule {
         Self {
             init: true,
             reference_timestamp: 0,
-            period_s,
-            ts_multiplier,
+            period_s: period_s * ts_multiplier,
         }
     }
 }
@@ -70,8 +65,7 @@ where
             self.reference_timestamp = trade.timestamp();
             self.init = false;
         }
-        let should_trigger =
-            trade.timestamp() - self.reference_timestamp > self.period_s * self.ts_multiplier;
+        let should_trigger = trade.timestamp() - self.reference_timestamp > self.period_s;
         if should_trigger {
             self.init = true;
         }
