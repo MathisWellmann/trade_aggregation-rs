@@ -1,5 +1,5 @@
 use crate::{
-    candle_components::{CandleComponent, Close, High, Low, Open},
+    candle_components::{CandleComponent, CandleComponentUpdate, Close, High, Low, Open},
     ModularCandle, Trade,
 };
 use plotters::prelude::*;
