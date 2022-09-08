@@ -161,7 +161,8 @@ The more 'CandleComponent's you use, the longer it takes obviously.
 
 ### TODOs:
 - Add tick based aggregation rule: e.g candle every n ticks
-- Add price based aggregation rule: e.g candle every x units of price change
+- Add absolute price based aggregation rule: e.g candle every x units of price change
+- Add relative price based aggregation rule: e.g candle every x percent move
 
 
 ### Donations :moneybag: :money_with_wings:
