@@ -17,13 +17,11 @@
 
 #![deny(missing_docs)]
 
-use std::path::Path;
-
 use proc_macro::TokenStream;
 use quote::{__private::Span, quote};
 use syn::{
-    self, AngleBracketedGenericArguments, Data, DataStruct, Fields, GenericArgument, Ident,
-    PathSegment, Type, TypePath,
+    self, AngleBracketedGenericArguments, Data, DataStruct, Fields, GenericArgument, Ident, Type,
+    TypePath,
 };
 
 /// The 'Candle' macro takes a named struct,
