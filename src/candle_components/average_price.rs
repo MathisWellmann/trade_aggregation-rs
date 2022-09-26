@@ -1,4 +1,4 @@
-use crate::{CandleComponent, Trade};
+use crate::{CandleComponent, CandleComponentUpdate, TakerTrade};
 
 /// This 'CandleComponent' keeps track of the arithmetic mean price
 #[derive(Debug, Default, Clone)]
@@ -14,15 +14,17 @@ impl CandleComponent for AveragePrice {
     }
 
     #[inline(always)]
-    fn update(&mut self, trade: &Trade) {
-        self.num_trades += 1.0;
-        self.price_sum += trade.price;
-    }
-
-    #[inline(always)]
     fn reset(&mut self) {
         self.num_trades = 0.0;
         self.price_sum = 0.0;
+    }
+}
+
+impl<T: TakerTrade> CandleComponentUpdate<T> for AveragePrice {
+    #[inline(always)]
+    fn update(&mut self, trade: &T) {
+        self.num_trades += 1.0;
+        self.price_sum += trade.price();
     }
 }
 

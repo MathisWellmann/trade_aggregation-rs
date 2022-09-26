@@ -1,4 +1,4 @@
-use crate::{CandleComponent, Trade};
+use crate::{CandleComponent, CandleComponentUpdate, TakerTrade};
 
 /// Measures the velocity of candle creation based on the formula:
 /// 1.0 / t  , where t is measured in minutes
@@ -31,17 +31,18 @@ impl CandleComponent for TimeVelocity {
         }
         1.0 / elapsed_s
     }
-
-    #[inline(always)]
-    fn update(&mut self, trade: &Trade) {
-        if self.init {
-            self.init_time = trade.timestamp;
-        }
-        self.last_time = trade.timestamp;
-    }
-
     #[inline(always)]
     fn reset(&mut self) {
         self.init = true
+    }
+}
+
+impl<T: TakerTrade> CandleComponentUpdate<T> for TimeVelocity {
+    #[inline(always)]
+    fn update(&mut self, trade: &T) {
+        if self.init {
+            self.init_time = trade.timestamp();
+        }
+        self.last_time = trade.timestamp();
     }
 }

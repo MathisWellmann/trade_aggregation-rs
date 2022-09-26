@@ -17,9 +17,14 @@
 
 #![deny(missing_docs)]
 
+use std::path::Path;
+
 use proc_macro::TokenStream;
-use quote::quote;
-use syn::{self, Data, DataStruct, Fields};
+use quote::{__private::Span, quote};
+use syn::{
+    self, AngleBracketedGenericArguments, Data, DataStruct, Fields, GenericArgument, Ident,
+    PathSegment, Type, TypePath,
+};
 
 /// The 'Candle' macro takes a named struct,
 /// that has multiple fields of type 'CandleComponent'
@@ -37,6 +42,26 @@ pub fn candle_macro_derive(input: TokenStream) -> TokenStream {
     impl_candle_macro(&ast)
 }
 
+fn phantom_path_to_type(path: &syn::Path) -> Option<Ident> {
+    if path.leading_colon.is_some() {
+        return None;
+    }
+    let mut it = path.segments.iter();
+    let segment = it.next()?;
+    match &segment.arguments {
+        syn::PathArguments::AngleBracketed(AngleBracketedGenericArguments { args: x, .. }) => {
+            match x.first() {
+                Some(GenericArgument::Type(Type::Path(TypePath {
+                    path: syn::Path { segments: segs, .. },
+                    ..
+                }))) => segs.first().and_then(|x| Some(x.ident.clone())),
+                _ => None,
+            }
+        }
+        _ => None,
+    }
+}
+
 fn impl_candle_macro(ast: &syn::DeriveInput) -> TokenStream {
     let name = &ast.ident;
     let components = match &ast.data {
@@ -46,13 +71,28 @@ fn impl_candle_macro(ast: &syn::DeriveInput) -> TokenStream {
         }) => &fields.named,
         _ => panic!("Use a named struct"),
     };
-    // let generics = match &ast.generics {
-    //     G
-    // }
 
-    let fn_names0 = components.iter().map(|v| v.ident.clone().unwrap());
+    let input_field = components
+        .iter()
+        .map(|x| x)
+        .filter(|x| format!("{}", x.ident.clone().unwrap()) == "input")
+        .next();
+    let input_type = match input_field {
+        Some(syn::Field {
+            ty: syn::Type::Path(syn::TypePath { path: p, .. }),
+            ..
+        }) => phantom_path_to_type(&p),
+        None => Some(Ident::new("Trade", Span::call_site())),
+        _ => panic!("input attribute is expected to be PhantomData<Input>"),
+    };
+
+    let fn_names0 = components
+        .iter()
+        .filter(|v| format!("{}", v.ident.clone().unwrap()) != "input")
+        .map(|v| v.ident.clone().unwrap());
     let fn_names1 = fn_names0.clone();
     let fn_names2 = fn_names1.clone();
+    let input_name = input_type.expect("No phantom data for input type!");
 
     let gen = quote! {
         impl #name {
@@ -63,8 +103,8 @@ fn impl_candle_macro(ast: &syn::DeriveInput) -> TokenStream {
             )*
         }
 
-        impl ModularCandle<Trade> for #name {
-            fn update(&mut self, trade: &Trade) {
+        impl ModularCandle<#input_name> for #name {
+            fn update(&mut self, trade: &#input_name) {
                 #(
                     self.#fn_names1.update(trade);
                 )*

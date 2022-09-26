@@ -20,7 +20,7 @@ mod welford_online;
 
 pub use aggregation_rules::*;
 pub use aggregator::*;
-pub use candle_components::CandleComponent;
+pub use candle_components::{CandleComponent, CandleComponentUpdate};
 pub use constants::*;
 pub use modular_candle_trait::ModularCandle;
 pub use trade_aggregation_derive::Candle;

@@ -1,7 +1,7 @@
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
 use trade_aggregation::{
     aggregate_all_trades, candle_components::*, load_trades_from_csv, CandleComponent,
-    GenericAggregator, ModularCandle, TimeRule, Trade, M1,
+    GenericAggregator, ModularCandle, TimeRule, TimestampResolution, Trade, M1,
 };
 use trade_aggregation_derive::Candle;
 
@@ -36,19 +36,19 @@ struct CandleAll {
 }
 
 fn time_aggregation_open(trades: &[Trade]) {
-    let time_rule = TimeRule::new(M1);
+    let time_rule = TimeRule::new(M1, TimestampResolution::Millisecond);
     let mut aggregator = GenericAggregator::<CandleOpen, TimeRule, Trade>::new(time_rule);
     let _candles = aggregate_all_trades(trades, &mut aggregator);
 }
 
 fn time_aggregation_ohlc(trades: &[Trade]) {
-    let time_rule = TimeRule::new(M1);
+    let time_rule = TimeRule::new(M1, TimestampResolution::Millisecond);
     let mut aggregator = GenericAggregator::<CandleOHLC, TimeRule, Trade>::new(time_rule);
     let _candles = aggregate_all_trades(trades, &mut aggregator);
 }
 
 fn time_aggregation_all(trades: &[Trade]) {
-    let time_rule = TimeRule::new(M1);
+    let time_rule = TimeRule::new(M1, TimestampResolution::Millisecond);
     let mut aggregator = GenericAggregator::<CandleAll, TimeRule, Trade>::new(time_rule);
     let _candles = aggregate_all_trades(trades, &mut aggregator);
 }

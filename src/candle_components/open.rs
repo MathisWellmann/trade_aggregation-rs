@@ -1,4 +1,4 @@
-use crate::{CandleComponent, Trade};
+use crate::{CandleComponent, CandleComponentUpdate, TakerTrade};
 
 /// This 'CandleComponent' keeps track of the opening price of a Candle
 #[derive(Debug, Clone)]
@@ -22,20 +22,21 @@ impl CandleComponent for Open {
     fn value(&self) -> f64 {
         self.value
     }
-
-    /// Only update the open price if this module is in init mode
-    #[inline(always)]
-    fn update(&mut self, trade: &Trade) {
-        if self.init {
-            self.value = trade.price;
-            self.init = false;
-        }
-    }
-
     /// This makes sure the next time "update" is called, the new open value is set
     #[inline(always)]
     fn reset(&mut self) {
         self.init = true;
+    }
+}
+
+impl<T: TakerTrade> CandleComponentUpdate<T> for Open {
+    /// Only update the open price if this module is in init mode
+    #[inline(always)]
+    fn update(&mut self, trade: &T) {
+        if self.init {
+            self.value = trade.price();
+            self.init = false;
+        }
     }
 }
 
@@ -49,7 +50,7 @@ mod tests {
         let first_trade = &crate::candle_components::tests::TRADES[0];
         for t in &crate::candle_components::tests::TRADES {
             m.update(t);
-            assert_eq!(m.value(), first_trade.price);
+            assert_eq!(m.value(), first_trade.price());
         }
     }
 }

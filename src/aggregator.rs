@@ -65,7 +65,7 @@ where
 #[cfg(test)]
 mod tests {
     use crate::{
-        candle_components::{CandleComponent, Close, Open},
+        candle_components::{CandleComponent, CandleComponentUpdate, Close, Open},
         load_trades_from_csv, ModularCandle, TimeRule, TimestampResolution, Trade, M1,
     };
     use trade_aggregation_derive::Candle;
@@ -89,7 +89,7 @@ mod tests {
         let mut candle_counter: usize = 0;
         for t in trades.iter() {
             if let Some(candle) = a.update(t) {
-                println!("got candle: {:?}", candle);
+                // println!("got candle: {:?}", candle);
                 candle_counter += 1;
             }
         }
