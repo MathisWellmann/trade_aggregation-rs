@@ -49,14 +49,13 @@ where
     T: TakerTrade,
 {
     fn update(&mut self, trade: &T) -> Option<C> {
-        self.candle.update(trade);
-
         if self.aggregation_rule.should_trigger(trade, &self.candle) {
             let candle = self.candle.clone();
             self.candle.reset();
-
+            self.candle.update(trade);
             Some(candle)
         } else {
+            self.candle.update(trade);
             None
         }
     }
@@ -89,7 +88,11 @@ mod tests {
         let mut candle_counter: usize = 0;
         for t in trades.iter() {
             if let Some(candle) = a.update(t) {
-                // println!("got candle: {:?}", candle);
+                // println!(
+                //     "got candle: {:?} at {:?}, {:?}",
+                //     candle, t.timestamp, t.price
+                // );
+
                 candle_counter += 1;
             }
         }
