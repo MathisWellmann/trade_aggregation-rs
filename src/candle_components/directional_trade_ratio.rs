@@ -2,6 +2,7 @@ use crate::{CandleComponent, CandleComponentUpdate, TakerTrade};
 
 /// This 'CandleComponent' keeps track of the ratio of buys vs total trades
 #[derive(Debug, Default, Clone)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct DirectionalTradeRatio {
     num_buys: usize,
     num_trades: usize,

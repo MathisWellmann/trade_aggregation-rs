@@ -2,9 +2,6 @@
 
 //! This crate is used for aggregating raw trade data into candles using various methods
 
-#[macro_use]
-extern crate serde;
-
 #[cfg(test)]
 mod plot;
 

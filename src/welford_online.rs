@@ -1,4 +1,6 @@
+/// Algorithm for online estimation of standard deviation
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct WelfordOnline {
     count: u32,
     mean: f64,

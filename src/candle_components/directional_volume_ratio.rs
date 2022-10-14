@@ -2,6 +2,7 @@ use crate::{CandleComponent, CandleComponentUpdate, TakerTrade};
 
 /// This 'CandleComponent' keeps track of the ratio of buy volume vs total volume
 #[derive(Clone, Debug, Default)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct DirectionalVolumeRatio {
     volume: f64,
     buy_volume: f64,

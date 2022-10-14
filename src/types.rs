@@ -1,4 +1,5 @@
-#[derive(Default, Debug, Clone, Copy, Serialize, Deserialize)]
+#[derive(Default, Debug, Clone, Copy)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 /// Defines a taker trade
 pub struct Trade {
     /// Timestamp, assumed to be in milliseconds
@@ -33,7 +34,8 @@ impl TakerTrade for Trade {
 /// either by Base currency or Quote Currency
 /// assumes trades sizes are denoted in Quote
 /// e.g.: buy 10 contracts of BTC would be trade size of 10
-#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum By {
     /// when aggregating by Base, divide size by price for volume sum
     Base,

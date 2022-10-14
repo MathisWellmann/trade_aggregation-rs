@@ -2,6 +2,7 @@ use crate::{CandleComponent, CandleComponentUpdate, TakerTrade};
 
 /// This 'CandleComponent' keeps track of the arithmetic mean price
 #[derive(Debug, Default, Clone)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct AveragePrice {
     num_trades: f64,
     price_sum: f64,

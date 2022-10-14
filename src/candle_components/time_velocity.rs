@@ -5,6 +5,7 @@ use crate::{CandleComponent, CandleComponentUpdate, TakerTrade};
 /// The higher the velocity the faster the candle has been created
 /// Assumes trade timestamps in milliseconds
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct TimeVelocity {
     init: bool,
     init_time: i64,
