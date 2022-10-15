@@ -52,7 +52,7 @@ To use this crate in your project, add the following to your Cargo.toml:
 
 ```toml
 [dependencies]
-trade_aggregation = "^6"
+trade_aggregation = "^7"
 ```
 
 Lets aggregate all trades into time based 1 minute candles, consisting of open, high, low and close information.
@@ -157,6 +157,9 @@ OHLC   | 2.5   ms
 All    | 8     ms
 
 The more 'CandleComponent's you use, the longer it takes obviously.
+
+### Features
+The serde feature exists which, when enabled, derives Serialize and Deserialize
 
 
 ### TODOs:
