@@ -1,23 +1,15 @@
 [package]
 name = "trade_aggregation"
-version = "7.0.0"
+version = "7.0.1"
 authors = ["MathisWellmann <wellmannmathis@gmail.com>"]
 edition = "2021"
 license-file = "LICENSE"
 description = "Aggregate raw trades into candles using different methods"
 repository = "https://github.com/MathisWellmann/trade_aggregation-rs"
 readme = "README.md"
-keywords = [
-    "trading",
-    "candles",
-]
-categories = [
-    "algorithms"
-]
-exclude = [
-    "/img",
-    "/.idea",
-]
+keywords = ["trading", "candles"]
+categories = ["algorithms"]
+exclude = ["/img", "/.idea"]
 
 [dependencies]
 csv = "^1"
@@ -27,7 +19,7 @@ thiserror = "^1"
 trade_aggregation_derive = "0.3.2"
 
 # Optionals
-serde = {version = "^1", features = ["derive"], optional = true }
+serde = { version = "^1", features = ["derive"], optional = true }
 
 [dev-dependencies]
 time_series_generator = "^0.3"
@@ -40,4 +32,4 @@ name = "candle_aggregation"
 harness = false
 
 [features]
-serde = [ "dep:serde" ]
+serde = ["dep:serde"]

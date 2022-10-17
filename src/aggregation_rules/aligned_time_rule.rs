@@ -74,11 +74,8 @@ where
 mod tests {
     use crate::{
         aggregate_all_trades,
-        candle_components::{
-            CandleComponent, CandleComponentUpdate, Close, High, Low, Open,
-        },
-        load_trades_from_csv,
-        GenericAggregator, ModularCandle, Trade, M15,
+        candle_components::{CandleComponent, CandleComponentUpdate, Close, High, Low, Open},
+        load_trades_from_csv, GenericAggregator, ModularCandle, Trade, M15,
     };
     use trade_aggregation_derive::Candle;
 
@@ -96,10 +93,9 @@ mod tests {
 
         let trades = load_trades_from_csv("data/Bitmex_XBTUSD_1M.csv").unwrap();
 
-        let mut aggregator =
-            GenericAggregator::<AlignedCandle, AlignedTimeRule, Trade>::new(
-                AlignedTimeRule::new(M15, TimestampResolution::Millisecond),
-            );
+        let mut aggregator = GenericAggregator::<AlignedCandle, AlignedTimeRule, Trade>::new(
+            AlignedTimeRule::new(M15, TimestampResolution::Millisecond),
+        );
         let candles = aggregate_all_trades(&trades, &mut aggregator);
         assert_eq!(candles.len(), 396);
 

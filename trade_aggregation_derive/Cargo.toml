@@ -7,17 +7,9 @@ license-file = "LICENSE"
 description = "The macros for trade_aggregation crate"
 repository = "https://github.com/MathisWellmann/trade_aggregation-rs"
 readme = "README.md"
-keywords = [
-    "trading",
-    "candles",
-    "macro",
-]
-categories = [
-    "algorithms"
-]
-ignore = [
-    "target"
-]
+keywords = ["trading", "candles", "macro"]
+categories = ["algorithms"]
+ignore = ["target"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -25,5 +17,5 @@ ignore = [
 proc-macro = true
 
 [dependencies]
-syn = {version ="^1", features = ["extra-traits"]}
+syn = { version = "^1", features = ["extra-traits"] }
 quote = "^1"
