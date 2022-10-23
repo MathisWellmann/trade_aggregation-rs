@@ -18,6 +18,7 @@ pub enum TimestampResolution {
 
 /// The classic time based aggregation rule,
 /// creating a new candle every n seconds
+#[derive(Debug, Clone)]
 pub struct TimeRule {
     /// If true, the reference timestamp needs to be reset
     init: bool,
