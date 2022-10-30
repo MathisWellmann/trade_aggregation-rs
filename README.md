@@ -23,6 +23,7 @@ The pre-existing rules in this crate include:
 'AggregationRule' | Description
 ------------------|-------------
 TimeRule          | Create candles every n seconds
+AlignedTimeRule   | Same as TimeRule but candles are aligned to the start of a period
 VolumeRule        | Create candles every n units traded
 TickRule          | Create candles every n ticks
 
