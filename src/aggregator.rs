@@ -87,7 +87,7 @@ mod tests {
 
         let mut candle_counter: usize = 0;
         for t in trades.iter() {
-            if let Some(candle) = a.update(t) {
+            if let Some(_candle) = a.update(t) {
                 // println!(
                 //     "got candle: {:?} at {:?}, {:?}",
                 //     candle, t.timestamp, t.price

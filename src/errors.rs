@@ -1,5 +1,6 @@
 /// Enumerate the possible errors in this crate
 #[derive(thiserror::Error, Debug)]
+#[allow(missing_docs)]
 pub enum Error {
     #[error(transparent)]
     Io(#[from] std::io::Error),
@@ -12,6 +13,9 @@ pub enum Error {
 
     #[error(transparent)]
     ParseFloat(#[from] std::num::ParseFloatError),
+
+    #[error("An invalid parameter was provided")]
+    InvalidParam,
 }
 
 /// Convenient wrapper for this crates custom Error
