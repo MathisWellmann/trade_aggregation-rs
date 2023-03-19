@@ -46,11 +46,10 @@ where
 
 #[cfg(test)]
 mod tests {
+    use super::*;
     use crate::{
         aggregate_all_trades, load_trades_from_csv, plot::OhlcCandle, GenericAggregator, Trade,
     };
-
-    use super::*;
 
     #[test]
     fn tick_rule() {

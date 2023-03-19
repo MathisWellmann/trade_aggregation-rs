@@ -49,9 +49,8 @@ where
 
 #[cfg(test)]
 mod tests {
-    use crate::{plot::OhlcCandle, Trade};
-
     use super::*;
+    use crate::{plot::OhlcCandle, Trade};
 
     #[test]
     fn relative_price_rule() {

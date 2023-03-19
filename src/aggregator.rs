@@ -63,13 +63,13 @@ where
 
 #[cfg(test)]
 mod tests {
+    use trade_aggregation_derive::Candle;
+
+    use super::*;
     use crate::{
         candle_components::{CandleComponent, CandleComponentUpdate, Close, Open},
         load_trades_from_csv, ModularCandle, TimeRule, TimestampResolution, Trade, M1,
     };
-    use trade_aggregation_derive::Candle;
-
-    use super::*;
 
     #[derive(Default, Debug, Clone, Candle)]
     struct MyCandle {

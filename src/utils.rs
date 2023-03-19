@@ -86,8 +86,9 @@ pub fn load_trades_from_csv(filename: &str) -> Result<Vec<Trade>> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use round::round;
+
+    use super::*;
 
     // TODO: re-enable this test
     /*

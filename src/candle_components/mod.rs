@@ -18,8 +18,7 @@ mod volume;
 mod weighted_price;
 
 pub use average_price::AveragePrice;
-pub use candle_component_trait::CandleComponent;
-pub use candle_component_trait::CandleComponentUpdate;
+pub use candle_component_trait::{CandleComponent, CandleComponentUpdate};
 pub use close::Close;
 pub use directional_trade_ratio::DirectionalTradeRatio;
 pub use directional_volume_ratio::DirectionalVolumeRatio;

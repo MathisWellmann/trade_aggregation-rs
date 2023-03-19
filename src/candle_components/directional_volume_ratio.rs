@@ -33,8 +33,9 @@ impl<T: TakerTrade> CandleComponentUpdate<T> for DirectionalVolumeRatio {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use round::round;
+
+    use super::*;
 
     #[test]
     fn volume_direction_ratio() {

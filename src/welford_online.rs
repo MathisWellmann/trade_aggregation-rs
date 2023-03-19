@@ -48,8 +48,9 @@ impl WelfordOnline {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use round::round;
+
+    use super::*;
 
     const VALS: [f64; 4] = [1.0, 2.0, 1.0, 2.0];
 

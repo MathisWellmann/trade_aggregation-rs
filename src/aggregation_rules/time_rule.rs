@@ -77,13 +77,12 @@ where
 
 #[cfg(test)]
 mod tests {
+    use super::*;
     use crate::{
         aggregate_all_trades, load_trades_from_csv,
         plot::{plot_ohlc_candles, OhlcCandle},
         GenericAggregator, Trade, H1, M15, M5,
     };
-
-    use super::*;
 
     #[test]
     fn time_candles_plot() {

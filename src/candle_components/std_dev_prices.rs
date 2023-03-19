@@ -1,5 +1,4 @@
-use crate::welford_online::WelfordOnline;
-use crate::{CandleComponent, CandleComponentUpdate, TakerTrade};
+use crate::{welford_online::WelfordOnline, CandleComponent, CandleComponentUpdate, TakerTrade};
 
 /// This 'CandleComponent' keeps track of the standard deviation in trade prices
 #[derive(Debug, Clone)]

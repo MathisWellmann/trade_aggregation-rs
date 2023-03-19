@@ -1,5 +1,4 @@
-use crate::aggregation_rules::TimestampResolution;
-use crate::{AggregationRule, ModularCandle, TakerTrade};
+use crate::{aggregation_rules::TimestampResolution, AggregationRule, ModularCandle, TakerTrade};
 
 /// The classic time based aggregation rule,
 /// creating a new candle every n seconds.  The time trigger is aligned such that
@@ -72,14 +71,14 @@ where
 
 #[cfg(test)]
 mod tests {
+    use trade_aggregation_derive::Candle;
+
+    use super::*;
     use crate::{
         aggregate_all_trades,
         candle_components::{CandleComponent, CandleComponentUpdate, Close, High, Low, Open},
         load_trades_from_csv, GenericAggregator, ModularCandle, Trade, M15,
     };
-    use trade_aggregation_derive::Candle;
-
-    use super::*;
 
     #[test]
     fn aligned_time_rule() {
