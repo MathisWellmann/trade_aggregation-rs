@@ -9,6 +9,7 @@ pub struct WeightedPrice {
 }
 
 impl CandleComponent for WeightedPrice {
+    type Output = f64;
     #[inline(always)]
     fn value(&self) -> f64 {
         self.weighted_sum / self.total_weights

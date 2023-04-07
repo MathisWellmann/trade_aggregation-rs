@@ -73,7 +73,7 @@ mod tests {
 
     use super::*;
     use crate::{
-        candle_components::{CandleComponent, CandleComponentUpdate, Close, Open},
+        candle_components::{CandleComponent, CandleComponentUpdate, Close, NumTrades, Open},
         load_trades_from_csv, ModularCandle, TimeRule, TimestampResolution, Trade, M1,
     };
 
@@ -81,6 +81,7 @@ mod tests {
     struct MyCandle {
         open: Open,
         close: Close,
+        num_trades: NumTrades<u32>,
     }
 
     #[test]

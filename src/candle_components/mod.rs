@@ -4,6 +4,7 @@
 mod average_price;
 mod candle_component_trait;
 mod close;
+mod date;
 mod directional_trade_ratio;
 mod directional_volume_ratio;
 mod high;
@@ -20,6 +21,7 @@ mod weighted_price;
 pub use average_price::AveragePrice;
 pub use candle_component_trait::{CandleComponent, CandleComponentUpdate};
 pub use close::Close;
+pub use date::TimeStamp;
 pub use directional_trade_ratio::DirectionalTradeRatio;
 pub use directional_volume_ratio::DirectionalVolumeRatio;
 pub use high::High;

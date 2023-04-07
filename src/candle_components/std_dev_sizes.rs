@@ -15,6 +15,7 @@ impl Default for StdDevSizes {
     }
 }
 impl CandleComponent for StdDevSizes {
+    type Output = f64;
     #[inline(always)]
     fn value(&self) -> f64 {
         self.welford.std_dev()

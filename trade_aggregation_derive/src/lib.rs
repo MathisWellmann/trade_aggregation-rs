@@ -70,32 +70,66 @@ fn impl_candle_macro(ast: &syn::DeriveInput) -> TokenStream {
         _ => panic!("Use a named struct"),
     };
 
-    let input_field = components
-        .iter()
-        .map(|x| x)
-        .filter(|x| format!("{}", x.ident.clone().unwrap()) == "input")
-        .next();
-    let input_type = match input_field {
-        Some(syn::Field {
-            ty: syn::Type::Path(syn::TypePath { path: p, .. }),
-            ..
-        }) => phantom_path_to_type(&p),
-        None => Some(Ident::new("Trade", Span::call_site())),
-        _ => panic!("input attribute is expected to be PhantomData<Input>"),
-    };
+    let default_output_type = Ident::new("f64", Span::call_site());
+    let mut input_type = Some(Ident::new("Trade", Span::call_site()));
+    let mut value_idents = vec![];
+    let mut value_types = vec![];
 
-    let fn_names0 = components
-        .iter()
-        .filter(|v| format!("{}", v.ident.clone().unwrap()) != "input")
-        .map(|v| v.ident.clone().unwrap());
+    for c in components {
+        if let syn::Field {
+            ty: syn::Type::Path(syn::TypePath { path: p, .. }),
+            ident,
+            ..
+        } = c
+        {
+            if ident.clone().unwrap().to_string().as_str() == "input" {
+                input_type = phantom_path_to_type(&p);
+            } else {
+                if let Some(type_) = phantom_path_to_type(&p) {
+                    value_idents.push(ident);
+                    value_types.push(type_);
+                } else {
+                    value_idents.push(ident);
+                    value_types.push(default_output_type.clone());
+                }
+            }
+        }
+    }
+
+    // input defaults to [Trade], but can be a custom user type as well, see
+    // [MyCandle] in user_trade_type.rs
+    // let input_field = components
+    //     .iter()
+    //     .map(|x| x)
+    //     .filter(|x| format!("{}", x.ident.clone().unwrap()) == "input")
+    //     .next();
+    // let input_type = match input_field {
+    //     Some(syn::Field {
+    //         ty: syn::Type::Path(syn::TypePath { path: p, .. }),
+    //         ..
+    //     }) => phantom_path_to_type(&p),
+    //     None => Some(Ident::new("Trade", Span::call_site())),
+    //     _ => panic!("input attribute is expected to be PhantomData<Input>"),
+    // };
+
+    // let fn_names0 = components
+    //     .iter()
+    //     .filter(|v| format!("{}", v.ident.clone().unwrap()) != "input")
+    //     .map(|v| v.ident.clone().unwrap());
+
+    let fn_names0 = value_idents.clone();
     let fn_names1 = fn_names0.clone();
     let fn_names2 = fn_names1.clone();
-    let input_name = input_type.expect("No phantom data for input type!");
+    let input_name = input_type.expect("No PhantomData for input attribute type!");
+    println!("impl building for {name}");
+    // for name in fn_names1.clone() {
+    //     println!("\t\t{name}");
+    // }
 
     let gen = quote! {
         impl #name {
             #(
-                pub fn #fn_names0(&self) -> f64 {
+                pub fn #fn_names0(&self) -> #value_types {
                     self.#fn_names0.value()
                 }
             )*

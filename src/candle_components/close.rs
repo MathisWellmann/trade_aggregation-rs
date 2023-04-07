@@ -8,6 +8,7 @@ pub struct Close {
 }
 
 impl CandleComponent for Close {
+    type Output = f64;
     #[inline(always)]
     fn value(&self) -> f64 {
         self.value

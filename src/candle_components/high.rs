@@ -8,6 +8,7 @@ pub struct High {
 }
 
 impl CandleComponent for High {
+    type Output = f64;
     #[inline(always)]
     fn value(&self) -> f64 {
         self.high

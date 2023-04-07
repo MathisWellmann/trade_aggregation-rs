@@ -8,6 +8,7 @@ pub struct MedianPrice {
 }
 
 impl CandleComponent for MedianPrice {
+    type Output = f64;
     #[inline(always)]
     fn value(&self) -> f64 {
         let mut prices = self.prices.clone();
