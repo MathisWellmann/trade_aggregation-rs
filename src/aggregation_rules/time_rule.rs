@@ -97,6 +97,7 @@ mod tests {
 
         plot_ohlc_candles(&candles, "img/time_candles_plot.png", (2560, 1440)).unwrap();
     }
+
     #[test]
     fn time_rule_differing_periods() {
         let trades = load_trades_from_csv("data/Bitmex_XBTUSD_1M.csv").unwrap();

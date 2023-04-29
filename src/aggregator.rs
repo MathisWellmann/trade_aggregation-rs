@@ -49,15 +49,21 @@ where
     T: TakerTrade,
 {
     fn update(&mut self, trade: &T) -> Option<C> {
+        // Always update the candle with the newest information.
+        self.candle.update(trade);
+
         if self.aggregation_rule.should_trigger(trade, &self.candle) {
             let candle = self.candle.clone();
             self.candle.reset();
+            // Also include the initial information in the candle.
+            // This means the trade data at the boundary is included twice.
+            // This especially ensures `Open` and `Close` values are correct.
+            // TODO: If this behaviour of including trade info at the boundary in both candles,
+            // A flag may be added to specify the exact behaviour.
             self.candle.update(trade);
-            Some(candle)
-        } else {
-            self.candle.update(trade);
-            None
+            return Some(candle);
         }
+        None
     }
 }
 

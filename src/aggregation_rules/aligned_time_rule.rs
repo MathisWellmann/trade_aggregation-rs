@@ -71,40 +71,28 @@ where
 
 #[cfg(test)]
 mod tests {
-    use trade_aggregation_derive::Candle;
-
     use super::*;
     use crate::{
-        aggregate_all_trades,
-        candle_components::{CandleComponent, CandleComponentUpdate, Close, High, Low, Open},
-        load_trades_from_csv, GenericAggregator, ModularCandle, Trade, M15,
+        aggregate_all_trades, load_trades_from_csv, plot::OhlcCandle, GenericAggregator, Trade, M15,
     };
 
     #[test]
     fn aligned_time_rule() {
-        #[derive(Debug, Default, Clone, Candle)]
-        struct AlignedCandle {
-            pub open: Open,
-            high: High,
-            low: Low,
-            pub close: Close,
-        }
-
         let trades = load_trades_from_csv("data/Bitmex_XBTUSD_1M.csv").unwrap();
 
-        let mut aggregator = GenericAggregator::<AlignedCandle, AlignedTimeRule, Trade>::new(
+        let mut aggregator = GenericAggregator::<OhlcCandle, AlignedTimeRule, Trade>::new(
             AlignedTimeRule::new(M15, TimestampResolution::Millisecond),
         );
         let candles = aggregate_all_trades(&trades, &mut aggregator);
         assert_eq!(candles.len(), 396);
 
-        // make sure that the aggregator starts a new candle with the "trigger tick"
-        // rather than updating the existing candle with the "trigger tick"
+        // make sure that the aggregator starts a new candle with the "trigger tick",
+        // and includes that information of the trade that triggered the new candle as well
         let c = &candles[0];
-        assert_eq!(c.open.value(), 13873.0);
-        assert_eq!(c.close.value(), 13769.0);
+        assert_eq!(c.open(), 13873.0);
+        assert_eq!(c.close(), 13768.5);
         let c = &candles[1];
-        assert_eq!(c.open.value(), 13768.5);
-        assert_eq!(c.close.value(), 13721.5);
+        assert_eq!(c.open(), 13768.5);
+        assert_eq!(c.close(), 13722.0);
     }
 }
