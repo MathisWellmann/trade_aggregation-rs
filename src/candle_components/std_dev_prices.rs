@@ -15,8 +15,7 @@ impl Default for StdDevPrices {
     }
 }
 
-impl CandleComponent for StdDevPrices {
-    type Output = f64;
+impl CandleComponent<f64> for StdDevPrices {
     #[inline(always)]
     fn value(&self) -> f64 {
         self.welford.std_dev()

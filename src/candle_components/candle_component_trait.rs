@@ -1,12 +1,10 @@
 use crate::TakerTrade;
 
 /// Each component of a Candle must fullfill this trait
-pub trait CandleComponent {
+pub trait CandleComponent<T> {
     /// An associated type which is the output type of the value() method
-    type Output;
     /// The current value of the component
-    // TODO: make output type generic
-    fn value(&self) -> Self::Output;
+    fn value(&self) -> T;
 
     /// Resets the component state to its default
     fn reset(&mut self);

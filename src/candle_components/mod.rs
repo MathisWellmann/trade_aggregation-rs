@@ -3,6 +3,8 @@
 
 mod average_price;
 mod candle_component_trait;
+#[cfg(feature = "chrono")]
+mod candle_datetime;
 mod close;
 mod date;
 mod directional_trade_ratio;
@@ -20,6 +22,8 @@ mod weighted_price;
 
 pub use average_price::AveragePrice;
 pub use candle_component_trait::{CandleComponent, CandleComponentUpdate};
+#[cfg(feature = "chrono")]
+pub use candle_datetime::CandleDateTime;
 pub use close::Close;
 pub use date::TimeStamp;
 pub use directional_trade_ratio::DirectionalTradeRatio;
