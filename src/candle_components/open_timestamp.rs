@@ -1,14 +1,15 @@
 use crate::{CandleComponent, CandleComponentUpdate, TakerTrade};
 
-/// This 'CandleComponent' keeps track of the opening timestamp of a Candle
+/// This 'CandleComponent' keeps track of the opening timestamp of a Candle, using the
+/// milliseconds since UTC convention from the [TakerTrade] trait.
 #[derive(Debug, Clone, Default)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-pub struct TimeStamp<T> {
+pub struct OpenTimeStamp<T> {
     init: bool,
     value: T,
 }
 
-impl CandleComponent<i64> for TimeStamp<i64> {
+impl CandleComponent<i64> for OpenTimeStamp<i64> {
     /// Returns the open price of the candle
     #[inline(always)]
     fn value(&self) -> i64 {
@@ -21,7 +22,7 @@ impl CandleComponent<i64> for TimeStamp<i64> {
     }
 }
 
-impl<T: TakerTrade> CandleComponentUpdate<T> for TimeStamp<i64> {
+impl<T: TakerTrade> CandleComponentUpdate<T> for OpenTimeStamp<i64> {
     /// Only update the open price if this module is in init mode
     #[inline(always)]
     fn update(&mut self, trade: &T) {

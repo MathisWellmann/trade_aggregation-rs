@@ -1,13 +1,10 @@
-use std::marker::PhantomData;
-
 use crate::{CandleComponent, CandleComponentUpdate, TakerTrade};
 
 /// This 'CandleComponent' keeps track of the number of trades
 #[derive(Debug, Default, Clone)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct NumTrades<T> {
-    value: u32,
-    phantom: PhantomData<T>,
+    value: T,
 }
 
 impl CandleComponent<u32> for NumTrades<u32> {

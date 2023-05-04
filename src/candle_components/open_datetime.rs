@@ -1,14 +1,13 @@
-#![cfg(feature = "chrono")]
 use chrono::{DateTime, Utc};
 
 #[derive(Debug, Clone)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-pub struct CandleDateTime {
+pub struct OpenDateTime {
     init: bool,
     value: DateTime<Utc>,
 }
 
-impl CandleComponent<DateTime<Utc>> for CandleDateTime {
+impl CandleComponent<DateTime<Utc>> for OpenDateTime {
     /// Returns the open price of the candle
     #[inline(always)]
     fn value(&self) -> DateTime<Utc> {
@@ -21,7 +20,7 @@ impl CandleComponent<DateTime<Utc>> for CandleDateTime {
     }
 }
 
-impl<T: TakerTrade> CandleComponentUpdate<T> for CandleDateTime {
+impl<T: TakerTrade> CandleComponentUpdate<T> for OpenDateTime {
     /// Only update the open price if this module is in init mode
     #[inline(always)]
     fn update(&mut self, trade: &T) {

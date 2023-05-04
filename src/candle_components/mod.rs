@@ -3,10 +3,7 @@
 
 mod average_price;
 mod candle_component_trait;
-#[cfg(feature = "chrono")]
-mod candle_datetime;
 mod close;
-mod date;
 mod directional_trade_ratio;
 mod directional_volume_ratio;
 mod high;
@@ -14,6 +11,9 @@ mod low;
 mod median_price;
 mod num_trades;
 mod open;
+#[cfg(feature = "chrono")]
+mod open_datetime;
+mod open_timestamp;
 mod std_dev_prices;
 mod std_dev_sizes;
 mod time_velocity;
@@ -22,10 +22,7 @@ mod weighted_price;
 
 pub use average_price::AveragePrice;
 pub use candle_component_trait::{CandleComponent, CandleComponentUpdate};
-#[cfg(feature = "chrono")]
-pub use candle_datetime::CandleDateTime;
 pub use close::Close;
-pub use date::TimeStamp;
 pub use directional_trade_ratio::DirectionalTradeRatio;
 pub use directional_volume_ratio::DirectionalVolumeRatio;
 pub use high::High;
@@ -33,6 +30,9 @@ pub use low::Low;
 pub use median_price::MedianPrice;
 pub use num_trades::NumTrades;
 pub use open::Open;
+#[cfg(feature = "chrono")]
+pub use open_datetime::OpenDateTime;
+pub use open_timestamp::OpenTimeStamp;
 pub use std_dev_prices::StdDevPrices;
 pub use std_dev_sizes::StdDevSizes;
 pub use time_velocity::TimeVelocity;
