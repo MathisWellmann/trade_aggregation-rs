@@ -1,3 +1,5 @@
+use crate::TimestampResolution;
+
 #[derive(Default, Debug, Clone, Copy)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 /// Defines a taker trade
@@ -47,8 +49,13 @@ pub enum By {
 /// Trait to enable third party types to be passed into aggregators.
 pub trait TakerTrade {
     /// The timestamp of a trade,
-    /// For the built in time rule, this is expected to be in milliseconds
     fn timestamp(&self) -> i64;
+
+    /// units for the timestamp integer returned by [TakerTrade.timestamp()] method
+    /// A default implementation is included and assumes milliseconds
+    fn timestamp_resolution(&self) -> TimestampResolution {
+        TimestampResolution::Millisecond
+    }
 
     /// Fill price of the transaction
     fn price(&self) -> f64;

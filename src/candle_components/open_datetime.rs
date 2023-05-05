@@ -1,5 +1,10 @@
-use chrono::{DateTime, Utc};
+use crate::CandleComponent;
+use crate::CandleComponentUpdate;
+use crate::TakerTrade;
+use crate::TimestampResolution;
+use chrono::{DateTime, TimeZone, Utc};
 
+/// This 'CandleComponent' keeps track of the opening [DateTime<Utc>] of a Candle.
 #[derive(Debug, Clone)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct OpenDateTime {
@@ -25,7 +30,13 @@ impl<T: TakerTrade> CandleComponentUpdate<T> for OpenDateTime {
     #[inline(always)]
     fn update(&mut self, trade: &T) {
         if self.init {
-            self.value = Utc.timestamp_millis(trade.timestamp(), 0);
+            let stamp = trade.timestamp();
+            self.value = match trade.timestamp_resolution() {
+                TimestampResolution::Second => Utc.timestamp(stamp, 0),
+                TimestampResolution::Millisecond => Utc.timestamp_millis(trade.timestamp()),
+                TimestampResolution::Microsecond => Utc.timestamp_nanos(stamp * 1000),
+                TimestampResolution::Nanosecond => Utc.timestamp_nanos(stamp),
+            };
             self.init = false;
         }
     }

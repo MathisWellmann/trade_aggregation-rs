@@ -1,7 +1,7 @@
 use crate::{CandleComponent, CandleComponentUpdate, TakerTrade};
 
 /// This 'CandleComponent' keeps track of the opening timestamp of a Candle, using the
-/// milliseconds since UTC convention from the [TakerTrade] trait.
+/// same unit resolution as the underlying input of [TakerTrade.timestamp()].
 #[derive(Debug, Clone, Default)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct OpenTimeStamp<T> {
