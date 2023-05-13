@@ -12,6 +12,15 @@ pub struct OpenDateTime {
     value: DateTime<Utc>,
 }
 
+impl Default for OpenDateTime {
+    fn default() -> Self {
+        Self {
+            init: true,
+            value: Default::default(),
+        }
+    }
+}
+
 impl CandleComponent<DateTime<Utc>> for OpenDateTime {
     /// Returns the open price of the candle
     #[inline(always)]
@@ -39,5 +48,19 @@ impl<T: TakerTrade> CandleComponentUpdate<T> for OpenDateTime {
             };
             self.init = false;
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn open_datetime() {
+        let mut m = OpenDateTime::default();
+        for t in &crate::candle_components::tests::TRADES {
+            m.update(t);
+        }
+        assert_eq!(m.value(), Utc.ymd(1985, 11, 5).and_hms(0, 53, 20));
     }
 }

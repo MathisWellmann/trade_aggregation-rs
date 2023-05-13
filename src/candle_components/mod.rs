@@ -45,7 +45,7 @@ mod tests {
 
     pub const TRADES: [Trade; 10] = [
         Trade {
-            timestamp: 0,
+            timestamp: 500000000000,
             price: 100.0,
             size: 10.0,
         },
