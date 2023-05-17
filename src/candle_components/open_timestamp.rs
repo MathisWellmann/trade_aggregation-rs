@@ -1,26 +1,27 @@
 use crate::{CandleComponent, CandleComponentUpdate, TakerTrade};
 
-/// This 'CandleComponent' keeps track of the opening price of a Candle
+/// This 'CandleComponent' keeps track of the opening timestamp of a Candle, using the
+/// same unit resolution as the underlying input of [TakerTrade.timestamp()].
 #[derive(Debug, Clone)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-pub struct Open {
+pub struct OpenTimeStamp<T> {
     init: bool,
-    value: f64,
+    value: T,
 }
 
-impl Default for Open {
+impl<T: Default> Default for OpenTimeStamp<T> {
     fn default() -> Self {
         Self {
             init: true,
-            value: 0.0,
+            value: Default::default(),
         }
     }
 }
 
-impl CandleComponent<f64> for Open {
+impl CandleComponent<i64> for OpenTimeStamp<i64> {
     /// Returns the open price of the candle
     #[inline(always)]
-    fn value(&self) -> f64 {
+    fn value(&self) -> i64 {
         self.value
     }
     /// This makes sure the next time "update" is called, the new open value is set
@@ -30,12 +31,12 @@ impl CandleComponent<f64> for Open {
     }
 }
 
-impl<T: TakerTrade> CandleComponentUpdate<T> for Open {
+impl<T: TakerTrade> CandleComponentUpdate<T> for OpenTimeStamp<i64> {
     /// Only update the open price if this module is in init mode
     #[inline(always)]
     fn update(&mut self, trade: &T) {
         if self.init {
-            self.value = trade.price();
+            self.value = trade.timestamp();
             self.init = false;
         }
     }
@@ -46,12 +47,11 @@ mod tests {
     use super::*;
 
     #[test]
-    fn open() {
-        let mut m = Open::default();
-        let first_trade = &crate::candle_components::tests::TRADES[0];
+    fn open_timestamp() {
+        let mut m = OpenTimeStamp::default();
         for t in &crate::candle_components::tests::TRADES {
             m.update(t);
-            assert_eq!(m.value(), first_trade.price());
         }
+        assert_eq!(m.value(), 500000000000);
     }
 }

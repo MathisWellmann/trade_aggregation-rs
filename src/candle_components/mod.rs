@@ -11,6 +11,9 @@ mod low;
 mod median_price;
 mod num_trades;
 mod open;
+#[cfg(feature = "chrono")]
+mod open_datetime;
+mod open_timestamp;
 mod std_dev_prices;
 mod std_dev_sizes;
 mod time_velocity;
@@ -27,6 +30,9 @@ pub use low::Low;
 pub use median_price::MedianPrice;
 pub use num_trades::NumTrades;
 pub use open::Open;
+#[cfg(feature = "chrono")]
+pub use open_datetime::OpenDateTime;
+pub use open_timestamp::OpenTimeStamp;
 pub use std_dev_prices::StdDevPrices;
 pub use std_dev_sizes::StdDevSizes;
 pub use time_velocity::TimeVelocity;
@@ -39,7 +45,7 @@ mod tests {
 
     pub const TRADES: [Trade; 10] = [
         Trade {
-            timestamp: 0,
+            timestamp: 500000000000,
             price: 100.0,
             size: 10.0,
         },

@@ -15,10 +15,12 @@ exclude = ["/img", "/.idea"]
 csv = "^1"
 thiserror = "^1"
 
-trade_aggregation_derive = "0.3.2"
+# trade_aggregation_derive = "0.3.2"
+trade_aggregation_derive = {path = "./trade_aggregation_derive"}
 
 # Optionals
 serde = { version = "^1", features = ["derive"], optional = true }
+chrono = { version = "0.4", features = ["serde"], optional = true }
 
 [dev-dependencies]
 round = "^0.1"
@@ -31,3 +33,4 @@ harness = false
 
 [features]
 serde = ["dep:serde"]
+chrono = ["dep:chrono"]

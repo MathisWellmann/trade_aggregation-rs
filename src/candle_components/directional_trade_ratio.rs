@@ -8,7 +8,7 @@ pub struct DirectionalTradeRatio {
     num_trades: usize,
 }
 
-impl CandleComponent for DirectionalTradeRatio {
+impl CandleComponent<f64> for DirectionalTradeRatio {
     #[inline(always)]
     fn value(&self) -> f64 {
         self.num_buys as f64 / self.num_trades as f64

@@ -25,7 +25,7 @@ struct CandleAll {
     low: Low,
     close: Close,
     volume: Volume,
-    num_trades: NumTrades,
+    num_trades: NumTrades<u32>,
     directional_trade_ratio: DirectionalTradeRatio,
     directional_volume_ratio: DirectionalVolumeRatio,
     std_dev_prices: StdDevPrices,

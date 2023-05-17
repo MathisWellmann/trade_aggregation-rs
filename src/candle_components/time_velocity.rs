@@ -22,7 +22,7 @@ impl Default for TimeVelocity {
     }
 }
 
-impl CandleComponent for TimeVelocity {
+impl CandleComponent<f64> for TimeVelocity {
     #[inline(always)]
     fn value(&self) -> f64 {
         let mut elapsed_s: f64 = (self.last_time - self.init_time) as f64 / 1000.0;
