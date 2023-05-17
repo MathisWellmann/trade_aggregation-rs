@@ -15,8 +15,7 @@ exclude = ["/img", "/.idea"]
 csv = "^1"
 thiserror = "^1"
 
-# trade_aggregation_derive = "0.3.2"
-trade_aggregation_derive = {path = "./trade_aggregation_derive"}
+trade_aggregation_derive = "0.4.0"
 
 # Optionals
 serde = { version = "^1", features = ["derive"], optional = true }
