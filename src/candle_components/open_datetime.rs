@@ -1,8 +1,6 @@
-use crate::CandleComponent;
-use crate::CandleComponentUpdate;
-use crate::TakerTrade;
-use crate::TimestampResolution;
 use chrono::{DateTime, TimeZone, Utc};
+
+use crate::{CandleComponent, CandleComponentUpdate, TakerTrade, TimestampResolution};
 
 /// This 'CandleComponent' keeps track of the opening [DateTime<Utc>] of a Candle.
 #[derive(Debug, Clone)]
