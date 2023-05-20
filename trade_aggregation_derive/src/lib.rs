@@ -100,7 +100,6 @@ fn impl_candle_macro(ast: &syn::DeriveInput) -> TokenStream {
     let fn_names1 = fn_names0.clone();
     let fn_names2 = fn_names1.clone();
     let input_name = input_type.expect("No PhantomData for input attribute type!");
-    println!("impl building for {name}");
 
     let gen = quote! {
         impl #name {

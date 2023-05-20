@@ -18,6 +18,7 @@ mod open_timestamp;
 mod std_dev_prices;
 mod std_dev_sizes;
 mod time_velocity;
+mod trades;
 mod volume;
 mod weighted_price;
 
@@ -38,6 +39,7 @@ pub use open_timestamp::OpenTimeStamp;
 pub use std_dev_prices::StdDevPrices;
 pub use std_dev_sizes::StdDevSizes;
 pub use time_velocity::TimeVelocity;
+pub use trades::Trades;
 pub use volume::Volume;
 pub use weighted_price::WeightedPrice;
 

@@ -1,6 +1,6 @@
 use crate::TimestampResolution;
 
-#[derive(Default, Debug, Clone, Copy)]
+#[derive(Default, Debug, Clone, Copy, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 /// Defines a taker trade
 pub struct Trade {
