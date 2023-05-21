@@ -49,52 +49,52 @@ mod tests {
 
     pub const TRADES: [Trade; 10] = [
         Trade {
-            timestamp: 500000000000,
+            timestamp: 1684677200_000,
             price: 100.0,
             size: 10.0,
         },
         Trade {
-            timestamp: 1,
+            timestamp: 1684677210_000,
             price: 101.0,
             size: -10.0,
         },
         Trade {
-            timestamp: 2,
+            timestamp: 1684677220_000,
             price: 100.0,
             size: 20.0,
         },
         Trade {
-            timestamp: 3,
+            timestamp: 1684677230_000,
             price: 102.0,
             size: 10.0,
         },
         Trade {
-            timestamp: 4,
+            timestamp: 1684677240_000,
             price: 103.0,
             size: 10.0,
         },
         Trade {
-            timestamp: 5,
+            timestamp: 1684677250_000,
             price: 104.0,
             size: -20.0,
         },
         Trade {
-            timestamp: 6,
+            timestamp: 1684677260_000,
             price: 102.0,
             size: -10.0,
         },
         Trade {
-            timestamp: 7,
+            timestamp: 1684677270_000,
             price: 101.0,
             size: 10.0,
         },
         Trade {
-            timestamp: 8,
+            timestamp: 1684677280_000,
             price: 102.0,
             size: 30.0,
         },
         Trade {
-            timestamp: 9,
+            timestamp: 1684677290_000,
             price: 105.0,
             size: 10.0,
         },
