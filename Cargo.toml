@@ -1,10 +1,10 @@
 [package]
 name = "trade_aggregation"
-version = "9.2.0"
+version = "9.2.1"
 authors = ["MathisWellmann <wellmannmathis@gmail.com>"]
 edition = "2021"
 license-file = "LICENSE"
-description = "Aggregate raw trades into candles using different methods"
+description = "Aggregate trades into user defined candles using information driven rules"
 repository = "https://github.com/MathisWellmann/trade_aggregation-rs"
 readme = "README.md"
 keywords = ["trading", "candles"]
