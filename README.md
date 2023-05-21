@@ -26,6 +26,7 @@ TimeRule          | Create candles every n seconds
 AlignedTimeRule   | Same as TimeRule but candles are aligned to the start of a period
 VolumeRule        | Create candles every n units traded
 TickRule          | Create candles every n ticks
+RelativePriceRule | Create candles with every n basis points price movement (Renko)
 
 If these don't satisfy your desires, just create your own by implementing the [AggregationRule](src/aggregation_rules/aggregation_rule_trait.rs) trait,
 and you can plug and play it into the [GenericAggregator](src/aggregator.rs).
@@ -46,6 +47,7 @@ StdDevPrices      | Keeps track of the standard deviation of prices
 StdDevSizes       | Keeps track of the standard deviaton of sizes
 TimeVelocity      | Essentially how fast the candle was created time wise
 Entropy           | Binary shannon entropy using the trade side as inputs
+Trades            | Just returns the observed trades during that candle
 
 And again, if these don't satisfy your needs, just bring your own by implementing the 
 [CandleComponent](src/candle_components/candle_component_trait.rs) trait and you can plug them into your own candle struct.
