@@ -182,9 +182,6 @@ The serde feature exists which, when enabled, derives Serialize and Deserialize
 
 
 ### TODOs:
-- Add tick based aggregation rule: e.g candle every n ticks
-- Add absolute price based aggregation rule: e.g candle every x units of price change
-- Add relative price based aggregation rule: e.g candle every x percent move
 - Make generic over the data type storing the price (f64, f32, i64, Decimal, etc...)
 
 ### Donations :moneybag: :money_with_wings:
