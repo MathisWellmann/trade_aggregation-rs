@@ -1,4 +1,4 @@
-use crate::{AggregationRule, By, ModularCandle, TakerTrade};
+use crate::{AggregationRule, By, Error, ModularCandle, Result, TakerTrade};
 
 /// Creates candles every n units of volume traded
 pub struct VolumeRule {
@@ -17,13 +17,16 @@ pub struct VolumeRule {
 
 impl VolumeRule {
     /// Create a new instance with the given volume threshold
-    pub fn new(threshold_vol: f64, by: By) -> Self {
-        Self {
+    pub fn new(threshold_vol: f64, by: By) -> Result<Self> {
+        if threshold_vol <= 0.0 {
+            return Err(Error::InvalidParam);
+        }
+        Ok(Self {
             init: true,
             by,
             cum_vol: 0.0,
             threshold_vol,
-        }
+        })
     }
 }
 

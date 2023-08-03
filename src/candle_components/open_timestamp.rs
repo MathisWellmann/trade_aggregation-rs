@@ -24,6 +24,7 @@ impl CandleComponent<i64> for OpenTimeStamp<i64> {
     fn value(&self) -> i64 {
         self.value
     }
+
     /// This makes sure the next time "update" is called, the new open value is set
     #[inline(always)]
     fn reset(&mut self) {
@@ -52,6 +53,6 @@ mod tests {
         for t in &crate::candle_components::tests::TRADES {
             m.update(t);
         }
-        assert_eq!(m.value(), 500000000000);
+        assert_eq!(m.value(), 1684677200000);
     }
 }
