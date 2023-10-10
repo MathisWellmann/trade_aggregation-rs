@@ -22,6 +22,7 @@ with pkgs; mkShell {
     pkg-config
     rust-toolchain
     cmake
+    fontconfig
   ];
 
   # use mold as linker on linux x86_64
