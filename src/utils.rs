@@ -88,18 +88,48 @@ pub fn load_trades_from_csv(filename: &str) -> Result<Vec<Trade>> {
 mod tests {
     use round::round;
 
+    use crate::{
+        candle_components::{Close, High, Low, Open},
+        By, CandleComponent, CandleComponentUpdate, GenericAggregator, VolumeRule,
+    };
+
     use super::*;
 
-    // TODO: re-enable this test
-    /*
-    #[test]
-    fn test_aggregate_all_trades() {
-        let trades = load_trades_from_csv("data/Bitmex_XBTUSD_1M.csv").unwrap();
-        let mut aggregator = GenericAggregator::new(100.0, By::Quote);
-        let candles = aggregate_all_trades(&trades, &mut aggregator);
-        assert!(candles.len() > 0);
+    #[derive(Debug, Default, Clone)]
+    struct MyCandle {
+        open: Open,
+        high: High,
+        low: Low,
+        close: Close,
     }
-    */
+
+    impl ModularCandle<Trade> for MyCandle {
+        fn update(&mut self, trade: &Trade) {
+            self.open.update(trade);
+            self.high.update(trade);
+            self.low.update(trade);
+            self.close.update(trade);
+        }
+        fn reset(&mut self) {
+            self.open.reset();
+            self.high.reset();
+            self.low.reset();
+            self.close.reset();
+        }
+    }
+
+    #[test]
+    #[ignore = "Long running test, only run manually"]
+    fn test_aggregate_all_trades() {
+        type C = MyCandle;
+        type T = Trade;
+        type GA = GenericAggregator<C, VolumeRule, T>;
+        let trades = load_trades_from_csv("data/Bitmex_XBTUSD_1M.csv").unwrap();
+        let rule = VolumeRule::new(100.0, By::Quote).unwrap();
+        let mut aggregator = GenericAggregator::new(rule);
+        let candles = aggregate_all_trades::<GA, C, T>(&trades, &mut aggregator);
+        assert!(!candles.is_empty());
+    }
 
     #[test]
     fn test_candle_volume_from_time_period() {
