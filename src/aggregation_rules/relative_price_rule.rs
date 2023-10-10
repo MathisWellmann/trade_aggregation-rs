@@ -60,29 +60,27 @@ mod tests {
     fn relative_price_rule() {
         let mut rule = RelativePriceRule::new(0.01).unwrap();
 
-        assert_eq!(
-            rule.should_trigger(
+        assert!(
+            !rule.should_trigger(
                 &Trade {
                     timestamp: 0,
                     price: 100.0,
                     size: 10.0
                 },
                 &OhlcCandle::default()
-            ),
-            false
+            )
         );
-        assert_eq!(
-            rule.should_trigger(
+        assert!(
+            !rule.should_trigger(
                 &Trade {
                     timestamp: 0,
                     price: 100.5,
                     size: 10.0
                 },
                 &OhlcCandle::default()
-            ),
-            false
+            )
         );
-        assert_eq!(
+        assert!(
             rule.should_trigger(
                 &Trade {
                     timestamp: 0,
@@ -90,21 +88,19 @@ mod tests {
                     size: 10.0
                 },
                 &OhlcCandle::default()
-            ),
-            true
+            )
         );
-        assert_eq!(
-            rule.should_trigger(
+        assert!(
+            !rule.should_trigger(
                 &Trade {
                     timestamp: 0,
                     price: 100.5,
                     size: 10.0
                 },
                 &OhlcCandle::default()
-            ),
-            false
+            )
         );
-        assert_eq!(
+        assert!(
             rule.should_trigger(
                 &Trade {
                     timestamp: 0,
@@ -112,8 +108,7 @@ mod tests {
                     size: 10.0
                 },
                 &OhlcCandle::default()
-            ),
-            true
+            )
         );
     }
 

@@ -33,8 +33,8 @@ pub(crate) fn plot_ohlc_candles(
             c.high(),
             c.low(),
             c.close(),
-            &GREEN,
-            &RED,
+            GREEN,
+            RED,
             candle_width,
         ));
 
