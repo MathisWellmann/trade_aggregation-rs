@@ -155,7 +155,7 @@ impl ModularCandle<Trade> for MyCandle {
 
 See examples folder for more.
 Run examples using
-```ignore
+```sh,ignore
 cargo run --release --example aggregate_all_ohlc
 cargo run --release --example streaming_aggregate_ohlc
 ```
@@ -163,7 +163,7 @@ cargo run --release --example streaming_aggregate_ohlc
 ## Performance:
 To run the benchmarks, written using criterion, run:
 
-```ignore
+```sh,ignore
 cargo bench
 ```
 
