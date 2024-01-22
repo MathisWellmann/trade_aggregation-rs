@@ -1,6 +1,7 @@
 use crate::{AggregationRule, Error, ModularCandle, Result, TakerTrade};
 
 /// Creates Candles once the price changed by a give relative absolute price delta
+#[derive(Debug, Clone)]
 pub struct RelativePriceRule {
     init: bool,
     init_price: f64,

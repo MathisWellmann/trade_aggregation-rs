@@ -5,6 +5,7 @@ use crate::{aggregation_rules::TimestampResolution, AggregationRule, ModularCand
 /// the trigger points are starting from a time equals zero.  For example, if the first
 /// tick comes in a 1:32:00 on a 5 minute candle, that first candle will only contain
 /// 3 minutes of trades, representing a 1:30 start.
+#[derive(Debug, Clone)]
 pub struct AlignedTimeRule {
     /// If true, the reference timestamp needs to be reset
     init: bool,

@@ -1,6 +1,7 @@
 use crate::{AggregationRule, By, Error, ModularCandle, Result, TakerTrade};
 
 /// Creates candles every n units of volume traded
+#[derive(Debug, Clone)]
 pub struct VolumeRule {
     // If true, the cumulative volume needs to be reset
     init: bool,
