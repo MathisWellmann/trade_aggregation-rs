@@ -12,19 +12,19 @@ categories = ["algorithms"]
 exclude = ["/img", "/.idea"]
 
 [dependencies]
-csv = "^1"
-thiserror = "^1"
+csv = "1"
+thiserror = "1"
 
 trade_aggregation_derive = "0.4.0"
 
 # Optionals
-serde = { version = "^1", features = ["derive"], optional = true }
+serde = { version = "1", features = ["derive"], optional = true }
 chrono = { version = "0.4", features = ["serde"], optional = true }
 
 [dev-dependencies]
-round = "^0.1"
-criterion = "^0.3"
-plotters = "^0.3"
+round = "0.1"
+criterion = "0.5"
+plotters = "0.3"
 
 [[bench]]
 name = "candle_aggregation"
