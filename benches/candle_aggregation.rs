@@ -1,4 +1,4 @@
-use criterion::{black_box, criterion_group, criterion_main, Criterion};
+use criterion::{black_box, criterion_group, criterion_main, Criterion, Throughput};
 use trade_aggregation::{
     aggregate_all_trades, candle_components::*, load_trades_from_csv, CandleComponent,
     GenericAggregator, ModularCandle, TimeRule, TimestampResolution, Trade, M1,
@@ -56,13 +56,15 @@ fn time_aggregation_all(trades: &[Trade]) {
 fn criterion_benchmark(c: &mut Criterion) {
     let trades =
         load_trades_from_csv("data/Bitmex_XBTUSD_1M.csv").expect("Could not open trade data file!");
-    c.bench_function("time_aggregation_open", |b| {
+    let mut group = c.benchmark_group("time_aggregation");
+    group.throughput(Throughput::Elements(1_000_000));
+    group.bench_function("time_aggregation_open", |b| {
         b.iter(|| time_aggregation_open(black_box(&trades)))
     });
-    c.bench_function("time_aggregation_ohlc", |b| {
+    group.bench_function("time_aggregation_ohlc", |b| {
         b.iter(|| time_aggregation_ohlc(black_box(&trades)))
     });
-    c.bench_function("time_aggregation_all", |b| {
+    group.bench_function("time_aggregation_all", |b| {
         b.iter(|| time_aggregation_all(black_box(&trades)))
     });
 }
