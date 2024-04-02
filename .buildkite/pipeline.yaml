@@ -3,4 +3,3 @@ steps:
   - command: RUSTFLAGS="-D warnings" nix develop --command bash -c "cargo clippy"
   - command: RUSTFLAGS="-D warnings" nix develop --command bash -c "cargo test"
   - command: nix develop --command bash -c "cargo doc --no-deps --workspace"
-  - command: nix develop --command bash -c "cargo-spellcheck -vv check --code 77"

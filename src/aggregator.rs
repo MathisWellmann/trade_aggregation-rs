@@ -2,7 +2,7 @@ use std::marker::PhantomData;
 
 use crate::{AggregationRule, ModularCandle, TakerTrade};
 
-/// Defines the needed methods for any online aggregator
+/// Defines the needed methods for any online `Aggregator`
 pub trait Aggregator<Candle, T: TakerTrade> {
     /// Updates the aggregation state with a new trade
     ///
@@ -15,7 +15,7 @@ pub trait Aggregator<Candle, T: TakerTrade> {
     fn update(&mut self, trade: &T) -> Option<Candle>;
 }
 
-/// An aggregator that is generic over
+/// An `Aggregator` that is generic over
 /// the type of Candle being produced,
 /// as well as by which rule the candle is created
 #[derive(Debug, Clone)]

@@ -14,40 +14,40 @@ allowing for greater flexibility for downstream projects.
 
 See [MathisWellmann/go_trade_aggregation](https://github.com/MathisWellmann/go_trade_aggregation) for a go implementation with less features and performance.
 
-Here is a sample trade series of Bitmex_XBTUSD aggregated into 15m candles:
+Here is a sample trade series of `Bitmex_XBTUSD` aggregated into 15 minute candles:
 ![time_candles](img/time_candles_plot.png)
 
 ## Features:
-### AggregationRule:
+### `AggregationRule`:
 The pre-existing rules in this crate include:
-'AggregationRule' | Description
-------------------|-------------
-TimeRule          | Create candles every n seconds
-AlignedTimeRule   | Same as TimeRule but candles are aligned to the start of a period
-VolumeRule        | Create candles every n units traded
-TickRule          | Create candles every n ticks
-RelativePriceRule | Create candles with every n basis points price movement (Renko)
+'AggregationRule'   | Description
+--------------------|-------------
+`TimeRule`          | Create candles every n seconds
+`AlignedTimeRule`   | Same as TimeRule but candles are aligned to the start of a period
+`VolumeRule`        | Create candles every n units traded
+`TickRule`          | Create candles every n ticks
+`RelativePriceRule` | Create candles with every n basis points price movement (Renko)
 
-If these don't satisfy your desires, just create your own by implementing the [AggregationRule](src/aggregation_rules/aggregation_rule_trait.rs) trait,
-and you can plug and play it into the [GenericAggregator](src/aggregator.rs).
+If these don't satisfy your desires, just create your own by implementing the [`AggregationRule`](src/aggregation_rules/aggregation_rule_trait.rs) trait,
+and you can plug and play it into the [`GenericAggregator`](src/aggregator.rs).
 
-### CandleComponent:
+### `CandleComponent`:
 These pre-existing 'CandleComponents' exist out of the box:
-'CandleComponent' | Description
-------------------| ---
-Open              | Price at the beginning of a candle
-High              | Maximum price during the candle
-Low               | Minimum price during the candle
-Close             | Price at the end of a candle
-Volume            | The cumulative trading volume
-NumTrades         | The number of trades during the candle
-AveragePrice      | The equally weighted average price
-WeightedPrice     | The volume weighted price
-StdDevPrices      | Keeps track of the standard deviation of prices
-StdDevSizes       | Keeps track of the standard deviaton of sizes
-TimeVelocity      | Essentially how fast the candle was created time wise
-Entropy           | Binary shannon entropy using the trade side as inputs
-Trades            | Just returns the observed trades during that candle
+'CandleComponent'   | Description
+--------------------| ---
+`Open`              | Price at the beginning of a candle
+`High`              | Maximum price during the candle
+`Low`               | Minimum price during the candle
+`Close`             | Price at the end of a candle
+`Volume`            | The cumulative trading volume
+`NumTrades`         | The number of trades during the candle
+`AveragePrice`      | The equally weighted average price
+`WeightedPrice`     | The volume weighted price
+`StdDevPrices`      | Keeps track of the standard deviation of prices
+`StdDevSizes`       | Keeps track of the standard deviation of sizes
+`TimeVelocity`      | Essentially how fast the candle was created time wise
+`Entropy`           | Binary Shannon entropy using the trade side as inputs
+`Trades`            | Just returns the observed trades during that candle
 
 And again, if these don't satisfy your needs, just bring your own by implementing the 
 [CandleComponent](src/candle_components/candle_component_trait.rs) trait and you can plug them into your own candle struct.
@@ -182,7 +182,7 @@ The serde feature exists which, when enabled, derives Serialize and Deserialize
 
 
 ### TODOs:
-- Make generic over the data type storing the price (f64, f32, i64, Decimal, etc...)
+- Make generic over the data type storing the price (`f64`, `f32`, `i64`, `Decimal`, etc...)
 
 ### Donations :moneybag: :money_with_wings:
 I you would like to support the development of this crate, feel free to send over a donation:

@@ -14,7 +14,7 @@ pub(crate) struct OhlcCandle {
     close: Close,
 }
 
-/// Creates a plot of OHLC candles
+/// Creates a plot of `OHLC` candles
 pub(crate) fn plot_ohlc_candles(
     candles: &[OhlcCandle],
     filename: &str,

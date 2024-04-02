@@ -6,15 +6,15 @@ use crate::{errors::Result, Aggregator, ModularCandle, TakerTrade, Trade};
 /// as the given time aggregation equivalent
 ///
 /// # Parameters:
-/// total_volume - sum of traded volume over entire time period
-/// total_time_days - total number of days
-/// target_time_minutes - time aggregated candle period which to target
+/// `total_volume` - sum of traded volume over entire time period
+/// `total_time_days` - total number of days
+/// `target_time_minutes` - time aggregated candle period which to target
 ///
 /// # Returns:
 /// target candle volume for which volume aggregation produces
 /// the same number of candles as the time aggregation did
 /// e.g.:
-/// 10 days of 1h candle -> 240 candles
+/// 10 days of 1 hour candles -> 240 candles
 /// assuming 9840 volume traded over 10 days
 /// -> each candle should have 41 volume to produce 240 candles using volume aggregation
 pub fn candle_volume_from_time_period(

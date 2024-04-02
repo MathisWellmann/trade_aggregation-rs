@@ -2,7 +2,7 @@ use chrono::{DateTime, TimeZone, Utc};
 
 use crate::{CandleComponent, CandleComponentUpdate, TakerTrade, TimestampResolution};
 
-/// This 'CandleComponent' keeps track of the opening [DateTime<Utc>] of a Candle.
+/// This 'CandleComponent' keeps track of the opening [`DateTime<Utc>`] of a Candle.
 #[derive(Debug, Clone)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct OpenDateTime {

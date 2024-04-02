@@ -41,7 +41,6 @@
               fontconfig
               cmake
               rust
-              cargo-spellcheck
             ];
           };
         }

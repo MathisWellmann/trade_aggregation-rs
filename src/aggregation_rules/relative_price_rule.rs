@@ -12,7 +12,7 @@ impl RelativePriceRule {
     /// Create a new instance.
     ///
     /// # Arguments:
-    /// `threshold_fraction`: The relative distance ((p_t - p_i) / p_i) the price needs to move before a new candle creation is triggered.
+    /// `threshold_fraction`: The relative distance ((`p_t` - `p_i`) / `p_i`) the price needs to move before a new candle creation is triggered.
     ///
     pub fn new(threshold_fraction: f64) -> Result<Self> {
         if threshold_fraction <= 0.0 {

@@ -1,7 +1,7 @@
 use crate::{CandleComponent, CandleComponentUpdate, TakerTrade};
 
 /// This 'CandleComponent' keeps track of the closing timestamp of a Candle, using the
-/// same unit resolution as the underlying input of [TakerTrade.timestamp()].
+/// same unit resolution as the underlying input of [`TakerTrade.timestamp()`].
 #[derive(Debug, Clone)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct CloseTimeStamp<T> {

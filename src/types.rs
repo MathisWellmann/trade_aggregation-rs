@@ -51,7 +51,7 @@ pub trait TakerTrade {
     /// The timestamp of a trade,
     fn timestamp(&self) -> i64;
 
-    /// units for the timestamp integer returned by [TakerTrade.timestamp()] method
+    /// units for the timestamp integer returned by [`TakerTrade.timestamp()`] method
     /// A default implementation is included and assumes milliseconds
     fn timestamp_resolution(&self) -> TimestampResolution {
         TimestampResolution::Millisecond

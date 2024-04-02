@@ -9,10 +9,10 @@ pub struct TickRule {
 }
 
 impl TickRule {
-    /// Create a new instance of the TickRule
+    /// Create a new instance of the `TickRule`
     ///
     /// # Arguments:
-    /// n_ticks: create a candle every n ticks
+    /// `n_ticks`: create a candle every n ticks
     ///
     pub fn new(n_ticks: usize) -> Self {
         Self {
