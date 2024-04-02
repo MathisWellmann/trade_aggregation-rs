@@ -24,10 +24,9 @@
             extensions = [
               "rust-src"
               "rust-analyzer"
-              "rustfmt"
               "clippy"
             ];
-            targets = ["x86_64-unknown-linux-gnu" "wasm32-unknown-unknown"];
+            targets = ["x86_64-unknown-linux-gnu"];
           }
         );
       in
@@ -40,6 +39,7 @@
               pkg-config
               fontconfig
               cmake
+              (lib.hiPrio rust-bin.nightly."2024-04-01".rustfmt)
               rust
             ];
           };
