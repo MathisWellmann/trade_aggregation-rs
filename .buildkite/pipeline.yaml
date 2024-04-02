@@ -1,15 +1,15 @@
 steps:
-  - label: ":nixos: :buildkite: check"
+  - label: ":nixos: :rust: :buildkite: check"
     command: RUSTFLAGS="-D warnings" nix develop --command bash -c "cargo check"
 
-  - label: ":nixos: :buildkite: clippy"
+  - label: ":nixos: :rust: :buildkite: clippy"
     command: RUSTFLAGS="-D warnings" nix develop --command bash -c "cargo clippy"
 
-  - label: ":nixos: :buildkite: test"
+  - label: ":nixos: :rust: :buildkite: test"
     command: RUSTFLAGS="-D warnings" nix develop --command bash -c "cargo test"
 
-  - label: ":nixos: :buildkite: fmt"
+  - label: ":nixos: :rust: :buildkite: fmt"
     command: RUSTFLAGS="-D warnings" nix develop --command bash -c "cargo fmt --check"
 
-  - label: ":nixos: :buildkite: doc"
+  - label: ":nixos: :rust: :buildkite: doc"
     command: nix develop --command bash -c "cargo doc --no-deps --workspace"
