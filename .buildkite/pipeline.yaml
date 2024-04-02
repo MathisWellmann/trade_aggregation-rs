@@ -2,4 +2,5 @@ steps:
   - command: RUSTFLAGS="-D warnings" nix develop --command bash -c "cargo check"
   - command: RUSTFLAGS="-D warnings" nix develop --command bash -c "cargo clippy"
   - command: RUSTFLAGS="-D warnings" nix develop --command bash -c "cargo test"
+  - command: RUSTFLAGS="-D warnings" nix develop --command bash -c "cargo fmt --check"
   - command: nix develop --command bash -c "cargo doc --no-deps --workspace"
