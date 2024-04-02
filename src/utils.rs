@@ -43,9 +43,8 @@ where
     let mut out: Vec<C> = vec![];
 
     for t in trades {
-        match aggregator.update(t) {
-            Some(candle) => out.push(candle),
-            None => {}
+        if let Some(candle) = aggregator.update(t) {
+            out.push(candle)
         }
     }
 
