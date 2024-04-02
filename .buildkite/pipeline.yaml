@@ -1,2 +1,6 @@
 steps:
-  - command: "echo 'This is running from the repo pipeline definition.'"
+  - command: nix develop --command bash -c "cargo check"
+  - command: nix develop --command bash -c "cargo clippy"
+  - command: nix develop --command bash -c "cargo test"
+  - command: nix develop --command bash -c "cargo doc --no-deps --workspace"
+  - command: nix develop --command bash -c "cargo spellcheck -vv check --code 77"
