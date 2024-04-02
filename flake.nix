@@ -20,7 +20,7 @@
           inherit system overlays;
         };
         rust = (
-          pkgs.rust-bin.stable.latest.default.override {
+          pkgs.rust-bin.stable."1.77.0".default.override {
             extensions = [
               "rust-src"
               "rust-analyzer"
@@ -39,6 +39,7 @@
               pkg-config
               fontconfig
               cmake
+              # We use some `rustfmt` rules that are only available on the nightly channel.
               (lib.hiPrio rust-bin.nightly."2024-04-01".rustfmt)
               rust
             ];
