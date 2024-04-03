@@ -72,10 +72,21 @@ where
 
 #[cfg(test)]
 mod tests {
+    use trade_aggregation_derive::Candle;
+
     use super::*;
+
     use crate::{
-        aggregate_all_trades, load_trades_from_csv, plot::OhlcCandle, GenericAggregator, Trade, M15,
+        candle_components::{CandleComponent, CandleComponentUpdate, NumTrades, Volume},
+        load_trades_from_csv, ModularCandle, TimestampResolution, Trade, M1, M15, GenericAggregator, aggregate_all_trades,
+        plot::OhlcCandle
     };
+
+    #[derive(Default, Debug, Clone, Candle)]
+    struct MyCandle {
+        num_trades: NumTrades<u32>,
+        volume: Volume,
+    }
 
     #[test]
     fn aligned_time_rule() {
@@ -95,5 +106,20 @@ mod tests {
         let c = &candles[1];
         assert_eq!(c.open(), 13768.5);
         assert_eq!(c.close(), 13722.0);
+    }
+
+    #[test]
+    fn aligned_time_rule_volume() {
+        let trades = load_trades_from_csv("data/Bitstamp_BTCEUR_1M.csv").unwrap();
+
+        let mut aggregator = GenericAggregator::<MyCandle, AlignedTimeRule, Trade>::new(
+            AlignedTimeRule::new(M1, TimestampResolution::Microsecond),
+        );
+        let candles = aggregate_all_trades(&trades, &mut aggregator);
+
+        // make sure that the aggregator starts a new candle with the "trigger tick",
+        // and includes that information of the trade that triggered the new candle as well
+        let c = &candles[0];
+        assert_eq!(c.volume(), 0.27458132);
     }
 }
