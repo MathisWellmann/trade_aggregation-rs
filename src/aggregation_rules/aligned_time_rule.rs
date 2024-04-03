@@ -77,13 +77,18 @@ mod tests {
     use super::*;
 
     use crate::{
-        candle_components::{CandleComponent, CandleComponentUpdate, NumTrades, Volume},
-        load_trades_from_csv, ModularCandle, TimestampResolution, Trade, M1, M15, GenericAggregator, aggregate_all_trades,
-        plot::OhlcCandle
+        aggregate_all_trades,
+        candle_components::{
+            CandleComponent, CandleComponentUpdate, Close, NumTrades, Open, Volume,
+        },
+        load_trades_from_csv, GenericAggregator, ModularCandle, TimestampResolution, Trade, M1,
+        M15,
     };
 
     #[derive(Default, Debug, Clone, Candle)]
     struct MyCandle {
+        open: Open,
+        close: Close,
         num_trades: NumTrades<u32>,
         volume: Volume,
     }
@@ -92,7 +97,7 @@ mod tests {
     fn aligned_time_rule() {
         let trades = load_trades_from_csv("data/Bitmex_XBTUSD_1M.csv").unwrap();
 
-        let mut aggregator = GenericAggregator::<OhlcCandle, AlignedTimeRule, Trade>::new(
+        let mut aggregator = GenericAggregator::<MyCandle, AlignedTimeRule, Trade>::new(
             AlignedTimeRule::new(M15, TimestampResolution::Millisecond),
         );
         let candles = aggregate_all_trades(&trades, &mut aggregator);
@@ -102,10 +107,10 @@ mod tests {
         // and includes that information of the trade that triggered the new candle as well
         let c = &candles[0];
         assert_eq!(c.open(), 13873.0);
-        assert_eq!(c.close(), 13768.5);
+        assert_eq!(c.close(), 13769.0);
         let c = &candles[1];
         assert_eq!(c.open(), 13768.5);
-        assert_eq!(c.close(), 13722.0);
+        assert_eq!(c.close(), 13721.5);
     }
 
     #[test]
@@ -117,9 +122,8 @@ mod tests {
         );
         let candles = aggregate_all_trades(&trades, &mut aggregator);
 
-        // make sure that the aggregator starts a new candle with the "trigger tick",
-        // and includes that information of the trade that triggered the new candle as well
         let c = &candles[0];
+        assert_eq!(c.num_trades(), 10);
         assert_eq!(c.volume(), 0.27458132);
     }
 }
