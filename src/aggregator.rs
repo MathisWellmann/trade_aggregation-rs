@@ -13,6 +13,11 @@ pub trait Aggregator<Candle, T: TakerTrade> {
     /// Some output only when a new candle has been created,
     /// otherwise it returns None
     fn update(&mut self, trade: &T) -> Option<Candle>;
+
+    /// Get a reference to an unfinished `Candle`.
+    /// Accessing a `Candle` using this method does not guarantee that the `AggregationRule` is respected.
+    /// It is generally advised to call `update` instead and use the resulting `Candle` if its `Some`.
+    fn unfinished_candle(&self) -> &Candle;
 }
 
 /// An `Aggregator` that is generic over
@@ -63,6 +68,10 @@ where
 
         self.candle.update(trade);
         None
+    }
+
+    fn unfinished_candle(&self) -> &C {
+        &self.candle
     }
 }
 
