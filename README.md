@@ -15,7 +15,7 @@ allowing for greater flexibility for downstream projects.
 See [MathisWellmann/go_trade_aggregation](https://github.com/MathisWellmann/go_trade_aggregation) for a go implementation with less features and performance.
 
 Here is a sample trade series of `Bitmex_XBTUSD` aggregated into 15 minute candles:
-![time_candles](img/time_candles_plot.png)
+![time_candles](readme_img/time_candles_plot.png)
 
 ## Features:
 ### `AggregationRule`:
@@ -192,7 +192,7 @@ Monero (XMR) address:
 47xMvxNKsCKMt2owkDuN1Bci2KMiqGrAFCQFSLijWLs49ua67222Wu3LZryyopDVPYgYmAnYkSZSz9ZW2buaDwdyKTWGwwb
 ```
 
-![monero](img/monero_donations_qrcode.png)
+![monero](readme_img/monero_donations_qrcode.png)
 
 
 ### License
@@ -211,7 +211,7 @@ GNU Affero General Public License for more details.
 You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-![GNU AGPLv3](img/agplv3.png)
+![GNU AGPLv3](readme_img/agplv3.png)
 
 ### Commercial License
 If you'd like to use this crate legally without the restrictions of the GNU AGPLv3 license, 
