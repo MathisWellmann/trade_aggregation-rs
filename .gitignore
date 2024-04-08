@@ -3,4 +3,5 @@
 /.idea
 /trade_aggregation_derive/target
 /img
+/.direnv
 Cargo.lock
