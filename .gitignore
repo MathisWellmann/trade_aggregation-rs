@@ -2,4 +2,5 @@
 /vendor
 /.idea
 /trade_aggregation_derive/target
+/img
 Cargo.lock
