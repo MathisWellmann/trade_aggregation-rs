@@ -61,7 +61,7 @@ where
             self.reference_timestamp = self.aligned_timestamp(trade.timestamp());
             self.init = false;
         }
-        let should_trigger = trade.timestamp() - self.reference_timestamp > self.period_s;
+        let should_trigger = trade.timestamp() - self.reference_timestamp >= self.period_s;
         if should_trigger {
             self.init = true;
         }
@@ -80,8 +80,9 @@ mod tests {
         candle_components::{
             CandleComponent, CandleComponentUpdate, Close, NumTrades, Open, Volume,
         },
-        load_trades_from_csv, GenericAggregator, ModularCandle, TimestampResolution, Trade, M1,
-        M15,
+        load_trades_from_csv,
+        plot::OhlcCandle,
+        GenericAggregator, ModularCandle, TimestampResolution, Trade, M1, M15,
     };
 
     #[derive(Default, Debug, Clone, Candle)]
@@ -124,5 +125,46 @@ mod tests {
         let c = &candles[0];
         assert_eq!(c.num_trades(), 10);
         assert_eq!(c.volume(), 0.27458132);
+    }
+
+    #[test]
+    fn aligned_time_rule_trigger_on_0() {
+        let trades: [Trade; 5] = [
+            Trade {
+                timestamp: 1712656800000,
+                price: 100.0,
+                size: 10.0,
+            },
+            Trade {
+                timestamp: 1712656815000,
+                price: 101.0,
+                size: -10.0,
+            },
+            Trade {
+                timestamp: 1712656860000,
+                price: 100.5,
+                size: -10.0,
+            },
+            Trade {
+                timestamp: 1712656860001,
+                price: 102.0,
+                size: -10.0,
+            },
+            Trade {
+                timestamp: 1712656935000,
+                price: 105.0,
+                size: -10.0,
+            },
+        ];
+
+        let mut aggregator = GenericAggregator::<OhlcCandle, AlignedTimeRule, Trade>::new(
+            AlignedTimeRule::new(M1, TimestampResolution::Millisecond),
+        );
+        let candles = aggregate_all_trades(&trades, &mut aggregator);
+        assert_eq!(candles.len(), 2);
+        assert_eq!(candles[0].open(), 100.00);
+        assert_eq!(candles[0].close(), 101.00);
+        assert_eq!(candles[1].open(), 100.5);
+        assert_eq!(candles[1].close(), 102.00);
     }
 }
