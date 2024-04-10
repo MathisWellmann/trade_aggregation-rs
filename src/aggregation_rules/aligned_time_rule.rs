@@ -75,7 +75,6 @@ mod tests {
     use trade_aggregation_derive::Candle;
 
     use super::*;
-
     use crate::{
         aggregate_all_trades,
         candle_components::{
