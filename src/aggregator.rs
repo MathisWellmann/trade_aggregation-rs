@@ -49,9 +49,6 @@ where
     T: TakerTrade,
 {
     fn update(&mut self, trade: &T) -> Option<C> {
-        // Always update the candle with the newest information.
-        self.candle.update(trade);
-
         if self.aggregation_rule.should_trigger(trade, &self.candle) {
             let candle = self.candle.clone();
             self.candle.reset();
@@ -63,6 +60,8 @@ where
             self.candle.update(trade);
             return Some(candle);
         }
+
+        self.candle.update(trade);
         None
     }
 }
