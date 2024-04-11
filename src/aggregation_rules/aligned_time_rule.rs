@@ -7,9 +7,6 @@ use crate::{aggregation_rules::TimestampResolution, AggregationRule, ModularCand
 /// 3 minutes of trades, representing a 1:30 start.
 #[derive(Debug, Clone)]
 pub struct AlignedTimeRule {
-    /// If true, the reference timestamp needs to be reset
-    init: bool,
-
     // The timestamp this rule uses as a reference
     reference_timestamp: i64,
 
@@ -36,7 +33,6 @@ impl AlignedTimeRule {
         };
 
         Self {
-            init: true,
             reference_timestamp: 0,
             period_s: period_s * ts_multiplier,
         }
@@ -57,13 +53,14 @@ where
     T: TakerTrade,
 {
     fn should_trigger(&mut self, trade: &T, _candle: &C) -> bool {
-        if self.init {
+        if self.reference_timestamp == 0 {
             self.reference_timestamp = self.aligned_timestamp(trade.timestamp());
-            self.init = false;
+            return false;
         }
+
         let should_trigger = trade.timestamp() - self.reference_timestamp >= self.period_s;
         if should_trigger {
-            self.init = true;
+            self.reference_timestamp = self.aligned_timestamp(trade.timestamp());
         }
 
         should_trigger
@@ -166,5 +163,41 @@ mod tests {
         assert_eq!(candles[0].close(), 101.00);
         assert_eq!(candles[1].open(), 100.5);
         assert_eq!(candles[1].close(), 102.00);
+    }
+
+    #[test]
+    fn aligned_time_rule_candle_with_one_trade() {
+        let trades: [Trade; 4] = [
+            Trade {
+                timestamp: 1712656800000,
+                price: 100.0,
+                size: 10.0,
+            },
+            Trade {
+                timestamp: 1712656815000,
+                price: 101.0,
+                size: -10.0,
+            },
+            Trade {
+                timestamp: 1712656861000,
+                price: 100.5,
+                size: -10.0,
+            },
+            Trade {
+                timestamp: 1712657930000,
+                price: 102.0,
+                size: -10.0,
+            },
+        ];
+
+        let mut aggregator = GenericAggregator::<OhlcCandle, AlignedTimeRule, Trade>::new(
+            AlignedTimeRule::new(M1, TimestampResolution::Millisecond),
+        );
+        let candles = aggregate_all_trades(&trades, &mut aggregator);
+        assert_eq!(candles.len(), 2);
+        assert_eq!(candles[0].open(), 100.0);
+        assert_eq!(candles[0].close(), 101.0);
+        assert_eq!(candles[1].open(), 100.5);
+        assert_eq!(candles[1].close(), 100.5);
     }
 }
