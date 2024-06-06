@@ -1,25 +1,40 @@
 steps:
-  - label: ":nixos: :rust: :buildkite: check"
+  - label: ":nixos: :rust: check"
     command: RUSTFLAGS="-D warnings" nix develop --command bash -c "cargo check"
-    agents: 
+    agents:
       queue: nixos
 
-  - label: ":nixos: :rust: :buildkite: clippy"
+  - label: ":nixos: :rust: clippy"
     command: RUSTFLAGS="-D warnings" nix develop --command bash -c "cargo clippy"
-    agents: 
+    agents:
       queue: nixos
 
-  - label: ":nixos: :rust: :buildkite: test"
+  - label: ":nixos: :rust: test"
     command: RUSTFLAGS="-D warnings" nix develop --command bash -c "cargo test"
-    agents: 
+    agents:
       queue: nixos
 
-  - label: ":nixos: :rust: :buildkite: fmt"
+  - label: ":nixos: :rust: fmt"
     command: RUSTFLAGS="-D warnings" nix develop --command bash -c "cargo fmt --check"
-    agents: 
+    agents:
       queue: nixos
 
-  - label: ":nixos: :rust: :buildkite: doc"
+  - label: ":nixos: :rust: doc"
     command: nix develop --command bash -c "cargo doc --no-deps --workspace"
-    agents: 
+    agents:
+      queue: nixos
+      
+  - label: ":nixos: :rust: taplo"
+    command: nix develop --command bash -c "taplo fmt --check"
+    agents:
+      queue: nixos
+      
+  - label: ":nixos: :rust: semver-checks"
+    command: nix develop --command bash -c "cargo semver-checks"
+    agents:
+      queue: nixos
+
+  - label: ":nixos: :rust: bench"
+    command: nix develop --command bash -c "cargo bench"
+    agents:
       queue: nixos
