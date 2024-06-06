@@ -27,6 +27,11 @@ pub trait Aggregator<Candle, T: TakerTrade> {
 pub struct GenericAggregator<C, R, T> {
     candle: C,
     aggregation_rule: R,
+    // During some aggregations, the desired behaviour is that the trade that crosses the trigger boundary
+    // is included in both the current and next candle.
+    // Examples uses include ensuring the close and open price of the current and next candle are equal.
+    // If that's desired, set the field to true during construction of `Self`.
+    include_trade_that_triggered_rule: bool,
     _trade_type: PhantomData<T>,
 }
 
@@ -37,11 +42,22 @@ where
     T: TakerTrade,
 {
     /// Create a new instance with a concrete aggregation rule
-    /// and a default candle
-    pub fn new(aggregation_rule: R) -> Self {
+    /// and an empty candle.
+    ///
+    /// # Arguments:
+    /// `aggregation_rule`: The rule that dictates when to trigger the creation of a new candle.
+    /// `include_trade_that_triggered_rule`: If true, the trade that triggered a rule is included in the current candle
+    ///     as well as the next one.
+    ///     During some aggregations, the desired behaviour is that the trade that crosses the trigger boundary
+    ///     is included in both the current and next candle.
+    ///     Examples uses include ensuring the close and open price of the current and next candle are equal.
+    ///     If that's desired, set the field to true during construction of `Self`.
+    ///     E.g on Tradingview the time aggregation would have this set to `false`, which may create gaps between close and open of subsequent candles.
+    pub fn new(aggregation_rule: R, include_trade_that_triggered_rule: bool) -> Self {
         Self {
             candle: Default::default(),
             aggregation_rule,
+            include_trade_that_triggered_rule,
             _trade_type: PhantomData,
         }
     }
@@ -55,18 +71,24 @@ where
 {
     fn update(&mut self, trade: &T) -> Option<C> {
         if self.aggregation_rule.should_trigger(trade, &self.candle) {
+            // During some aggregations, the desired behaviour is that the trade that crosses the trigger boundary
+            // is included in both the current and next candle.
+            // Examples uses include ensuring the close and open price of the current and next candle are equal.
+            // If that's desired, set the field to true during construction of `Self`.
+            if self.include_trade_that_triggered_rule {
+                self.candle.update(trade);
+            }
             let candle = self.candle.clone();
+
+            // Create a new candle.
             self.candle.reset();
-            // Also include the initial information in the candle.
-            // This means the trade data at the boundary is included twice.
-            // This especially ensures `Open` and `Close` values are correct.
-            // TODO: If this behaviour of including trade info at the boundary in both candles,
-            // A flag may be added to specify the exact behaviour.
             self.candle.update(trade);
+
             return Some(candle);
         }
 
         self.candle.update(trade);
+
         None
     }
 
@@ -98,7 +120,7 @@ mod tests {
             .expect("Could not load trades from file!");
 
         let rule = TimeRule::new(M1, TimestampResolution::Millisecond);
-        let mut a = GenericAggregator::<MyCandle, TimeRule, Trade>::new(rule);
+        let mut a = GenericAggregator::<MyCandle, TimeRule, Trade>::new(rule, false);
 
         let mut candle_counter: usize = 0;
         for t in trades.iter() {

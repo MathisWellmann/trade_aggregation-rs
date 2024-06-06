@@ -57,7 +57,7 @@ To use this crate in your project, add the following to your Cargo.toml:
 
 ```toml
 [dependencies]
-trade_aggregation = "^9"
+trade_aggregation = "12"
 ```
 
 Lets aggregate all trades into time based 1 minute candles, consisting of open, high, low and close information.
@@ -87,7 +87,7 @@ fn main() {
     let time_rule = TimeRule::new(M1, TimestampResolution::Millisecond);
     // Notice how the aggregator is generic over the output candle type, 
     // the aggregation rule as well as the input trade data
-    let mut aggregator = GenericAggregator::<MyCandle, TimeRule, Trade>::new(time_rule);
+    let mut aggregator = GenericAggregator::<MyCandle, TimeRule, Trade>::new(time_rule, false);
 
     for t in &trades {
         if let Some(candle) = aggregator.update(t) {

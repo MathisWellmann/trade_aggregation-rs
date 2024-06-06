@@ -88,7 +88,7 @@ fn main() {
 
     // specify the aggregation rule to be time based
     let time_rule = TimeRule::new(M1, TimestampResolution::Millisecond);
-    let mut aggregator = GenericAggregator::<MyCandle, TimeRule, Tick>::new(time_rule);
+    let mut aggregator = GenericAggregator::<MyCandle, TimeRule, Tick>::new(time_rule, false);
 
     let candles = aggregate_all_trades(&ticks, &mut aggregator);
     println!("got {} candles", candles.len());
