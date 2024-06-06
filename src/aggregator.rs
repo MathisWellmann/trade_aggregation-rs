@@ -27,7 +27,7 @@ pub trait Aggregator<Candle, T: TakerTrade> {
 pub struct GenericAggregator<C, R, T> {
     candle: C,
     aggregation_rule: R,
-    trade_type: PhantomData<T>,
+    _trade_type: PhantomData<T>,
 }
 
 impl<C, R, T> GenericAggregator<C, R, T>
@@ -42,7 +42,7 @@ where
         Self {
             candle: Default::default(),
             aggregation_rule,
-            trade_type: PhantomData,
+            _trade_type: PhantomData,
         }
     }
 }

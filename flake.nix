@@ -41,6 +41,8 @@
               # We use some `rustfmt` rules that are only available on the nightly channel.
               (lib.hiPrio rust-bin.nightly."2024-04-01".rustfmt)
               rust
+              taplo
+              cargo-semver-checks
             ];
           };
         }

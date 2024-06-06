@@ -3,6 +3,8 @@ procs:
     shell: "cargo check"
   cargo-test:
     shell: "cargo test"
+  cargo-bench:
+    shell: "cargo bench"
   cargo-fmt:
     shell: "cargo fmt"
   cargo-clippy:
