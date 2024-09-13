@@ -104,6 +104,7 @@ fn impl_candle_macro(ast: &syn::DeriveInput) -> TokenStream {
     let gen = quote! {
         impl #name {
             #(
+                /// Get the value of this candle component.
                 pub fn #fn_names0(&self) -> #value_types {
                     self.#fn_names0.value()
                 }

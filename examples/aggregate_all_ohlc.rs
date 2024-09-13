@@ -12,7 +12,7 @@ use trade_aggregation::{
 };
 
 #[derive(Debug, Default, Clone, Candle)]
-struct MyCandle {
+pub struct MyCandle {
     open: Open,
     high: High,
     low: Low,
