@@ -11,11 +11,9 @@ keywords = ["trading", "candles", "macro"]
 categories = ["algorithms"]
 ignore = ["target"]
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
 [lib]
 proc-macro = true
 
 [dependencies]
-syn = { version = "^1", features = ["extra-traits"] }
-quote = "^1"
+syn = { version = "2", features = ["extra-traits"] }
+quote = "1"
