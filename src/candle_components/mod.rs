@@ -21,6 +21,8 @@ mod std_dev_sizes;
 mod time_velocity;
 mod trades;
 mod volume;
+mod volume_buys;
+mod volume_sells;
 mod weighted_price;
 
 pub use average_price::AveragePrice;
@@ -43,6 +45,8 @@ pub use std_dev_sizes::StdDevSizes;
 pub use time_velocity::TimeVelocity;
 pub use trades::Trades;
 pub use volume::Volume;
+pub use volume_buys::VolumeBuys;
+pub use volume_sells::VolumeSells;
 pub use weighted_price::WeightedPrice;
 
 #[cfg(test)]

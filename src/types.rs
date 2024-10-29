@@ -62,6 +62,6 @@ pub trait TakerTrade {
 
     /// Number of shares or contracts in this trade.
     /// A negative value indicates
-    /// that the trade was executed on the bid (market sell order).
+    /// that the trade was a sell order, taking liquidity from the bid.
     fn size(&self) -> f64;
 }
