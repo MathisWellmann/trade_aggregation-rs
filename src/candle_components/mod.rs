@@ -23,6 +23,7 @@ mod trades;
 mod volume;
 mod volume_buys;
 mod volume_sells;
+mod vpin;
 mod weighted_price;
 
 pub use average_price::AveragePrice;
@@ -47,6 +48,7 @@ pub use trades::Trades;
 pub use volume::Volume;
 pub use volume_buys::VolumeBuys;
 pub use volume_sells::VolumeSells;
+pub use vpin::Vpin;
 pub use weighted_price::WeightedPrice;
 
 #[cfg(test)]

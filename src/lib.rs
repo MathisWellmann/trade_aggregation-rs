@@ -1,9 +1,3 @@
-#![deny(
-    missing_docs,
-    rustdoc::missing_crate_level_docs,
-    missing_debug_implementations
-)]
-#![warn(clippy::all)]
 #![doc = include_str!("../README.md")]
 
 //! This crate is used for aggregating raw trade data into candles using various methods

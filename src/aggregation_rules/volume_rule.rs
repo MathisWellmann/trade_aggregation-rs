@@ -1,18 +1,17 @@
 use crate::{AggregationRule, By, Error, ModularCandle, Result, TakerTrade};
 
-/// Creates candles every n units of volume traded
+/// Creates candles every n units of volume traded.
+/// If the last trade needed to complete a bucket is for a size greater than required,
+/// the excess size is given to the next bucket
 #[derive(Debug, Clone)]
 pub struct VolumeRule {
-    // If true, the cumulative volume needs to be reset
-    init: bool,
-
-    // See docs on By enum for details
+    /// See docs on By enum for details
     by: By,
 
-    // cumulative volume
+    /// cumulative volume
     cum_vol: f64,
 
-    // The theshold volume the candle needs to have before finishing it
+    /// The theshold volume the candle needs to have before finishing it
     threshold_vol: f64,
 }
 
@@ -23,7 +22,6 @@ impl VolumeRule {
             return Err(Error::InvalidParam);
         }
         Ok(Self {
-            init: true,
             by,
             cum_vol: 0.0,
             threshold_vol,
@@ -37,20 +35,17 @@ where
     T: TakerTrade,
 {
     fn should_trigger(&mut self, trade: &T, _candle: &C) -> bool {
-        if self.init {
-            self.cum_vol = 0.0;
-            self.init = false;
+        if self.cum_vol >= self.threshold_vol {
+            // If the last trade needed to complete a bucket is for a size greater than required,
+            // the excess size is given to the next bucket
+            self.cum_vol = self.cum_vol - self.threshold_vol;
+            debug_assert!(self.cum_vol >= 0.0);
         }
         self.cum_vol += match self.by {
             By::Quote => trade.size().abs(),
             By::Base => trade.size().abs() / trade.price(),
         };
 
-        let should_trigger = self.cum_vol > self.threshold_vol;
-        if should_trigger {
-            self.init = true;
-        }
-
-        should_trigger
+        self.cum_vol >= self.threshold_vol
     }
 }

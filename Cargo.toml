@@ -1,6 +1,6 @@
 [package]
 name = "trade_aggregation"
-version = "12.0.2"
+version = "12.0.3"
 authors = ["MathisWellmann <wellmannmathis@gmail.com>"]
 edition = "2021"
 license-file = "LICENSE"
@@ -10,6 +10,14 @@ readme = "README.md"
 keywords = ["trading", "candles"]
 categories = ["algorithms"]
 exclude = ["/img", "/.idea"]
+
+[workspace.lints.rust]
+unused_imports = "deny"
+missing_docs = "deny"
+dead_code = "deny"
+
+[workspace.lints.clippy]
+all = "deny"
 
 [dependencies]
 csv = "1"
