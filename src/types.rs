@@ -85,7 +85,7 @@ impl MillisecondPeriod {
     /// Try to create the `MillisecondPeriod` from millisecond units.
     /// # Panics:
     /// If `millis` is zero, the contract was violated.
-    pub fn from_non_zero(millis: u64) -> Self {
+    pub const fn from_non_zero(millis: u64) -> Self {
         assert!(millis > 0, "`millis` must be non-zero that was the deal");
         Self(millis)
     }
