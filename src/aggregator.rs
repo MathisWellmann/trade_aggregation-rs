@@ -133,7 +133,7 @@ mod tests {
                 candle_counter += 1;
             }
         }
-        assert_eq!(candle_counter, 5704);
+        assert_eq!(candle_counter, 5953);
     }
 
     #[test]

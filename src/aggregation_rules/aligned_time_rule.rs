@@ -1,4 +1,4 @@
-use crate::{aggregation_rules::TimestampResolution, AggregationRule, ModularCandle, TakerTrade};
+use crate::{AggregationRule, MillisecondPeriod, ModularCandle, TakerTrade, TimestampResolution};
 
 /// The classic time based aggregation rule,
 /// creating a new candle every n seconds.  The time trigger is aligned such that
@@ -13,7 +13,7 @@ pub struct AlignedTimeRule {
     // The period for the candle in seconds
     // constants can be used nicely here from constants.rs
     // e.g.: M1 -> 1 minute candles
-    period_s: i64,
+    period_in_units_from_trade: i64,
 }
 
 impl AlignedTimeRule {
@@ -24,17 +24,20 @@ impl AlignedTimeRule {
     /// period_s: How many seconds a candle will contain
     /// ts_res: The resolution each Trade timestamp will have
     ///
-    pub fn new(period_s: i64, ts_res: TimestampResolution) -> Self {
-        let ts_multiplier = match ts_res {
-            TimestampResolution::Second => 1,
-            TimestampResolution::Millisecond => 1_000,
-            TimestampResolution::Microsecond => 1_000_000,
-            TimestampResolution::Nanosecond => 1_000_000_000,
+    pub fn new(
+        period_ms: MillisecondPeriod,
+        trade_timestamp_resolution: TimestampResolution,
+    ) -> Self {
+        use TimestampResolution::*;
+        let ts_multiplier = match trade_timestamp_resolution {
+            Millisecond => 1,
+            Microsecond => 1_000,
+            Nanosecond => 1_000_000,
         };
 
         Self {
             reference_timestamp: 0,
-            period_s: period_s * ts_multiplier,
+            period_in_units_from_trade: period_ms.get() as i64 * ts_multiplier,
         }
     }
 
@@ -43,7 +46,7 @@ impl AlignedTimeRule {
     /// each period.
     #[must_use]
     pub fn aligned_timestamp(&self, timestamp: i64) -> i64 {
-        timestamp - (timestamp % self.period_s)
+        timestamp - (timestamp % self.period_in_units_from_trade)
     }
 }
 
@@ -58,9 +61,14 @@ where
             return false;
         }
 
-        let should_trigger = trade.timestamp() - self.reference_timestamp >= self.period_s;
+        let should_trigger =
+            trade.timestamp() - self.reference_timestamp >= self.period_in_units_from_trade;
         if should_trigger {
-            self.reference_timestamp = self.aligned_timestamp(trade.timestamp());
+            // Advance the trigger timestamp to the next period.
+            // If the period is too small, then the trade timestamps will out-pace and always trigger.
+            // Alternatively doing `self.reference_timestamp = self.aligned_timestamp(trade.timestamp())` will cause drift
+            // and not produce enough samples.
+            self.reference_timestamp = self.reference_timestamp + self.period_in_units_from_trade
         }
 
         should_trigger

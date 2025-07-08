@@ -43,7 +43,6 @@ impl<T: TakerTrade> CandleComponentUpdate<T> for TimeVelocity {
     #[inline(always)]
     fn update(&mut self, trade: &T) {
         let div = match trade.timestamp_resolution() {
-            TimestampResolution::Second => 1,
             TimestampResolution::Millisecond => 1_000,
             TimestampResolution::Microsecond => 1_000_000,
             TimestampResolution::Nanosecond => 1_000_000_000,
