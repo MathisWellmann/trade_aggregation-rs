@@ -105,6 +105,7 @@ mod tests {
         let mut aggregator = GenericAggregator::<MyCandle, AlignedTimeRule, Trade>::new(
             AlignedTimeRule::new(M15, TimestampResolution::Millisecond),
             false,
+            MyCandle::default,
         );
         let candles = aggregate_all_trades(&trades, &mut aggregator);
         assert_eq!(candles.len(), 396);
@@ -126,6 +127,7 @@ mod tests {
         let mut aggregator = GenericAggregator::<MyCandle, AlignedTimeRule, Trade>::new(
             AlignedTimeRule::new(M1, TimestampResolution::Microsecond),
             false,
+            MyCandle::default,
         );
         let candles = aggregate_all_trades(&trades, &mut aggregator);
 
@@ -167,6 +169,7 @@ mod tests {
         let mut aggregator = GenericAggregator::<OhlcCandle, AlignedTimeRule, Trade>::new(
             AlignedTimeRule::new(M1, TimestampResolution::Millisecond),
             false,
+            OhlcCandle::default,
         );
         let candles = aggregate_all_trades(&trades, &mut aggregator);
         assert_eq!(candles.len(), 2);
@@ -204,6 +207,7 @@ mod tests {
         let mut aggregator = GenericAggregator::<OhlcCandle, AlignedTimeRule, Trade>::new(
             AlignedTimeRule::new(M1, TimestampResolution::Millisecond),
             false,
+            OhlcCandle::default,
         );
         let candles = aggregate_all_trades(&trades, &mut aggregator);
         assert_eq!(candles.len(), 2);

@@ -53,9 +53,16 @@ where
     ///     Examples uses include ensuring the close and open price of the current and next candle are equal.
     ///     If that's desired, set the field to true during construction of `Self`.
     ///     E.g on Tradingview the time aggregation would have this set to `false`, which may create gaps between close and open of subsequent candles.
-    pub fn new(aggregation_rule: R, include_trade_that_triggered_rule: bool) -> Self {
+    /// `init_candle`: this is a zero argument closure which is used to initialize the candle that is being built up by
+    ///     the aggregator until it is triggered.  This allows users to embed non-default state into the aggregation process, such
+    ///     as tick size for binning aggregators.
+    pub fn new<F: Fn() -> C>(
+        aggregation_rule: R,
+        include_trade_that_triggered_rule: bool,
+        init_candle: F,
+    ) -> Self {
         Self {
-            candle: Default::default(),
+            candle: init_candle(),
             aggregation_rule,
             include_trade_that_triggered_rule,
             _trade_type: PhantomData,
@@ -120,7 +127,8 @@ mod tests {
             .expect("Could not load trades from file!");
 
         let rule = TimeRule::new(M1, TimestampResolution::Millisecond);
-        let mut a = GenericAggregator::<MyCandle, TimeRule, Trade>::new(rule, false);
+        let mut a =
+            GenericAggregator::<MyCandle, TimeRule, Trade>::new(rule, false, MyCandle::default);
 
         let mut candle_counter: usize = 0;
         for t in trades.iter() {

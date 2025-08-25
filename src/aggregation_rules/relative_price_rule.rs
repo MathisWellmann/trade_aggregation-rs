@@ -125,7 +125,8 @@ mod tests {
         // 0.5% candles
         const THRESHOLD: f64 = 0.005;
         let rule = RelativePriceRule::new(0.01).unwrap();
-        let mut aggregator = GenericAggregator::<OhlcCandle, _, Trade>::new(rule, false);
+        let mut aggregator =
+            GenericAggregator::<OhlcCandle, _, Trade>::new(rule, false, OhlcCandle::default);
         let candles = aggregate_all_trades(&trades, &mut aggregator);
         assert!(!candles.is_empty());
 
@@ -141,7 +142,8 @@ mod tests {
 
         const THRESHOLD: f64 = 0.005;
         let rule = RelativePriceRule::new(THRESHOLD).unwrap();
-        let mut aggregator = GenericAggregator::<OhlcCandle, _, Trade>::new(rule, false);
+        let mut aggregator =
+            GenericAggregator::<OhlcCandle, _, Trade>::new(rule, false, OhlcCandle::default);
         let candles = aggregate_all_trades(&trades, &mut aggregator);
         println!("got {} candles", candles.len());
 

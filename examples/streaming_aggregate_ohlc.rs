@@ -20,7 +20,8 @@ fn main() {
 
     // specify the aggregation rule to be time based
     let time_rule = TimeRule::new(M1, TimestampResolution::Millisecond);
-    let mut aggregator = GenericAggregator::<MyCandle, TimeRule, Trade>::new(time_rule, false);
+    let mut aggregator =
+        GenericAggregator::<MyCandle, TimeRule, Trade>::new(time_rule, false, MyCandle::default);
 
     for t in &trades {
         if let Some(candle) = aggregator.update(t) {
