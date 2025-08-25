@@ -78,6 +78,7 @@ mod tests {
         let mut aggregator = GenericAggregator::<OhlcCandle, TimeRule, Trade>::new(
             TimeRule::new(M15, TimestampResolution::Millisecond),
             false,
+            OhlcCandle::default,
         );
         let candles = aggregate_all_trades(&trades, &mut aggregator);
         println!("got {} candles", candles.len());
@@ -92,6 +93,7 @@ mod tests {
         let mut aggregator = GenericAggregator::<OhlcCandle, TimeRule, Trade>::new(
             TimeRule::new(M15, TimestampResolution::Millisecond),
             false,
+            OhlcCandle::default,
         );
         let candles = aggregate_all_trades(&trades, &mut aggregator);
         assert_eq!(candles.len(), 396);
@@ -99,6 +101,7 @@ mod tests {
         let mut aggregator = GenericAggregator::<OhlcCandle, TimeRule, Trade>::new(
             TimeRule::new(M5, TimestampResolution::Millisecond),
             false,
+            OhlcCandle::default,
         );
         let candles = aggregate_all_trades(&trades, &mut aggregator);
         assert_eq!(candles.len(), 1190);
@@ -106,6 +109,7 @@ mod tests {
         let mut aggregator = GenericAggregator::<OhlcCandle, TimeRule, Trade>::new(
             TimeRule::new(H1, TimestampResolution::Millisecond),
             false,
+            OhlcCandle::default,
         );
         let candles = aggregate_all_trades(&trades, &mut aggregator);
         assert_eq!(candles.len(), 99);
@@ -138,6 +142,7 @@ mod tests {
         let mut aggregator = GenericAggregator::<OhlcCandle, TimeRule, Trade>::new(
             TimeRule::new(M15, TimestampResolution::Millisecond),
             false,
+            OhlcCandle::default,
         );
         let candles = aggregate_all_trades(&trades_ms, &mut aggregator);
         assert_eq!(candles.len(), 396);
@@ -145,6 +150,7 @@ mod tests {
         let mut aggregator = GenericAggregator::<OhlcCandle, TimeRule, Trade>::new(
             TimeRule::new(M15, TimestampResolution::Microsecond),
             false,
+            OhlcCandle::default,
         );
         let candles = aggregate_all_trades(&trades_micros, &mut aggregator);
         assert_eq!(candles.len(), 396);
@@ -152,6 +158,7 @@ mod tests {
         let mut aggregator = GenericAggregator::<OhlcCandle, TimeRule, Trade>::new(
             TimeRule::new(M15, TimestampResolution::Nanosecond),
             false,
+            OhlcCandle::default,
         );
         let candles = aggregate_all_trades(&trades_ns, &mut aggregator);
         assert_eq!(candles.len(), 396);
