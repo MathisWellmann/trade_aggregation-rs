@@ -1,0 +1,64 @@
+name: "Rust checks"
+
+on:
+  pull_request:
+    branches: [ main ]
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  check:
+    # Target self-hosted runner by label
+    runs-on: [ nixos ]
+
+    # SECURITY: Require manual approval for external PRs
+    if: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
+
+    steps:
+      - name: checkout-code
+        uses: actions/checkout@v4
+
+      - name: cargo-check
+        env:
+          RUSTFLAGS: "-D warnings" # Make all warnings deny.
+        run: nix develop --command cargo check
+
+      - name: cargo-test
+        env:
+          RUSTFLAGS: "-D warnings" # Make all warnings deny.
+        run: nix develop --command cargo test
+
+      # TODO: make clippy work
+      # - name: cargo-clippy
+      #   env:
+      #     RUSTFLAGS: "-D warnings" # Make all warnings deny.
+      #   run: nix develop --command cargo clippy
+
+      - name: cargo-bench
+        run: nix develop --command cargo bench --no-run # Just to make sure it compiles
+
+      - name: cargo-fmt
+        run: nix develop --command cargo fmt --check
+
+      - name: cargo-doc
+        run: nix develop --command cargo doc
+
+      - name: nix-flake-check
+        run: nix flake check
+
+      - name: nix-deadnix
+        run: nix develop --command deadnix
+
+      - name: nix-statix
+        run: nix develop --command statix check
+
+      - name: nix-alejandra
+        run: nix develop --command alejandra --check .
+
+      # TODO: enable hongdown
+      # - name: markdown-formatting
+      #   run: nix develop --command hongdown --check .
+      
+
