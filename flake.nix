@@ -19,15 +19,13 @@
         pkgs = import nixpkgs {
           inherit system overlays;
         };
-        rust = (
-          pkgs.rust-bin.stable.latest.default.override {
-            extensions = [
-              "rust-src"
-              "rust-analyzer"
-            ];
-            targets = ["x86_64-unknown-linux-gnu"];
-          }
-        );
+        rust = pkgs.rust-bin.stable.latest.default.override {
+          extensions = [
+            "rust-src"
+            "rust-analyzer"
+          ];
+          targets = ["x86_64-unknown-linux-gnu"];
+        };
         buildInputs = with pkgs; [
           openssl
           protobuf
