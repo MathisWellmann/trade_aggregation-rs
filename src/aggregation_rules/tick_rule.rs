@@ -55,8 +55,11 @@ mod tests {
     fn tick_rule() {
         let trades = load_trades_from_csv("data/Bitmex_XBTUSD_1M.csv").unwrap();
 
-        let mut aggregator =
-            GenericAggregator::<OhlcCandle, TickRule, Trade>::new(TickRule::new(1000), false);
+        let mut aggregator = GenericAggregator::<OhlcCandle, TickRule, Trade>::new(
+            TickRule::new(1000),
+            false,
+            OhlcCandle::default,
+        );
         let candles = aggregate_all_trades(&trades, &mut aggregator);
         // As there are 1 million trades in the test data, this will create 1000 candles
         assert_eq!(candles.len(), 1000);
