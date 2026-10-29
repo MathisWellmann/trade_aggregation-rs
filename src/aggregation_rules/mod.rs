@@ -1,3 +1,4 @@
+mod adaptive;
 mod aggregation_rule_trait;
 mod aligned_time_rule;
 mod combinators;
@@ -9,6 +10,7 @@ mod volume_rule;
 #[cfg(test)]
 mod test_utils;
 
+pub use adaptive::{Adaptive, ThresholdRule};
 pub use aggregation_rule_trait::AggregationRule;
 pub use aligned_time_rule::*;
 pub use combinators::{AllRule, AnyRule, MaxDuration, MinDuration};

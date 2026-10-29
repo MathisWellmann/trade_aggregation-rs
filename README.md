@@ -36,6 +36,13 @@ Rules can be combined:
 `MinDuration<R>`      | Keep every candle open for at least a given period, so bursts do not create a flood of tiny candles
 `MaxDuration<R>`      | Close a candle at the first trade more than a given period after it opened, so quiet markets still produce candles
 
+`Adaptive<R>` recalibrates the threshold of a rule (any rule that implements `ThresholdRule`) after each of its candles,
+so that candles last about a target duration whatever the activity of the market.
+A fixed threshold drifts with the regime: a candle of 20000 trades can last two hours in a quiet year and three minutes in a busy one.
+`Adaptive` keeps an exponentially weighted moving average of the activity per millisecond
+and sets the threshold to that average times the target duration, clamped to given bounds.
+Combine it with a duration bound as `MaxDuration<Adaptive<R>>`.
+
 When a combinator closes a candle that an inner rule did not trigger, it calls `AggregationRule::reset` on that rule,
 so that every rule starts the next candle from scratch.
 

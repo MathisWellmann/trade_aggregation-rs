@@ -1,4 +1,4 @@
-use crate::{AggregationRule, ModularCandle, TakerTrade};
+use crate::{AggregationRule, Error, ModularCandle, Result, TakerTrade, ThresholdRule};
 
 /// Creates candles every n ticks
 #[derive(Debug, Clone)]
@@ -45,6 +45,22 @@ where
 
     fn reset(&mut self) {
         self.init = true;
+    }
+}
+
+impl ThresholdRule for TickRule {
+    fn threshold(&self) -> f64 {
+        self.n_ticks as f64
+    }
+
+    /// Rounds `threshold` to whole trades, at least one.
+    fn set_threshold(&mut self, threshold: f64) -> Result<()> {
+        if !threshold.is_finite() || threshold <= 0.0 {
+            return Err(Error::InvalidParam);
+        }
+        // `as` saturates for thresholds beyond `usize::MAX`.
+        self.n_ticks = (threshold.round() as usize).max(1);
+        Ok(())
     }
 }
 
