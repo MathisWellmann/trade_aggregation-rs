@@ -1,6 +1,6 @@
 //! The parts shared by the order flow bars of López de Prado
 //! (Advances in Financial Machine Learning, ch. 2.3.2):
-//! [`ImbalanceRule`](crate::ImbalanceRule) and the run bars that build on the same parts.
+//! [`ImbalanceRule`](crate::ImbalanceRule) and [`RunRule`](crate::RunRule).
 
 use crate::{By, Error, Result, TakerTrade};
 
@@ -129,7 +129,7 @@ impl FlowBarParams {
     /// Without a floor, balanced flow drives the expected imbalance and thus the threshold to zero,
     /// and every trade closes a bar. With the floor, a balanced market produces bars of about
     /// `(min_flow_fraction * expected_ticks)^2` trades, the time a random walk needs to reach the threshold.
-    /// Run bars expect at least half the average flow anyway and ignore it.
+    /// A [`RunRule`](crate::RunRule) expects at least half the average flow anyway and ignores it.
     ///
     /// # Errors:
     /// [`Error::InvalidParam`] if `min_flow_fraction` is not in `(0, 1]`.
