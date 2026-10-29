@@ -30,6 +30,7 @@ The pre-existing rules in this crate include:
 `RangeRule`         | Create range bars: close a candle when its (high - low) / open reaches n basis points
 `DirectionalChangeRule` | Close a candle at every directional change: a reversal of n basis points from the last extreme ("intrinsic time")
 `CusumRule`         | Close a candle when a symmetric CUSUM filter on log returns reaches n basis points (a drift in one direction)
+`VolatilityRule`    | Create volatility bars: close a candle when the sum of absolute log returns reaches n basis points
 
 Rules can be combined:
 'Combinator'          | Description
