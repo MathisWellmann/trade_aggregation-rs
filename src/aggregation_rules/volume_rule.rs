@@ -1,4 +1,4 @@
-use crate::{AggregationRule, By, Error, ModularCandle, Result, TakerTrade};
+use crate::{AggregationRule, By, Error, ModularCandle, Result, TakerTrade, ThresholdRule};
 
 /// Creates candles every n units of volume traded.
 /// If the last trade needed to complete a bucket is for a size greater than required,
@@ -51,5 +51,24 @@ where
 
     fn reset(&mut self) {
         self.cum_vol = 0.0;
+    }
+}
+
+impl ThresholdRule for VolumeRule {
+    fn threshold(&self) -> f64 {
+        self.threshold_vol
+    }
+
+    fn set_threshold(&mut self, threshold: f64) -> Result<()> {
+        if !threshold.is_finite() || threshold <= 0.0 {
+            return Err(Error::InvalidParam);
+        }
+        // A finished bucket is only emptied on the next trade:
+        // empty it with the old threshold, so the excess carries over unchanged.
+        if self.cum_vol >= self.threshold_vol {
+            self.cum_vol -= self.threshold_vol;
+        }
+        self.threshold_vol = threshold;
+        Ok(())
     }
 }

@@ -1,4 +1,4 @@
-use crate::{AggregationRule, Error, ModularCandle, Result, TakerTrade};
+use crate::{AggregationRule, Error, ModularCandle, Result, TakerTrade, ThresholdRule};
 
 /// Creates Candles once the price changed by a give relative absolute price delta
 #[derive(Debug, Clone)]
@@ -50,6 +50,20 @@ where
     /// The next trade becomes the reference price.
     fn reset(&mut self) {
         self.init = true;
+    }
+}
+
+impl ThresholdRule for RelativePriceRule {
+    fn threshold(&self) -> f64 {
+        self.threshold_fraction
+    }
+
+    fn set_threshold(&mut self, threshold: f64) -> Result<()> {
+        if !threshold.is_finite() || threshold <= 0.0 {
+            return Err(Error::InvalidParam);
+        }
+        self.threshold_fraction = threshold;
+        Ok(())
     }
 }
 
