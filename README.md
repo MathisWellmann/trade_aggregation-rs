@@ -89,7 +89,7 @@ To use this crate in your project, add the following to your Cargo.toml:
 
 ```toml
 [dependencies]
-trade_aggregation = "12"
+trade_aggregation = "13"
 ```
 
 Lets aggregate all trades into time based 1 minute candles, consisting of open, high, low and close information.
