@@ -28,6 +28,7 @@ The pre-existing rules in this crate include:
 `TickRule`          | Create candles every n ticks
 `RelativePriceRule` | Create candles with every n basis points price movement (Renko)
 `RangeRule`         | Create range bars: close a candle when its (high - low) / open reaches n basis points
+`DirectionalChangeRule` | Close a candle at every directional change: a reversal of n basis points from the last extreme ("intrinsic time")
 
 Rules can be combined:
 'Combinator'          | Description
