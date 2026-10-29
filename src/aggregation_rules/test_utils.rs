@@ -11,6 +11,15 @@ pub(crate) fn trade(timestamp: i64, price: f64, size: f64) -> Trade {
     }
 }
 
+/// Trades one millisecond apart at the given prices, each buying one unit.
+pub(crate) fn trades_at_prices(prices: &[f64]) -> Vec<Trade> {
+    prices
+        .iter()
+        .zip(0..)
+        .map(|(price, ts)| trade(ts, *price, 1.0))
+        .collect()
+}
+
 /// The indices of the trades on which `rule` triggers.
 pub(crate) fn trigger_indices<R: AggregationRule<OhlcCandle, Trade>>(
     rule: &mut R,
