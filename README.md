@@ -28,8 +28,20 @@ The pre-existing rules in this crate include:
 `TickRule`          | Create candles every n ticks
 `RelativePriceRule` | Create candles with every n basis points price movement (Renko)
 
+Rules can be combined:
+'Combinator'          | Description
+----------------------|-------------
+`AnyRule<A, B>`       | Close the candle when either rule triggers, e.g. dollar volume or volatility, whichever comes first ("hybrid bars")
+`AllRule<A, B>`       | Close the candle once both rules have triggered since it opened
+`MinDuration<R>`      | Keep every candle open for at least a given period, so bursts do not create a flood of tiny candles
+`MaxDuration<R>`      | Close a candle at the first trade more than a given period after it opened, so quiet markets still produce candles
+
+When a combinator closes a candle that an inner rule did not trigger, it calls `AggregationRule::reset` on that rule,
+so that every rule starts the next candle from scratch.
+
 If these don't satisfy your desires, just create your own by implementing the [`AggregationRule`](src/aggregation_rules/aggregation_rule_trait.rs) trait,
 and you can plug and play it into the [`GenericAggregator`](src/aggregator.rs).
+Implement `reset` as well if your rule accumulates something per candle and should work inside the combinators.
 
 ### `CandleComponent`:
 These pre-existing 'CandleComponents' exist out of the box:

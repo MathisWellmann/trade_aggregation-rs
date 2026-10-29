@@ -77,6 +77,17 @@ pub enum TimestampResolution {
     Nanosecond,
 }
 
+impl TimestampResolution {
+    /// The number of timestamp units in one millisecond.
+    pub(crate) const fn units_per_millisecond(self) -> i64 {
+        match self {
+            Self::Millisecond => 1,
+            Self::Microsecond => 1_000,
+            Self::Nanosecond => 1_000_000,
+        }
+    }
+}
+
 /// A period measured in milliseconds which must be non-zero.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct MillisecondPeriod(u64);
@@ -102,6 +113,16 @@ impl MillisecondPeriod {
     /// Get the inner value
     pub fn get(self) -> u64 {
         self.0
+    }
+
+    /// The period in timestamp units of the given resolution,
+    /// saturating at `i64::MAX` for periods no trade data can span.
+    pub(crate) fn in_units(self, resolution: TimestampResolution) -> i64 {
+        let units = i64::try_from(self.0)
+            .unwrap_or(i64::MAX)
+            .saturating_mul(resolution.units_per_millisecond());
+        debug_assert!(units > 0);
+        units
     }
 }
 

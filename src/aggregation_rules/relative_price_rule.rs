@@ -46,6 +46,11 @@ where
         }
         false
     }
+
+    /// The next trade becomes the reference price.
+    fn reset(&mut self) {
+        self.init = true;
+    }
 }
 
 #[cfg(test)]

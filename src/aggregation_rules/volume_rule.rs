@@ -48,4 +48,8 @@ where
 
         self.cum_vol >= self.threshold_vol
     }
+
+    fn reset(&mut self) {
+        self.cum_vol = 0.0;
+    }
 }

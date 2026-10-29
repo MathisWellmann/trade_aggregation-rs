@@ -42,6 +42,10 @@ where
         }
         false
     }
+
+    fn reset(&mut self) {
+        self.init = true;
+    }
 }
 
 #[cfg(test)]
