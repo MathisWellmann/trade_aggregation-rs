@@ -32,6 +32,7 @@ The pre-existing rules in this crate include:
 `CusumRule`         | Close a candle when a symmetric CUSUM filter on log returns reaches n basis points (a drift in one direction)
 `VolatilityRule`    | Create volatility bars: close a candle when the sum of absolute log returns reaches n basis points
 `SignedVolumeRule`  | Create order flow ("delta") bars: close a candle when the net taker volume, buys minus sells, reaches n units
+`ImbalanceRule`     | Create tick, volume or dollar imbalance bars (López de Prado): close a candle when the net order flow exceeds the expected bar length times the expected imbalance per trade
 
 Rules can be combined:
 'Combinator'          | Description
@@ -47,6 +48,12 @@ A fixed threshold drifts with the regime: a candle of 20000 trades can last two 
 `Adaptive` keeps an exponentially weighted moving average of the activity per millisecond
 and sets the threshold to that average times the target duration, clamped to given bounds.
 Combine it with a duration bound as `MaxDuration<Adaptive<R>>`.
+
+The imbalance bars learn their threshold from the market, which is known to be unstable:
+with balanced flow the expected imbalance goes to zero and bars collapse to single trades,
+and a learned bar length tends to run to its bounds.
+`FlowBarParams` therefore keeps the expected bar length fixed by default, floors the expected imbalance,
+and bounds a learned bar length; `Adaptive` can calibrate the expected bar length to a target duration instead.
 
 When a combinator closes a candle that an inner rule did not trigger, it calls `AggregationRule::reset` on that rule,
 so that every rule starts the next candle from scratch.
