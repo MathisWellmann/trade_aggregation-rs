@@ -31,6 +31,7 @@ The pre-existing rules in this crate include:
 `DirectionalChangeRule` | Close a candle at every directional change: a reversal of n basis points from the last extreme ("intrinsic time")
 `CusumRule`         | Close a candle when a symmetric CUSUM filter on log returns reaches n basis points (a drift in one direction)
 `VolatilityRule`    | Create volatility bars: close a candle when the sum of absolute log returns reaches n basis points
+`SignedVolumeRule`  | Create order flow ("delta") bars: close a candle when the net taker volume, buys minus sells, reaches n units
 
 Rules can be combined:
 'Combinator'          | Description
