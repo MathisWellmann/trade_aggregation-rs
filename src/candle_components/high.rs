@@ -15,7 +15,7 @@ impl CandleComponent<f64> for High {
 
     #[inline(always)]
     fn reset(&mut self) {
-        self.high = std::f64::MIN;
+        self.high = f64::MIN;
     }
 }
 

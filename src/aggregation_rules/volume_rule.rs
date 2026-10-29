@@ -38,7 +38,7 @@ where
         if self.cum_vol >= self.threshold_vol {
             // If the last trade needed to complete a bucket is for a size greater than required,
             // the excess size is given to the next bucket
-            self.cum_vol = self.cum_vol - self.threshold_vol;
+            self.cum_vol -= self.threshold_vol;
             debug_assert!(self.cum_vol >= 0.0);
         }
         self.cum_vol += match self.by {

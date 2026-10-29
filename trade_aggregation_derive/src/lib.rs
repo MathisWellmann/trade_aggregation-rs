@@ -52,7 +52,7 @@ fn phantom_path_to_type(path: &syn::Path) -> Option<Ident> {
                 Some(GenericArgument::Type(Type::Path(TypePath {
                     path: syn::Path { segments: segs, .. },
                     ..
-                }))) => segs.first().and_then(|x| Some(x.ident.clone())),
+                }))) => segs.first().map(|x| x.ident.clone()),
                 _ => None,
             }
         }
@@ -83,15 +83,13 @@ fn impl_candle_macro(ast: &syn::DeriveInput) -> TokenStream {
         } = c
         {
             if ident.clone().unwrap().to_string().as_str() == "input" {
-                input_type = phantom_path_to_type(&p);
+                input_type = phantom_path_to_type(p);
+            } else if let Some(type_) = phantom_path_to_type(p) {
+                value_idents.push(ident);
+                value_types.push(type_);
             } else {
-                if let Some(type_) = phantom_path_to_type(&p) {
-                    value_idents.push(ident);
-                    value_types.push(type_);
-                } else {
-                    value_idents.push(ident);
-                    value_types.push(default_output_type.clone());
-                }
+                value_idents.push(ident);
+                value_types.push(default_output_type.clone());
             }
         }
     }

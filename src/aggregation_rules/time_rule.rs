@@ -55,7 +55,7 @@ where
             // If the period is too small, then the trade timestamps will out-pace and always trigger.
             // Alternatively doing `self.reference_timestamp = trade.timestamp()` will cause drift
             // and not produce enough samples.
-            self.reference_timestamp = self.reference_timestamp + self.period_in_units_from_trade;
+            self.reference_timestamp += self.period_in_units_from_trade;
         }
 
         should_trigger
