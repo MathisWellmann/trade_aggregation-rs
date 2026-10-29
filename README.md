@@ -33,6 +33,7 @@ The pre-existing rules in this crate include:
 `VolatilityRule`    | Create volatility bars: close a candle when the sum of absolute log returns reaches n basis points
 `SignedVolumeRule`  | Create order flow ("delta") bars: close a candle when the net taker volume, buys minus sells, reaches n units
 `ImbalanceRule`     | Create tick, volume or dollar imbalance bars (López de Prado): close a candle when the net order flow exceeds the expected bar length times the expected imbalance per trade
+`RunRule`           | Create tick, volume or dollar run bars (López de Prado): close a candle when one side's flow exceeds the expected bar length times the expected flow of that side
 
 Rules can be combined:
 'Combinator'          | Description
@@ -49,7 +50,7 @@ A fixed threshold drifts with the regime: a candle of 20000 trades can last two 
 and sets the threshold to that average times the target duration, clamped to given bounds.
 Combine it with a duration bound as `MaxDuration<Adaptive<R>>`.
 
-The imbalance bars learn their threshold from the market, which is known to be unstable:
+The imbalance and run bars learn their threshold from the market, which is known to be unstable:
 with balanced flow the expected imbalance goes to zero and bars collapse to single trades,
 and a learned bar length tends to run to its bounds.
 `FlowBarParams` therefore keeps the expected bar length fixed by default, floors the expected imbalance,
