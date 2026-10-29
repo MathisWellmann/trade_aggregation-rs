@@ -20,6 +20,24 @@ pub trait Aggregator<Candle, T: TakerTrade> {
     fn unfinished_candle(&self) -> &Candle;
 }
 
+/// Which candle receives the trade that triggers the `AggregationRule`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum TriggerTrade {
+    /// The trade opens the next candle and is not part of the candle it closes.
+    /// Every trade is counted once.
+    /// The close of a candle can differ from the open of the next one,
+    /// as with time candles on Tradingview.
+    NextCandle,
+    /// The trade is the last trade of the candle it closes.
+    /// The next candle opens with the trade after it.
+    /// Every trade is counted once and the close of a candle is the price of the triggering trade.
+    ClosingCandle,
+    /// The trade is the last trade of the candle it closes and the first trade of the next candle,
+    /// so the close of a candle equals the open of the next one.
+    /// Components that sum over trades (e.g. `Volume`, `NumTrades`) count this trade twice.
+    Both,
+}
+
 /// An `Aggregator` that is generic over
 /// the type of Candle being produced,
 /// as well as by which rule the candle is created
@@ -27,11 +45,7 @@ pub trait Aggregator<Candle, T: TakerTrade> {
 pub struct GenericAggregator<C, R, T> {
     candle: C,
     aggregation_rule: R,
-    // During some aggregations, the desired behaviour is that the trade that crosses the trigger boundary
-    // is included in both the current and next candle.
-    // Examples uses include ensuring the close and open price of the current and next candle are equal.
-    // If that's desired, set the field to true during construction of `Self`.
-    include_trade_that_triggered_rule: bool,
+    trigger_trade: TriggerTrade,
     _trade_type: PhantomData<T>,
 }
 
@@ -53,11 +67,29 @@ where
     ///     Examples uses include ensuring the close and open price of the current and next candle are equal.
     ///     If that's desired, set the field to true during construction of `Self`.
     ///     E.g on Tradingview the time aggregation would have this set to `false`, which may create gaps between close and open of subsequent candles.
+    ///     With `true`, components that sum over trades (e.g. `Volume`, `NumTrades`) count the triggering trade twice.
+    ///     `false` is [`TriggerTrade::NextCandle`] and `true` is [`TriggerTrade::Both`].
+    ///     Use [`Self::with_trigger_trade`] for [`TriggerTrade::ClosingCandle`], which counts every trade once.
     pub fn new(aggregation_rule: R, include_trade_that_triggered_rule: bool) -> Self {
+        let trigger_trade = if include_trade_that_triggered_rule {
+            TriggerTrade::Both
+        } else {
+            TriggerTrade::NextCandle
+        };
+        Self::with_trigger_trade(aggregation_rule, trigger_trade)
+    }
+
+    /// Create a new instance with a concrete aggregation rule
+    /// and an empty candle.
+    ///
+    /// # Arguments:
+    /// `aggregation_rule`: The rule that dictates when to trigger the creation of a new candle.
+    /// `trigger_trade`: Which candle receives the trade that triggers the rule.
+    pub fn with_trigger_trade(aggregation_rule: R, trigger_trade: TriggerTrade) -> Self {
         Self {
             candle: Default::default(),
             aggregation_rule,
-            include_trade_that_triggered_rule,
+            trigger_trade,
             _trade_type: PhantomData,
         }
     }
@@ -71,18 +103,22 @@ where
 {
     fn update(&mut self, trade: &T) -> Option<C> {
         if self.aggregation_rule.should_trigger(trade, &self.candle) {
-            // During some aggregations, the desired behaviour is that the trade that crosses the trigger boundary
-            // is included in both the current and next candle.
-            // Examples uses include ensuring the close and open price of the current and next candle are equal.
-            // If that's desired, set the field to true during construction of `Self`.
-            if self.include_trade_that_triggered_rule {
+            if matches!(
+                self.trigger_trade,
+                TriggerTrade::ClosingCandle | TriggerTrade::Both
+            ) {
                 self.candle.update(trade);
             }
             let candle = self.candle.clone();
 
             // Create a new candle.
             self.candle.reset();
-            self.candle.update(trade);
+            if matches!(
+                self.trigger_trade,
+                TriggerTrade::NextCandle | TriggerTrade::Both
+            ) {
+                self.candle.update(trade);
+            }
 
             return Some(candle);
         }
@@ -103,9 +139,100 @@ mod tests {
 
     use super::*;
     use crate::{
-        candle_components::{CandleComponent, CandleComponentUpdate, Close, NumTrades, Open},
-        load_trades_from_csv, ModularCandle, TimeRule, TimestampResolution, Trade, M1,
+        candle_components::{
+            CandleComponent, CandleComponentUpdate, Close, NumTrades, Open, Volume,
+        },
+        load_trades_from_csv, ModularCandle, TickRule, TimeRule, TimestampResolution, Trade, M1,
     };
+
+    #[derive(Default, Debug, Clone, Candle)]
+    struct CountingCandle {
+        open: Open,
+        close: Close,
+        volume: Volume,
+        num_trades: NumTrades<u32>,
+    }
+
+    /// Ten trades with prices 1..=10 and sizes 1..=10, alternating sides.
+    fn ten_trades() -> Vec<Trade> {
+        (1..=10)
+            .map(|i| Trade {
+                timestamp: i,
+                price: i as f64,
+                size: if i % 2 == 0 { i as f64 } else { -(i as f64) },
+            })
+            .collect()
+    }
+
+    /// Aggregate `ten_trades` into candles of three trades and return the
+    /// finished candles and the unfinished one.
+    fn aggregate_ten(trigger_trade: TriggerTrade) -> (Vec<CountingCandle>, CountingCandle) {
+        let mut a = GenericAggregator::<CountingCandle, TickRule, Trade>::with_trigger_trade(
+            TickRule::new(3),
+            trigger_trade,
+        );
+        let candles: Vec<CountingCandle> =
+            ten_trades().iter().filter_map(|t| a.update(t)).collect();
+        (candles, a.unfinished_candle().clone())
+    }
+
+    fn total_volume(candles: &[CountingCandle], unfinished: &CountingCandle) -> f64 {
+        candles.iter().map(|c| c.volume()).sum::<f64>() + unfinished.volume()
+    }
+
+    fn total_trades(candles: &[CountingCandle], unfinished: &CountingCandle) -> u32 {
+        candles.iter().map(|c| c.num_trades()).sum::<u32>() + unfinished.num_trades()
+    }
+
+    #[test]
+    fn trigger_trade_next_candle_counts_every_trade_once() {
+        let (candles, unfinished) = aggregate_ten(TriggerTrade::NextCandle);
+        assert_eq!(candles.len(), 3);
+        assert_eq!(total_trades(&candles, &unfinished), 10);
+        assert_eq!(total_volume(&candles, &unfinished), 55.0);
+        // The trigger trades 3, 6 and 9 open the next candle.
+        assert_eq!(candles[0].num_trades(), 2);
+        assert_eq!(candles[0].close(), 2.0);
+        assert_eq!(candles[1].open(), 3.0);
+        assert_eq!(candles[1].close(), 5.0);
+        assert_eq!(unfinished.open(), 9.0);
+    }
+
+    #[test]
+    fn trigger_trade_closing_candle_counts_every_trade_once() {
+        let (candles, unfinished) = aggregate_ten(TriggerTrade::ClosingCandle);
+        assert_eq!(candles.len(), 3);
+        assert_eq!(total_trades(&candles, &unfinished), 10);
+        assert_eq!(total_volume(&candles, &unfinished), 55.0);
+        // The trigger trades 3, 6 and 9 close their candle.
+        for (candle, close) in candles.iter().zip([3.0, 6.0, 9.0]) {
+            assert_eq!(candle.num_trades(), 3);
+            assert_eq!(candle.close(), close);
+        }
+        assert_eq!(candles[1].open(), 4.0);
+        assert_eq!(unfinished.num_trades(), 1);
+        assert_eq!(unfinished.open(), 10.0);
+    }
+
+    #[test]
+    fn trigger_trade_both_counts_the_trigger_trade_twice() {
+        let (candles, unfinished) = aggregate_ten(TriggerTrade::Both);
+        assert_eq!(candles.len(), 3);
+        assert_eq!(total_trades(&candles, &unfinished), 13);
+        assert_eq!(total_volume(&candles, &unfinished), 55.0 + 3.0 + 6.0 + 9.0);
+        for pair in candles.windows(2) {
+            assert_eq!(pair[0].close(), pair[1].open());
+        }
+        assert_eq!(candles[2].close(), unfinished.open());
+    }
+
+    #[test]
+    fn new_maps_the_bool_to_the_documented_trigger_trade() {
+        let a = GenericAggregator::<CountingCandle, TickRule, Trade>::new(TickRule::new(3), false);
+        assert_eq!(a.trigger_trade, TriggerTrade::NextCandle);
+        let a = GenericAggregator::<CountingCandle, TickRule, Trade>::new(TickRule::new(3), true);
+        assert_eq!(a.trigger_trade, TriggerTrade::Both);
+    }
 
     #[derive(Default, Debug, Clone, Candle)]
     struct MyCandle {

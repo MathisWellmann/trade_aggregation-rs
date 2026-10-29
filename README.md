@@ -153,6 +153,16 @@ impl ModularCandle<Trade> for MyCandle {
 }
 ```
 
+### Which candle gets the triggering trade
+The second argument of `GenericAggregator::new` decides which candle receives the trade that triggers the rule.
+`GenericAggregator::with_trigger_trade` takes a `TriggerTrade` instead:
+
+'TriggerTrade'  | The triggering trade is ... | Every trade counted once | Close equals next open
+----------------|-----------------------------|--------------------------|-----------------------
+`NextCandle`    | the first trade of the next candle (`new(rule, false)`) | yes | no
+`ClosingCandle` | the last trade of the closing candle | yes | no
+`Both`          | in both candles (`new(rule, true)`) | no: `Volume`, `NumTrades` etc. count it twice | yes
+
 See examples folder for more.
 Run examples using
 ```ignore
