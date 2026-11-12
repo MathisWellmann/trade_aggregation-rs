@@ -44,10 +44,13 @@ Rules can be combined:
 `MaxDuration<R>`      | Close a candle a given period after it opened, so quiet markets still produce candles
 
 `Adaptive<R>` recalibrates the threshold of a rule (any rule that implements `ThresholdRule`) after each of its candles,
-so that candles last about a target duration whatever the activity of the market.
+so that candles last a target duration on average whatever the activity of the market.
 A fixed threshold drifts with the regime: a candle of 20000 trades can last two hours in a quiet year and three minutes in a busy one.
-`Adaptive` keeps an exponentially weighted moving average of the activity per millisecond
-and sets the threshold to that average times the target duration, clamped to given bounds.
+`Adaptive` keeps an exponentially weighted moving average of the duration per unit of activity
+and sets the threshold to the activity of the target duration, clamped to given bounds.
+This aims at the arithmetic mean duration, e.g. about 1440 candles per day for a target of one minute.
+`with_scaling(Scaling::Diffusive)` is for rules whose activity grows with the square root of time,
+such as the net flow of a `SignedVolumeRule` or a price move ("adaptive delta bars").
 Combine it with a duration bound as `MaxDuration<Adaptive<R>>`.
 
 The imbalance and run bars learn their threshold from the market, which is known to be unstable:
