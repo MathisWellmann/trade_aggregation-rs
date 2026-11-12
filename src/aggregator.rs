@@ -151,6 +151,29 @@ where
         Self { gaps, ..self }
     }
 
+    /// Number the candles from `seq` on instead of from 0,
+    /// to continue the numbering of a series whose earlier candles another aggregator made.
+    ///
+    /// Prefer to restore a saved aggregator (`serde` feature): it continues the numbering
+    /// and also the state of the rule and the candle.
+    /// A fresh aggregator gives the same candles as the earlier one only from a point where
+    /// the candles do not depend on the past, e.g. the start of a period of an
+    /// [`AlignedTimeRule`](crate::AlignedTimeRule). Otherwise the same `seq` names another candle.
+    ///
+    /// # Panics:
+    /// If the aggregator has seen an event, because the numbers would then skip or repeat.
+    pub fn with_next_seq(self, seq: u64) -> Self {
+        assert!(
+            self.open_ts.is_none(),
+            "set the first seq before the first event"
+        );
+        assert_eq!(self.next_seq, 0, "no candle closes before the first event");
+        Self {
+            next_seq: seq,
+            ..self
+        }
+    }
+
     /// Close every candle whose [deadline](AggregationRule::deadline) is at or before `watermark`,
     /// e.g. on a heartbeat, when no event with a later timestamp can arrive anymore.
     ///
@@ -598,6 +621,62 @@ mod tests {
         assert_eq!(events, vec![2, 3, 3]);
         assert!(bars.iter().all(|b| b.kind() == BarKind::Rule));
         assert_eq!(a.next_seq(), 3);
+    }
+
+    #[test]
+    fn with_next_seq_numbers_from_the_given_seq() {
+        let mut a =
+            GenericAggregator::<CountingCandle, TickRule, Trade>::new(TickRule::new(3), false)
+                .with_next_seq(100);
+        assert_eq!(a.next_seq(), 100);
+        let mut bars = Vec::new();
+        for t in &ten_trades() {
+            a.update(t, &mut bars);
+        }
+        let seqs: Vec<u64> = bars.iter().map(Bar::seq).collect();
+        assert_eq!(seqs, vec![100, 101, 102]);
+        assert_eq!(a.next_seq(), 103);
+        assert_eq!(a.provisional(10).expect("a candle is open").seq(), 103);
+    }
+
+    #[test]
+    fn a_fresh_aggregator_continues_a_series_at_a_period_start() {
+        let rule = || crate::AlignedTimeRule::new(crate::MillisecondPeriod::from_non_zero(3));
+        let trades = ten_trades();
+        let mut whole = GenericAggregator::<CountingCandle, _, Trade>::new(rule(), false);
+        let mut expected = Vec::new();
+        for t in &trades {
+            whole.update(t, &mut expected);
+        }
+
+        // The first process stops before the trade at 6, the start of a period,
+        // and closes the period before it on a watermark.
+        let split = trades
+            .iter()
+            .position(|t| t.timestamp == 6)
+            .expect("a trade at 6");
+        let mut first = GenericAggregator::<CountingCandle, _, Trade>::new(rule(), false);
+        let mut bars = Vec::new();
+        for t in &trades[..split] {
+            first.update(t, &mut bars);
+        }
+        first.advance_to(6, &mut bars);
+        let mut second = GenericAggregator::<CountingCandle, _, Trade>::new(rule(), false)
+            .with_next_seq(first.next_seq());
+        for t in &trades[split..] {
+            second.update(t, &mut bars);
+        }
+        assert_eq!(expected.len(), 3);
+        assert_eq!(summary(&bars), summary(&expected));
+    }
+
+    #[test]
+    #[should_panic(expected = "before the first event")]
+    fn with_next_seq_needs_a_fresh_aggregator() {
+        let mut a =
+            GenericAggregator::<CountingCandle, TickRule, Trade>::new(TickRule::new(3), false);
+        a.update(&ten_trades()[0], &mut Vec::new());
+        let _ = a.with_next_seq(5);
     }
 
     #[test]
