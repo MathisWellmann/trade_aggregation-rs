@@ -30,6 +30,7 @@ serde = { version = "1", features = ["derive"], optional = true }
 chrono = { version = "0.4", features = ["serde"], optional = true }
 
 [dev-dependencies]
+bincode = { version = "2", features = ["serde"] }
 round = "0.1"
 criterion = "0.5"
 plotters = "0.3"

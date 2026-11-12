@@ -513,6 +513,8 @@ mod tests {
     }
 
     /// Trades with gaps of up to a few seconds, from a seeded xorshift generator.
+    /// The prices follow a random walk and the sizes vary, so that most values
+    /// have no short decimal form, as in market data.
     fn gappy_trades(n: usize, seed: u64) -> Vec<Trade> {
         let mut state = seed;
         let mut next = move || {
@@ -522,12 +524,18 @@ mod tests {
             state
         };
         let mut timestamp = 0;
+        let mut price = 117.3;
         (0..n)
             .map(|_| {
                 let gaps = [0, 1, 5, 40, 300, 2_500];
                 timestamp += gaps[(next() % 6) as usize];
-                let price = 100.0 + (next() % 50) as f64;
-                let size = if next() % 2 == 0 { 1.0 } else { -2.0 };
+                price *= 1.0 + ((next() % 2_001) as f64 - 1_000.0) * 1e-6;
+                let magnitude = 0.5 + (next() % 1_500) as f64 * 1e-3;
+                let size = if next() % 2 == 0 {
+                    magnitude
+                } else {
+                    -2.0 * magnitude
+                };
                 Trade {
                     timestamp,
                     price,
@@ -839,65 +847,133 @@ mod tests {
         println!("close: {}", my_candle.close());
     }
 
-    /// The candle of the checkpoint test, which serde can save.
+    /// The trade candle of the checkpoint test, which serde can save.
+    /// Most components keep `f64` state across candles.
     #[cfg(feature = "serde")]
     #[derive(Default, Debug, Clone, Candle, serde::Serialize, serde::Deserialize)]
     struct SavedCandle {
         open: Open,
+        high: crate::candle_components::High,
+        low: crate::candle_components::Low,
         close: Close,
         volume: Volume,
         num_trades: NumTrades<u32>,
+        vwap: crate::candle_components::WeightedPrice,
+        rv: crate::candle_components::RealizedVariance,
+        bv: crate::candle_components::BipowerVariation,
     }
 
-    /// Aggregate `trades`, saving the aggregator to JSON and restoring it before each trade
+    /// The trade and quote candle of the checkpoint test.
+    #[cfg(feature = "serde")]
+    #[derive(Default, Debug, Clone, Candle, serde::Serialize, serde::Deserialize)]
+    struct SavedFusedCandle {
+        close: Close,
+        rv: crate::candle_components::RealizedVariance,
+        mid_close: crate::candle_components::MidClose,
+        wap_rv: crate::candle_components::WapRealizedVariance,
+        spread: crate::candle_components::TimeWeightedSpread,
+        imbalance: crate::candle_components::TimeWeightedImbalance,
+        ofi: crate::candle_components::OrderFlowImbalance,
+        effective_spread: crate::candle_components::EffectiveSpread,
+    }
+
+    /// `gappy_trades` with a quote around the price before each trade.
+    #[cfg(feature = "serde")]
+    fn gappy_market_events(n: usize, seed: u64) -> Vec<crate::MarketEvent<Trade, crate::Quote>> {
+        gappy_trades(n, seed)
+            .into_iter()
+            .enumerate()
+            .flat_map(|(i, t)| {
+                let half_spread = t.price * 1e-4 * (1 + i % 3) as f64;
+                let quote = crate::Quote {
+                    timestamp: t.timestamp,
+                    bid_price: t.price - half_spread,
+                    bid_size: 1.0 + (i % 7) as f64 * 0.37,
+                    ask_price: t.price + half_spread,
+                    ask_size: 2.0 - (i % 5) as f64 * 0.29,
+                };
+                [
+                    crate::MarketEvent::Quote(quote),
+                    crate::MarketEvent::Trade(t),
+                ]
+            })
+            .collect()
+    }
+
+    /// Save `value` with bincode and restore it.
+    ///
+    /// Bincode stores every `f64` exactly. JSON is not enough: without its `float_roundtrip`
+    /// feature, serde_json parses some prices 1 ulp off, and the restored aggregator
+    /// then closes other candles. Short decimal prices hide this, real prices do not.
+    #[cfg(feature = "serde")]
+    fn bincode_round_trip<T>(value: &T) -> T
+    where
+        T: serde::Serialize + serde::de::DeserializeOwned,
+    {
+        let config = bincode::config::standard();
+        let bytes = bincode::serde::encode_to_vec(value, config).expect("serializable");
+        let (restored, read) =
+            bincode::serde::decode_from_slice(&bytes, config).expect("deserializable");
+        assert_eq!(read, bytes.len(), "the whole state is read");
+        restored
+    }
+
+    /// Aggregate `events`, saving and restoring the aggregator before each event
     /// for which `restore` is true.
     #[cfg(feature = "serde")]
-    fn run_with_restarts<R>(
+    fn run_with_restarts<C, R, E>(
         rule: R,
-        trades: &[Trade],
+        events: &[E],
         restore: impl Fn(usize) -> bool,
-    ) -> Vec<Bar<SavedCandle>>
+    ) -> Vec<Bar<C>>
     where
-        R: AggregationRule<Trade> + serde::Serialize + serde::de::DeserializeOwned,
+        C: ModularCandle<E> + serde::Serialize + serde::de::DeserializeOwned,
+        R: AggregationRule<E> + serde::Serialize + serde::de::DeserializeOwned,
+        E: Timestamped,
     {
-        let mut a = GenericAggregator::<SavedCandle, R, Trade>::new(rule, false)
-            .with_gaps(Gaps::Flat { max_candles: 3 });
+        let mut a =
+            GenericAggregator::<C, R, E>::new(rule, false).with_gaps(Gaps::Flat { max_candles: 3 });
         let mut bars = Vec::new();
-        for (i, t) in trades.iter().enumerate() {
+        for (i, e) in events.iter().enumerate() {
             if restore(i) {
-                let saved = serde_json::to_string(&a).expect("serializable");
-                a = serde_json::from_str(&saved).expect("deserializable");
+                a = bincode_round_trip(&a);
             }
-            a.update(t, &mut bars);
+            a.update(e, &mut bars);
         }
         bars
     }
 
     #[cfg(feature = "serde")]
-    fn assert_restarts_do_not_change_the_bars<R>(rule: R)
+    fn assert_restarts_do_not_change_the_bars<C, R, E>(rule: R, events: &[E])
     where
-        R: AggregationRule<Trade> + Clone + serde::Serialize + serde::de::DeserializeOwned,
+        C: ModularCandle<E> + serde::Serialize + serde::de::DeserializeOwned,
+        R: AggregationRule<E> + Clone + serde::Serialize + serde::de::DeserializeOwned,
+        E: Timestamped,
     {
-        let trades = gappy_trades(3_000, 5);
-        let uninterrupted = run_with_restarts(rule.clone(), &trades, |_| false);
+        let uninterrupted = run_with_restarts::<C, _, _>(rule.clone(), events, |_| false);
         assert!(uninterrupted.len() > 10, "the test needs candles");
-        let as_json = |bars: &[Bar<SavedCandle>]| serde_json::to_string(bars).expect("bars");
+        let as_bytes = |bars: &[Bar<C>]| {
+            bincode::serde::encode_to_vec(bars, bincode::config::standard()).expect("bars")
+        };
         for step in [1, 7, 101] {
-            let restarted = run_with_restarts(rule.clone(), &trades, |i| i % step == 0);
-            assert_eq!(as_json(&uninterrupted), as_json(&restarted), "every {step}");
+            let restarted = run_with_restarts::<C, _, _>(rule.clone(), events, |i| i % step == 0);
+            assert!(
+                as_bytes(&uninterrupted) == as_bytes(&restarted),
+                "every {step}"
+            );
         }
     }
 
+    /// Delta bars whose threshold adapts to the market, capped in time and anchored to a period.
     #[cfg(feature = "serde")]
-    #[test]
-    fn a_restored_aggregator_continues_where_it_was_saved() {
+    fn anchored_delta_rule() -> crate::AnyRule<
+        crate::MaxDuration<crate::Adaptive<crate::SignedVolumeRule>>,
+        crate::AlignedTimeRule,
+    > {
         use crate::{
             Adaptive, AlignedTimeRule, AnyRule, By, MaxDuration, MillisecondPeriod, Scaling,
             SignedVolumeRule,
         };
-        assert_restarts_do_not_change_the_bars(AlignedTimeRule::new(
-            MillisecondPeriod::from_non_zero(1_000),
-        ));
         let delta = Adaptive::new(
             SignedVolumeRule::new(4.0, By::Quote).expect("valid threshold"),
             MillisecondPeriod::from_non_zero(2_000),
@@ -907,10 +983,37 @@ mod tests {
         )
         .expect("valid parameters")
         .with_scaling(Scaling::Diffusive);
-        assert_restarts_do_not_change_the_bars(AnyRule::new(
+        AnyRule::new(
             MaxDuration::new(delta, MillisecondPeriod::from_non_zero(10_000)),
             AlignedTimeRule::new(MillisecondPeriod::from_non_zero(60_000)),
-        ));
+        )
+    }
+
+    #[cfg(feature = "serde")]
+    #[test]
+    fn a_restored_aggregator_continues_where_it_was_saved() {
+        use crate::{AlignedTimeRule, MillisecondPeriod};
+        let trades = gappy_trades(3_000, 5);
+        assert_restarts_do_not_change_the_bars::<SavedCandle, _, _>(
+            AlignedTimeRule::new(MillisecondPeriod::from_non_zero(1_000)),
+            &trades,
+        );
+        assert_restarts_do_not_change_the_bars::<SavedCandle, _, _>(anchored_delta_rule(), &trades);
+    }
+
+    #[cfg(feature = "serde")]
+    #[test]
+    fn a_restored_trade_and_quote_aggregator_continues_where_it_was_saved() {
+        use crate::{AlignedTimeRule, MillisecondPeriod};
+        let events = gappy_market_events(2_000, 9);
+        assert_restarts_do_not_change_the_bars::<SavedFusedCandle, _, _>(
+            AlignedTimeRule::new(MillisecondPeriod::from_non_zero(1_000)),
+            &events,
+        );
+        assert_restarts_do_not_change_the_bars::<SavedFusedCandle, _, _>(
+            anchored_delta_rule(),
+            &events,
+        );
     }
 
     #[cfg(feature = "serde")]

@@ -300,6 +300,10 @@ A live process can save the aggregator with the offset of its input
 and resume in the middle of a candle after a restart, with the same candles as without the restart.
 Deserialize only state that this crate serialized: the rule parameters are checked when a rule is created, not when it is deserialized.
 
+Save the state in a format that stores every `f64` exactly, e.g. [bincode](https://crates.io/crates/bincode).
+Without its `float_roundtrip` feature, `serde_json` parses some numbers 1 ulp off,
+and the restored aggregator then closes other candles than the saved one would have.
+
 
 ### TODOs:
 - Make generic over the data type storing the price (`f64`, `f32`, `i64`, `Decimal`, etc...)
