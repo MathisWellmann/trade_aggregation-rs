@@ -76,9 +76,12 @@ impl CandleComponent for BipowerVariation {
     }
 }
 
-impl<T: TakerTrade> CandleComponentUpdate<T> for BipowerVariation {
+impl<E: AsTrade> CandleComponentUpdate<E> for BipowerVariation {
     #[inline(always)]
-    fn update(&mut self, trade: &T) {
+    fn update(&mut self, event: &E) {
+        let Some(trade) = event.as_trade() else {
+            return;
+        };
         let price = trade.price();
         if let Some(r) = log_return(self.last_price, price) {
             if let Some(previous) = self.last_abs_return {
@@ -116,9 +119,12 @@ impl CandleComponent for RealizedQuarticity {
     }
 }
 
-impl<T: TakerTrade> CandleComponentUpdate<T> for RealizedQuarticity {
+impl<E: AsTrade> CandleComponentUpdate<E> for RealizedQuarticity {
     #[inline(always)]
-    fn update(&mut self, trade: &T) {
+    fn update(&mut self, event: &E) {
+        let Some(trade) = event.as_trade() else {
+            return;
+        };
         let price = trade.price();
         if let Some(r) = log_return(self.last_price, price) {
             self.sum += r.powi(4);
