@@ -2,11 +2,11 @@
 
 use trade_aggregation::{
     candle_components::{
-        Close, EffectiveSpread, MidClose, NumTrades, OpenTimeStamp, QuoteUpdates,
-        TimeWeightedSpread,
+        BipowerVariation, Close, EffectiveSpread, MidClose, NumTrades, OpenTimeStamp, QuoteUpdates,
+        RealizedQuarticity, RealizedVariance, TimeWeightedSpread,
     },
     Aggregator, AlignedTimeRule, By, Candle, GenericAggregator, MarketEvent, MillisecondPeriod,
-    Quote, Trade, VolumeRule,
+    ModularCandle, Quote, Trade, VolumeRule,
 };
 
 type Event = MarketEvent<Trade, Quote>;
@@ -77,6 +77,50 @@ fn time_rules_close_on_quotes_too() {
     assert_eq!(bars.len(), 1);
     assert_eq!(bars[0].close_ts(), 100);
     assert_eq!(bars[0].candle().num_trades(), 1);
+}
+
+/// The statistics of the path of the trade prices.
+#[derive(Debug, Default, Clone, Candle)]
+struct TradePath {
+    rv: RealizedVariance,
+    bv: BipowerVariation,
+    rq: RealizedQuarticity,
+}
+
+#[test]
+fn trade_path_statistics_ignore_quotes() {
+    let events = [
+        quote(0, 90.0, 120.0),
+        trade(1, 100.0, 1.0),
+        quote(2, 90.0, 120.0),
+        trade(3, 101.0, 1.0),
+        quote(4, 80.0, 130.0),
+        trade(5, 99.0, -1.0),
+        trade(6, 102.0, 1.0),
+    ];
+    let mut mixed = TradePath::default();
+    let mut trades_only = TradePath::default();
+    for e in &events {
+        ModularCandle::update(&mut mixed, e);
+        if let Event::Trade(t) = e {
+            ModularCandle::update(&mut trades_only, t);
+        }
+    }
+    assert!(mixed.rv() > 0.0);
+    assert!(mixed.bv() > 0.0);
+    assert!(mixed.rq() > 0.0);
+    // The quotes are far from the trades, so a return to a quote would change the values.
+    assert_eq!(mixed.rv(), trades_only.rv());
+    assert_eq!(mixed.bv(), trades_only.bv());
+    assert_eq!(mixed.rq(), trades_only.rq());
+
+    let mut quotes_only = TradePath::default();
+    for e in events.iter().filter(|e| matches!(e, Event::Quote(_))) {
+        ModularCandle::update(&mut quotes_only, e);
+    }
+    assert_eq!(quotes_only.rv(), 0.0);
+    assert_eq!(quotes_only.bv(), 0.0);
+    assert_eq!(quotes_only.rq(), 0.0);
 }
 
 /// Trade and quote statistics over the same interval.
