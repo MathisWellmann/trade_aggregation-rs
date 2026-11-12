@@ -1,12 +1,38 @@
 //! Rules built from other rules: either of two rules, both of two rules,
 //! and lower and upper bounds on the duration of a candle.
 //!
-//! The duration of a candle is measured from the trade that triggered the previous candle
-//! (or from the first trade) to the current trade.
+//! The duration of a candle is measured from the close of the previous candle
+//! (the trade that triggered it, or its deadline), or from the first trade, to the current trade.
 //! With [`TriggerTrade::ClosingCandle`](crate::TriggerTrade::ClosingCandle) the candle opens one trade later,
 //! so the measured duration is slightly longer than the candle.
+//!
+//! The combinators forward the [deadlines](AggregationRule::deadline) of their inner rules,
+//! so that e.g. `AnyRule<R, AlignedTimeRule>` also closes a candle at each period end
+//! without a trade.
 
 use crate::{AggregationRule, MillisecondPeriod, Timestamped};
+
+/// The earlier of two optional deadlines.
+fn earliest(a: Option<i64>, b: Option<i64>) -> Option<i64> {
+    match (a, b) {
+        (Some(a), Some(b)) => Some(a.min(b)),
+        (a, None) => a,
+        (None, b) => b,
+    }
+}
+
+/// Close the candle of an inner rule at a deadline: the rule whose deadline it is moves on,
+/// any other rule forgets the candle.
+fn close_at_deadline<E, R>(rule: &mut R, deadline: i64)
+where
+    R: AggregationRule<E>,
+{
+    if rule.deadline() == Some(deadline) {
+        rule.on_deadline();
+    } else {
+        rule.reset();
+    }
+}
 
 /// Reset the inner rules that did not trigger on the current trade,
 /// because a candle closed while they were still accumulating.
@@ -68,6 +94,23 @@ where
         self.a.reset();
         self.b.reset();
     }
+
+    /// The earlier deadline of the two rules.
+    fn deadline(&self) -> Option<i64> {
+        earliest(self.a.deadline(), self.b.deadline())
+    }
+
+    fn on_deadline(&mut self) {
+        let deadline = AggregationRule::<E>::deadline(self)
+            .expect("the aggregator closes a candle at a deadline only if there is one");
+        close_at_deadline::<E, _>(&mut self.a, deadline);
+        close_at_deadline::<E, _>(&mut self.b, deadline);
+    }
+
+    fn skip_to(&mut self, timestamp: i64) {
+        self.a.skip_to(timestamp);
+        self.b.skip_to(timestamp);
+    }
 }
 
 /// Closes the candle once both rules have triggered since the candle opened,
@@ -123,13 +166,39 @@ where
         self.a_triggered = false;
         self.b_triggered = false;
     }
+
+    /// Once one rule has triggered, the deadline of the other one.
+    /// Before, `None`: a deadline of one rule alone does not close the candle,
+    /// and that rule triggers on the next event instead.
+    fn deadline(&self) -> Option<i64> {
+        match (self.a_triggered, self.b_triggered) {
+            (true, false) => self.b.deadline(),
+            (false, true) => self.a.deadline(),
+            _ => None,
+        }
+    }
+
+    fn on_deadline(&mut self) {
+        let deadline = AggregationRule::<E>::deadline(self)
+            .expect("the aggregator closes a candle at a deadline only if there is one");
+        close_at_deadline::<E, _>(&mut self.a, deadline);
+        close_at_deadline::<E, _>(&mut self.b, deadline);
+        self.a_triggered = false;
+        self.b_triggered = false;
+    }
+
+    fn skip_to(&mut self, timestamp: i64) {
+        self.a.skip_to(timestamp);
+        self.b.skip_to(timestamp);
+    }
 }
 
 /// Keeps a candle open for at least `min_duration`,
 /// so that a burst of activity does not produce a flood of tiny candles.
 ///
 /// If the inner rule triggers earlier, the trigger is remembered and the candle closes
-/// at the first trade at least `min_duration` after the candle opened.
+/// `min_duration` after it opened: at that [deadline](AggregationRule::deadline) in an aggregator,
+/// or at the first trade from then on when the rule is used alone.
 /// Further triggers of the inner rule in the meantime merge into that candle.
 #[derive(Debug, Clone)]
 pub struct MinDuration<R> {
@@ -175,13 +244,47 @@ where
         self.open_timestamp = None;
         self.pending = false;
     }
+
+    /// With a pending trigger, `min_duration` after the candle opened.
+    /// Otherwise the deadline of the inner rule, but not before that.
+    fn deadline(&self) -> Option<i64> {
+        let min_units = self.min_duration.in_units(E::TIMESTAMP_RESOLUTION);
+        let min_end = self
+            .open_timestamp
+            .map(|open| open.saturating_add(min_units));
+        if self.pending {
+            return min_end;
+        }
+        self.inner
+            .deadline()
+            .map(|deadline| min_end.map_or(deadline, |min_end| deadline.max(min_end)))
+    }
+
+    fn on_deadline(&mut self) {
+        let deadline = AggregationRule::<E>::deadline(self)
+            .expect("the aggregator closes a candle at a deadline only if there is one");
+        if self.pending {
+            // The inner rule triggered before and restarted then: forget what came since.
+            self.inner.reset();
+        } else {
+            self.inner.on_deadline();
+        }
+        self.pending = false;
+        self.open_timestamp = Some(deadline);
+    }
+
+    fn skip_to(&mut self, timestamp: i64) {
+        self.inner.skip_to(timestamp);
+        self.open_timestamp = None;
+        self.pending = false;
+    }
 }
 
-/// Closes a candle at the first trade more than `max_duration` after it opened,
-/// unless the inner rule closed it before, so that quiet markets still produce candles.
+/// Closes a candle `max_duration` after it opened, unless the inner rule closed it before,
+/// so that quiet markets still produce candles.
 ///
-/// The rule only sees trades, so a gap without trades produces no empty candles:
-/// the candle closes at the first trade after the gap.
+/// In an aggregator the candle closes at that [deadline](AggregationRule::deadline) without a trade.
+/// Used alone, the rule only sees trades and triggers at the first trade from then on.
 /// On a timeout the inner rule is [reset](AggregationRule::reset).
 #[derive(Debug, Clone)]
 pub struct MaxDuration<R> {
@@ -210,7 +313,7 @@ where
         let open_timestamp = *self.open_timestamp.get_or_insert(trade.timestamp());
         let inner = self.inner.should_trigger(trade);
         let max_units = self.max_duration.in_units(E::TIMESTAMP_RESOLUTION);
-        let timed_out = elapsed(open_timestamp, trade) > max_units;
+        let timed_out = elapsed(open_timestamp, trade) >= max_units;
         let trigger = inner || timed_out;
         if trigger {
             reset_untriggered::<E, _>(&mut self.inner, inner);
@@ -221,6 +324,27 @@ where
 
     fn reset(&mut self) {
         self.inner.reset();
+        self.open_timestamp = None;
+    }
+
+    /// `max_duration` after the candle opened, or the deadline of the inner rule if earlier.
+    fn deadline(&self) -> Option<i64> {
+        let max_units = self.max_duration.in_units(E::TIMESTAMP_RESOLUTION);
+        let timeout = self
+            .open_timestamp
+            .map(|open| open.saturating_add(max_units));
+        earliest(timeout, self.inner.deadline())
+    }
+
+    fn on_deadline(&mut self) {
+        let deadline = AggregationRule::<E>::deadline(self)
+            .expect("the aggregator closes a candle at a deadline only if there is one");
+        close_at_deadline::<E, _>(&mut self.inner, deadline);
+        self.open_timestamp = Some(deadline);
+    }
+
+    fn skip_to(&mut self, timestamp: i64) {
+        self.inner.skip_to(timestamp);
         self.open_timestamp = None;
     }
 }
@@ -295,14 +419,14 @@ mod tests {
 
     #[test]
     fn max_duration_closes_quiet_candles() {
-        let mut rule = MaxDuration::new(TickRule::new(100), MillisecondPeriod::from_non_zero(3));
-        // A candle opened at t may contain trades up to t + 3 ms.
+        let mut rule = MaxDuration::new(TickRule::new(100), MillisecondPeriod::from_non_zero(4));
+        // A candle opened at t contains the trades before t + 4 ms.
         assert_eq!(trigger_indices(&mut rule, &trades(13)), vec![4, 8, 12]);
     }
 
     #[test]
     fn max_duration_resets_the_inner_rule_on_timeout() {
-        let mut rule = MaxDuration::new(TickRule::new(6), MillisecondPeriod::from_non_zero(3));
+        let mut rule = MaxDuration::new(TickRule::new(6), MillisecondPeriod::from_non_zero(4));
         // Without the reset, the tick rule would fire on 5 and close a 1-trade candle.
         assert_eq!(trigger_indices(&mut rule, &trades(13)), vec![4, 8, 12]);
     }
@@ -336,7 +460,59 @@ mod tests {
             .step_by(500)
             .filter(|ts| rule.should_trigger(&MicroTrade(*ts)))
             .collect();
-        // 1 ms is 1000 us: the candle opened at 0 closes at 1500 (1000 would still fit).
-        assert_eq!(triggers, vec![1_500]);
+        // 1 ms is 1000 us: the candle opened at 0 closes at 1000 (500 still fits).
+        assert_eq!(triggers, vec![1_000, 2_000]);
+    }
+
+    #[test]
+    fn any_rule_closes_at_the_earlier_deadline_and_resets_the_other_rule() {
+        let mut rule = AnyRule::new(
+            TickRule::new(3),
+            crate::AlignedTimeRule::new(MillisecondPeriod::from_non_zero(10)),
+        );
+        let t = trades(4);
+        assert!(trigger_indices(&mut rule, &t[..2]).is_empty());
+        assert_eq!(AggregationRule::<Trade>::deadline(&rule), Some(10));
+        AggregationRule::<Trade>::on_deadline(&mut rule);
+        assert_eq!(AggregationRule::<Trade>::deadline(&rule), Some(20));
+        // The tick rule forgot the two trades of the closed candle:
+        // it fires on the third trade after the deadline, not on the first.
+        let after: Vec<Trade> = (12..15).map(|ts| trade(ts, 100.0, 1.0)).collect();
+        assert_eq!(trigger_indices(&mut rule, &after), vec![2]);
+    }
+
+    #[test]
+    fn max_duration_has_a_deadline_after_the_first_trade() {
+        let mut rule = MaxDuration::new(TickRule::new(100), MillisecondPeriod::from_non_zero(5));
+        assert_eq!(AggregationRule::<Trade>::deadline(&rule), None);
+        assert!(trigger_indices(&mut rule, &trades(1)).is_empty());
+        assert_eq!(AggregationRule::<Trade>::deadline(&rule), Some(5));
+        AggregationRule::<Trade>::on_deadline(&mut rule);
+        assert_eq!(AggregationRule::<Trade>::deadline(&rule), Some(10));
+        AggregationRule::<Trade>::skip_to(&mut rule, 33);
+        assert_eq!(AggregationRule::<Trade>::deadline(&rule), None);
+    }
+
+    #[test]
+    fn min_duration_has_a_deadline_only_with_a_pending_trigger() {
+        let mut rule = MinDuration::new(TickRule::new(2), MillisecondPeriod::from_non_zero(10));
+        assert!(trigger_indices(&mut rule, &trades(1)).is_empty());
+        assert_eq!(AggregationRule::<Trade>::deadline(&rule), None);
+        assert!(trigger_indices(&mut rule, &[trade(1, 100.0, 1.0)]).is_empty());
+        assert_eq!(AggregationRule::<Trade>::deadline(&rule), Some(10));
+        AggregationRule::<Trade>::on_deadline(&mut rule);
+        assert_eq!(AggregationRule::<Trade>::deadline(&rule), None);
+    }
+
+    #[test]
+    fn all_rule_has_the_deadline_of_the_rule_that_did_not_trigger_yet() {
+        let mut rule = AllRule::new(
+            TickRule::new(1),
+            crate::AlignedTimeRule::new(MillisecondPeriod::from_non_zero(10)),
+        );
+        assert!(trigger_indices(&mut rule, &trades(1)).is_empty());
+        assert_eq!(AggregationRule::<Trade>::deadline(&rule), Some(10));
+        AggregationRule::<Trade>::on_deadline(&mut rule);
+        assert_eq!(AggregationRule::<Trade>::deadline(&rule), None);
     }
 }

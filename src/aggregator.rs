@@ -538,6 +538,18 @@ mod tests {
     }
 
     #[test]
+    fn heartbeats_do_not_change_capped_tick_candles() {
+        assert_heartbeats_do_not_change_the_bars(crate::MaxDuration::new(
+            TickRule::new(20),
+            crate::MillisecondPeriod::from_non_zero(700),
+        ));
+        assert_heartbeats_do_not_change_the_bars(crate::AnyRule::new(
+            TickRule::new(20),
+            crate::AlignedTimeRule::new(crate::MillisecondPeriod::from_non_zero(5_000)),
+        ));
+    }
+
+    #[test]
     fn no_bar_closes_after_the_event_or_watermark_that_closed_it() {
         let trades = gappy_trades(2_000, 11);
         let mut a = GenericAggregator::<CountingCandle, _, Trade>::new(

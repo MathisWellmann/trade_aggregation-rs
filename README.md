@@ -41,7 +41,7 @@ Rules can be combined:
 `AnyRule<A, B>`       | Close the candle when either rule triggers, e.g. dollar volume or volatility, whichever comes first ("hybrid bars")
 `AllRule<A, B>`       | Close the candle once both rules have triggered since it opened
 `MinDuration<R>`      | Keep every candle open for at least a given period, so bursts do not create a flood of tiny candles
-`MaxDuration<R>`      | Close a candle at the first trade more than a given period after it opened, so quiet markets still produce candles
+`MaxDuration<R>`      | Close a candle a given period after it opened, so quiet markets still produce candles
 
 `Adaptive<R>` recalibrates the threshold of a rule (any rule that implements `ThresholdRule`) after each of its candles,
 so that candles last about a target duration whatever the activity of the market.
@@ -60,7 +60,7 @@ When a combinator closes a candle that an inner rule did not trigger, it calls `
 so that every rule starts the next candle from scratch.
 
 ### Deadlines, watermarks and gaps
-Time rules have a deadline: the time at which they close a candle without another event.
+Time rules and `MaxDuration` have a deadline: the time at which they close a candle without another event.
 The `GenericAggregator` closes the candle at its deadline as soon as an event or a watermark reaches it,
 and stamps the candle with that time:
 
@@ -73,6 +73,7 @@ and stamps the candle with that time:
 
 Each closed candle comes in a `Bar`, with a sequence number, the open and close time, the number of events and why it closed.
 `provisional(now)` returns the unfinished candle the same way, e.g. for features over a window that ends now.
+A fixed boundary, e.g. every UTC midnight, is `AnyRule::new(rule, AlignedTimeRule::new(D1))`.
 
 If these don't satisfy your desires, just create your own by implementing the [`AggregationRule`](src/aggregation_rules/aggregation_rule_trait.rs) trait,
 and you can plug and play it into the [`GenericAggregator`](src/aggregator.rs).
