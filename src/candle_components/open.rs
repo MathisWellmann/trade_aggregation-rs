@@ -1,11 +1,14 @@
 use crate::{CandleComponent, CandleComponentUpdate, TakerTrade};
 
-/// This 'CandleComponent' keeps track of the opening price of a Candle
+/// This 'CandleComponent' keeps track of the opening price of a Candle.
+/// A candle without trades opens at the close of the previous candle.
 #[derive(Debug, Clone)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Open {
     init: bool,
     value: f64,
+    /// The latest trade price, which an empty candle opens at.
+    last: f64,
 }
 
 impl Default for Open {
@@ -13,6 +16,7 @@ impl Default for Open {
         Self {
             init: true,
             value: 0.0,
+            last: 0.0,
         }
     }
 }
@@ -27,6 +31,7 @@ impl CandleComponent<f64> for Open {
     #[inline(always)]
     fn reset(&mut self) {
         self.init = true;
+        self.value = self.last;
     }
 }
 
@@ -38,6 +43,7 @@ impl<T: TakerTrade> CandleComponentUpdate<T> for Open {
             self.value = trade.price();
             self.init = false;
         }
+        self.last = trade.price();
     }
 }
 

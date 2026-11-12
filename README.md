@@ -22,8 +22,8 @@ Here is a sample trade series of `Bitmex_XBTUSD` aggregated into 15 minute candl
 The pre-existing rules in this crate include:
 'AggregationRule'   | Description
 --------------------|-------------
-`TimeRule`          | Create candles every n seconds
-`AlignedTimeRule`   | Same as TimeRule but candles are aligned to the start of a period
+`AlignedTimeRule`   | Create candles every period, aligned to the epoch (plus an optional offset)
+`TimeRule`          | Create candles every period, counted from the first event
 `VolumeRule`        | Create candles every n units traded
 `TickRule`          | Create candles every n ticks
 `RelativePriceRule` | Create candles with every n basis points price movement (Renko)
@@ -59,9 +59,25 @@ and bounds a learned bar length; `Adaptive` can calibrate the expected bar lengt
 When a combinator closes a candle that an inner rule did not trigger, it calls `AggregationRule::reset` on that rule,
 so that every rule starts the next candle from scratch.
 
+### Deadlines, watermarks and gaps
+Time rules have a deadline: the time at which they close a candle without another event.
+The `GenericAggregator` closes the candle at its deadline as soon as an event or a watermark reaches it,
+and stamps the candle with that time:
+
+- `update(event, &mut out)` first closes the candles whose deadline passed before the event,
+  so an event never goes into a period that ended before it.
+- `advance_to(watermark, &mut out)` closes them without an event, e.g. on a heartbeat of a live stream.
+  The candles are the same whether or when heartbeats come, so a live stream and a replay of it produce the same candles.
+- `with_gaps(Gaps::Flat { max_candles })` emits an empty candle (flat at the previous close) for each period without events,
+  up to `max_candles` in a row; `Gaps::Skip` (the default) emits nothing.
+
+Each closed candle comes in a `Bar`, with a sequence number, the open and close time, the number of events and why it closed.
+`provisional(now)` returns the unfinished candle the same way, e.g. for features over a window that ends now.
+
 If these don't satisfy your desires, just create your own by implementing the [`AggregationRule`](src/aggregation_rules/aggregation_rule_trait.rs) trait,
 and you can plug and play it into the [`GenericAggregator`](src/aggregator.rs).
-Implement `reset` as well if your rule accumulates something per candle and should work inside the combinators.
+Implement `reset` as well if your rule accumulates something per candle and should work inside the combinators,
+and `deadline`, `on_deadline` and `skip_to` if it closes candles on a clock.
 
 ### `CandleComponent`:
 These pre-existing 'CandleComponents' exist out of the box:
@@ -115,8 +131,9 @@ fn main() {
     let trades = load_trades_from_csv("data/Bitmex_XBTUSD_1M.csv")
         .expect("Could not load trades from file!");
 
-    // specify the aggregation rule to be time based and the resolution each trade timestamp has
-    let time_rule = TimeRule::new(M1, TimestampResolution::Millisecond);
+    // specify the aggregation rule to be time based;
+    // the unit of the timestamps comes from `Trade::TIMESTAMP_RESOLUTION`
+    let time_rule = TimeRule::new(M1);
     // Notice how the aggregator is generic over the output candle type, 
     // the aggregation rule as well as the input trade data
     let mut aggregator = GenericAggregator::<MyCandle, TimeRule, Trade>::new(time_rule, false);
@@ -200,6 +217,9 @@ The second argument of `GenericAggregator::new` decides which candle receives th
 `NextCandle`    | the first trade of the next candle (`new(rule, false)`) | yes | no
 `ClosingCandle` | the last trade of the closing candle | yes | no
 `Both`          | in both candles (`new(rule, true)`) | no: `Volume`, `NumTrades` etc. count it twice | yes
+
+This applies to the candles that the rule closes on an event.
+A candle closed at a deadline never holds an event at or after the deadline.
 
 See examples folder for more.
 Run examples using

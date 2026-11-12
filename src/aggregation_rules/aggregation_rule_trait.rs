@@ -25,4 +25,31 @@ pub trait AggregationRule<E> {
     /// [`TimeRule`](crate::TimeRule) and for rules whose state follows the price path
     /// rather than the candle.
     fn reset(&mut self) {}
+
+    /// The time at which the rule closes the current candle without another event, if any,
+    /// in the units of the event timestamps.
+    ///
+    /// The aggregator closes the candle at this time as soon as an event or a watermark
+    /// ([`GenericAggregator::advance_to`](crate::GenericAggregator::advance_to)) reaches it,
+    /// and stamps the candle with it. An event at the deadline belongs to the next candle.
+    /// The default is `None`: the rule closes candles only on events.
+    fn deadline(&self) -> Option<i64> {
+        None
+    }
+
+    /// The aggregator closed the candle at [`Self::deadline`]: start the next candle.
+    ///
+    /// A rule on a clock moves on by one period, so that the next deadline is later.
+    /// The default forgets the current candle with [`Self::reset`].
+    fn on_deadline(&mut self) {
+        self.reset();
+    }
+
+    /// No events arrived up to `timestamp`, which is at or after [`Self::deadline`]:
+    /// skip the candles that would close empty, so that the deadline moves past `timestamp`
+    /// (or to `None`).
+    ///
+    /// The aggregator calls this instead of [`Self::on_deadline`] for each empty period,
+    /// so that a long gap costs one call. The default does nothing.
+    fn skip_to(&mut self, _timestamp: i64) {}
 }

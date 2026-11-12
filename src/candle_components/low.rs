@@ -1,17 +1,24 @@
 use crate::{CandleComponent, CandleComponentUpdate, TakerTrade};
 
-/// This 'CandleComponent' keeps track of the low price
+/// This 'CandleComponent' keeps track of the low price.
+/// A candle without trades is flat at the close of the previous candle.
 #[derive(Debug, Clone)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Low {
     low: f64,
+    /// Whether the candle has no trade yet.
+    empty: bool,
+    /// The latest trade price, which an empty candle shows.
+    last: f64,
 }
 
 impl Default for Low {
     fn default() -> Self {
-        // ensure the initial value is maximal,
-        // so any subsequent calls to 'update' will set the proper low value
-        Self { low: f64::MAX }
+        Self {
+            low: f64::MAX,
+            empty: true,
+            last: f64::MAX,
+        }
     }
 }
 
@@ -21,18 +28,23 @@ impl CandleComponent<f64> for Low {
         self.low
     }
 
+    /// An empty candle shows the previous close until its first trade.
     #[inline(always)]
     fn reset(&mut self) {
-        self.low = f64::MAX;
+        self.low = self.last;
+        self.empty = true;
     }
 }
 
 impl<T: TakerTrade> CandleComponentUpdate<T> for Low {
     #[inline(always)]
     fn update(&mut self, trade: &T) {
-        if trade.price() < self.low {
-            self.low = trade.price();
+        let price = trade.price();
+        if self.empty || price < self.low {
+            self.low = price;
         }
+        self.empty = false;
+        self.last = price;
     }
 }
 

@@ -37,14 +37,50 @@ pub enum TriggerTrade {
     Both,
 }
 
+/// What the aggregator emits for a period without events,
+/// when the [deadline](AggregationRule::deadline) of a rule passes and the candle is empty.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum Gaps {
+    /// Emit nothing: the next candle holds the next event.
+    #[default]
+    Skip,
+    /// Emit an empty candle for each period, e.g. flat at the previous close,
+    /// so that a window of n time candles always spans the same clock time.
+    /// After `max_candles` empty candles in a row, skip the rest of the gap,
+    /// so that an outage of the data does not flood the output.
+    Flat {
+        /// The most empty candles in a row.
+        max_candles: u64,
+    },
+}
+
+impl Gaps {
+    /// The most empty candles in a row.
+    fn max_candles(self) -> u64 {
+        match self {
+            Gaps::Skip => 0,
+            Gaps::Flat { max_candles } => max_candles,
+        }
+    }
+}
+
 /// An `Aggregator` that is generic over
 /// the type of Candle being produced,
 /// as well as by which rule the candle is created
+///
+/// It closes a candle when the rule triggers on an event, or when the
+/// [deadline](AggregationRule::deadline) of the rule passes.
+/// A deadline passes when an event or a watermark ([`Self::advance_to`]) reaches it,
+/// so a live consumer closes time candles on a heartbeat instead of waiting for the next event.
+/// The candles do not depend on when the heartbeats come.
 #[derive(Debug, Clone)]
 pub struct GenericAggregator<C, R, E> {
     candle: C,
     aggregation_rule: R,
     trigger_trade: TriggerTrade,
+    gaps: Gaps,
+    /// The number of empty candles emitted since the last event.
+    empty_candles: u64,
     /// The number of candles closed so far, which is the `seq` of the next one.
     next_seq: u64,
     /// When the current candle opened, `None` before the first event.
@@ -97,11 +133,61 @@ where
             candle: Default::default(),
             aggregation_rule,
             trigger_trade,
+            gaps: Gaps::Skip,
+            empty_candles: 0,
             next_seq: 0,
             open_ts: None,
             num_events: 0,
             now: None,
             _event_type: PhantomData,
+        }
+    }
+
+    /// Set what to emit for periods without events, [`Gaps::Skip`] by default.
+    pub fn with_gaps(self, gaps: Gaps) -> Self {
+        Self { gaps, ..self }
+    }
+
+    /// Close every candle whose [deadline](AggregationRule::deadline) is at or before `watermark`,
+    /// e.g. on a heartbeat, when no event with a later timestamp can arrive anymore.
+    ///
+    /// # Arguments:
+    /// `watermark`: The time up to which all events have been passed to [`Aggregator::update`].
+    /// `out`: Receives the closed candles, in order.
+    ///
+    /// # Panics:
+    /// If `watermark` is earlier than an event or watermark seen before,
+    /// or if the rule does not move its deadline forward.
+    pub fn advance_to(&mut self, watermark: i64, out: &mut impl Extend<Bar<C>>) {
+        self.assert_in_order(watermark);
+        self.now = Some(watermark);
+        if self.open_ts.is_none() {
+            // No candle before the first event.
+            return;
+        }
+        while let Some(deadline) = self.aggregation_rule.deadline() {
+            if watermark < deadline {
+                break;
+            }
+            if self.num_events == 0 && self.empty_candles >= self.gaps.max_candles() {
+                self.aggregation_rule.skip_to(watermark);
+                let next = self.aggregation_rule.deadline();
+                assert!(
+                    next.is_none_or(|next| next > watermark),
+                    "skip_to({watermark}) must move the deadline past it, got {next:?}"
+                );
+                break;
+            }
+            if self.num_events == 0 {
+                self.empty_candles += 1;
+            }
+            out.extend([self.close(deadline, BarKind::Deadline)]);
+            self.aggregation_rule.on_deadline();
+            let next = self.aggregation_rule.deadline();
+            assert!(
+                next.is_none_or(|next| next > deadline),
+                "on_deadline must move the deadline {deadline} forward, got {next:?}"
+            );
         }
     }
 
@@ -119,10 +205,17 @@ where
     /// `None` before the first event.
     ///
     /// # Panics:
-    /// If `now` is earlier than the latest event.
+    /// If `now` is earlier than the latest event,
+    /// or if a deadline at or before `now` has not been processed with [`Self::advance_to`],
+    /// as the unfinished candle would then hold a closed period.
     pub fn provisional(&self, now: i64) -> Option<Bar<C>> {
         let open_ts = self.open_ts?;
         self.assert_in_order(now);
+        let deadline = self.aggregation_rule.deadline();
+        assert!(
+            deadline.is_none_or(|deadline| now < deadline),
+            "call advance_to({now}) before provisional({now}), the deadline {deadline:?} passed"
+        );
         Some(Bar::new(
             self.candle.clone(),
             self.next_seq,
@@ -146,6 +239,7 @@ where
     fn add(&mut self, event: &E) {
         self.candle.update(event);
         self.num_events += 1;
+        self.empty_candles = 0;
     }
 
     /// Close the current candle at `close_ts` and open the next one there.
@@ -172,10 +266,12 @@ where
     R: AggregationRule<E>,
     E: Timestamped,
 {
+    /// Closes the candles whose deadline passed before `event` (see [`GenericAggregator::advance_to`]),
+    /// then adds `event`: an event at or after the deadline never goes into the period that ended,
+    /// whatever the [`TriggerTrade`].
     fn update(&mut self, event: &E, out: &mut impl Extend<Bar<C>>) {
         let timestamp = event.timestamp();
-        self.assert_in_order(timestamp);
-        self.now = Some(timestamp);
+        self.advance_to(timestamp, out);
         self.open_ts.get_or_insert(timestamp);
 
         if !self.aggregation_rule.should_trigger(event) {
@@ -208,10 +304,11 @@ mod tests {
 
     use super::*;
     use crate::{
+        aggregation_rules::test_utils::closed_periods,
         candle_components::{
             CandleComponent, CandleComponentUpdate, Close, NumTrades, Open, Volume,
         },
-        load_trades_from_csv, ModularCandle, TickRule, TimeRule, TimestampResolution, Trade, M1,
+        load_trades_from_csv, ModularCandle, TickRule, TimeRule, Trade, M1,
     };
 
     #[derive(Default, Debug, Clone, Candle)]
@@ -330,14 +427,147 @@ mod tests {
         let trades = load_trades_from_csv("data/Bitmex_XBTUSD_1M.csv")
             .expect("Could not load trades from file!");
 
-        let rule = TimeRule::new(M1, TimestampResolution::Millisecond);
+        let rule = TimeRule::new(M1);
         let mut a = GenericAggregator::<MyCandle, TimeRule, Trade>::new(rule, false);
 
         let mut bars = Vec::new();
         for t in trades.iter() {
             a.update(t, &mut bars);
         }
-        assert_eq!(bars.len(), 5953);
+        let timestamps: Vec<i64> = trades.iter().map(|t| t.timestamp).collect();
+        assert_eq!(
+            bars.len(),
+            closed_periods(&timestamps, timestamps[0], M1.get() as i64)
+        );
+    }
+
+    /// Trades with gaps of up to a few seconds, from a seeded xorshift generator.
+    fn gappy_trades(n: usize, seed: u64) -> Vec<Trade> {
+        let mut state = seed;
+        let mut next = move || {
+            state ^= state << 13;
+            state ^= state >> 7;
+            state ^= state << 17;
+            state
+        };
+        let mut timestamp = 0;
+        (0..n)
+            .map(|_| {
+                let gaps = [0, 1, 5, 40, 300, 2_500];
+                timestamp += gaps[(next() % 6) as usize];
+                let price = 100.0 + (next() % 50) as f64;
+                let size = if next() % 2 == 0 { 1.0 } else { -2.0 };
+                Trade {
+                    timestamp,
+                    price,
+                    size,
+                }
+            })
+            .collect()
+    }
+
+    /// The closed bars of `trades`, with a heartbeat (watermark) before every trade
+    /// for which `heartbeat` returns a time, and a final watermark.
+    fn run_with_heartbeats<R>(
+        rule: R,
+        gaps: Gaps,
+        trades: &[Trade],
+        heartbeat: impl Fn(usize, &Trade) -> Option<i64>,
+    ) -> Vec<Bar<CountingCandle>>
+    where
+        R: AggregationRule<Trade>,
+    {
+        let mut a = GenericAggregator::<CountingCandle, R, Trade>::new(rule, false).with_gaps(gaps);
+        let mut bars = Vec::new();
+        for (i, t) in trades.iter().enumerate() {
+            if let Some(watermark) = heartbeat(i, t) {
+                a.advance_to(watermark, &mut bars);
+            }
+            a.update(t, &mut bars);
+        }
+        let end = trades.last().expect("trades").timestamp + 10_000;
+        a.advance_to(end, &mut bars);
+        bars
+    }
+
+    /// The bars as comparable tuples.
+    fn summary(bars: &[Bar<CountingCandle>]) -> Vec<(u64, i64, i64, u64, BarKind, String)> {
+        bars.iter()
+            .map(|b| {
+                (
+                    b.seq(),
+                    b.open_ts(),
+                    b.close_ts(),
+                    b.num_events(),
+                    b.kind(),
+                    format!("{:?}", b.candle()),
+                )
+            })
+            .collect()
+    }
+
+    fn assert_heartbeats_do_not_change_the_bars<R: AggregationRule<Trade> + Clone>(rule: R) {
+        let trades = gappy_trades(3_000, 7);
+        for gaps in [Gaps::Skip, Gaps::Flat { max_candles: 4 }] {
+            let replay = run_with_heartbeats(rule.clone(), gaps, &trades, |_, _| None);
+            assert!(replay.len() > 10, "the test needs candles");
+            for step in [1, 3, 17] {
+                // A heartbeat just before the trade, at a time no later trade can precede.
+                let live = run_with_heartbeats(rule.clone(), gaps, &trades, |i, t| {
+                    (i % step == 0).then_some(t.timestamp)
+                });
+                assert_eq!(summary(&replay), summary(&live), "{gaps:?}, every {step}");
+                // A heartbeat halfway between two trades.
+                let live = run_with_heartbeats(rule.clone(), gaps, &trades, |i, t| {
+                    (i > 0 && i % step == 0).then(|| (trades[i - 1].timestamp + t.timestamp) / 2)
+                });
+                assert_eq!(
+                    summary(&replay),
+                    summary(&live),
+                    "{gaps:?}, half, every {step}"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn heartbeats_do_not_change_time_candles() {
+        assert_heartbeats_do_not_change_the_bars(crate::AlignedTimeRule::new(
+            crate::MillisecondPeriod::from_non_zero(1_000),
+        ));
+    }
+
+    #[test]
+    fn no_bar_closes_after_the_event_or_watermark_that_closed_it() {
+        let trades = gappy_trades(2_000, 11);
+        let mut a = GenericAggregator::<CountingCandle, _, Trade>::new(
+            crate::AlignedTimeRule::new(crate::MillisecondPeriod::from_non_zero(1_000)),
+            false,
+        )
+        .with_gaps(Gaps::Flat { max_candles: 2 });
+        let mut bars = Vec::new();
+        for t in &trades {
+            let before = bars.len();
+            a.update(t, &mut bars);
+            for bar in &bars[before..] {
+                assert!(bar.close_ts() <= t.timestamp);
+                assert!(bar.open_ts() <= bar.close_ts());
+            }
+        }
+        let seqs: Vec<u64> = bars.iter().map(Bar::seq).collect();
+        assert_eq!(seqs, (0..bars.len() as u64).collect::<Vec<_>>());
+    }
+
+    #[test]
+    #[should_panic(expected = "call advance_to")]
+    fn provisional_needs_the_passed_deadlines_closed() {
+        let mut a = GenericAggregator::<CountingCandle, _, Trade>::new(
+            crate::AlignedTimeRule::new(crate::MillisecondPeriod::from_non_zero(100)),
+            false,
+        );
+        let mut bars = Vec::new();
+        a.update(&ten_trades()[0], &mut bars);
+        let _ = a.provisional(150);
     }
 
     #[test]
