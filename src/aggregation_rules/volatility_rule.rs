@@ -12,6 +12,7 @@ use crate::{AggregationRule, Error, Result, TakerTrade, ThresholdRule};
 /// A threshold of many spreads keeps that effect small; a [`CusumRule`](crate::CusumRule)
 /// ignores such noise altogether.
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct VolatilityRule {
     threshold: f64,
     previous_price: Option<f64>,

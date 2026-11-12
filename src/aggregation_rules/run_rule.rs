@@ -22,6 +22,7 @@ use crate::{
 /// [`ThresholdRule`] reads and sets `E[T]`, so [`Adaptive`](crate::Adaptive) can calibrate it
 /// to a target duration; leave [`FlowBarParams::with_bar_alpha`] unset then.
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct RunRule {
     signal: FlowSignal,
     params: FlowBarParams,

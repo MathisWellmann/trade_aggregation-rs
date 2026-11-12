@@ -2,6 +2,7 @@ use crate::{AggregationRule, Error, Result, TakerTrade, ThresholdRule};
 
 /// The state of the price path, in the terms of the directional change framework.
 #[derive(Debug, Clone, Copy, PartialEq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 enum Trend {
     /// No trade seen yet.
     Start,
@@ -27,6 +28,7 @@ enum Trend {
 /// The state follows the price path rather than the candle, so [`reset`](AggregationRule::reset)
 /// keeps it.
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct DirectionalChangeRule {
     threshold_fraction: f64,
     trend: Trend,

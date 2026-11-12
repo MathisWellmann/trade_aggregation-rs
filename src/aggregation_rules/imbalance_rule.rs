@@ -26,6 +26,7 @@ use crate::{
 /// to a target duration; leave [`FlowBarParams::with_bar_alpha`] unset then,
 /// or two controllers fight over `E[T]`.
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct ImbalanceRule {
     signal: FlowSignal,
     params: FlowBarParams,

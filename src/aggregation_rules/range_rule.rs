@@ -2,6 +2,7 @@ use crate::{AggregationRule, Error, Result, TakerTrade, ThresholdRule};
 
 /// The prices of the current candle.
 #[derive(Debug, Clone, Copy)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 struct Extent {
     open: f64,
     high: f64,
@@ -28,6 +29,7 @@ impl Extent {
 /// With [`TriggerTrade::NextCandle`](crate::TriggerTrade::NextCandle) every closed candle therefore has a range
 /// below the threshold, as the range bars of Sierra Chart or NinjaTrader.
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct RangeRule {
     threshold_fraction: f64,
     extent: Option<Extent>,
