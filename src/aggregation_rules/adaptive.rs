@@ -160,6 +160,18 @@ where
     fn reset(&mut self) {
         self.inner.reset();
     }
+
+    fn deadline(&self) -> Option<i64> {
+        self.inner.deadline()
+    }
+
+    fn on_deadline(&mut self) {
+        self.inner.on_deadline();
+    }
+
+    fn skip_to(&mut self, timestamp: i64) {
+        self.inner.skip_to(timestamp);
+    }
 }
 
 #[cfg(test)]
