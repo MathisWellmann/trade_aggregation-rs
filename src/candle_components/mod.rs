@@ -2,6 +2,7 @@
 //! that can easily be combined to create a 'ModularCandle' using the 'Candle' macro.
 
 mod average_price;
+mod base_volume;
 mod candle_component_trait;
 mod close;
 mod close_timestamp;
@@ -9,6 +10,7 @@ mod directional_trade_ratio;
 mod directional_volume_ratio;
 mod entropy;
 mod high;
+mod largest_trade;
 mod low;
 mod median_price;
 mod num_trades;
@@ -16,6 +18,8 @@ mod open;
 #[cfg(feature = "chrono")]
 mod open_datetime;
 mod open_timestamp;
+mod quote_volume;
+mod realized;
 mod std_dev_prices;
 mod std_dev_sizes;
 mod time_velocity;
@@ -23,10 +27,10 @@ mod trades;
 mod volume;
 mod volume_buys;
 mod volume_sells;
-mod vpin;
 mod weighted_price;
 
 pub use average_price::AveragePrice;
+pub use base_volume::BaseVolume;
 pub use candle_component_trait::{CandleComponent, CandleComponentUpdate};
 pub use close::Close;
 pub use close_timestamp::CloseTimeStamp;
@@ -34,6 +38,7 @@ pub use directional_trade_ratio::DirectionalTradeRatio;
 pub use directional_volume_ratio::DirectionalVolumeRatio;
 pub use entropy::Entropy;
 pub use high::High;
+pub use largest_trade::LargestTrade;
 pub use low::Low;
 pub use median_price::MedianPrice;
 pub use num_trades::NumTrades;
@@ -41,6 +46,8 @@ pub use open::Open;
 #[cfg(feature = "chrono")]
 pub use open_datetime::OpenDateTime;
 pub use open_timestamp::OpenTimeStamp;
+pub use quote_volume::QuoteVolume;
+pub use realized::{BipowerVariation, RealizedQuarticity, RealizedVariance};
 pub use std_dev_prices::StdDevPrices;
 pub use std_dev_sizes::StdDevSizes;
 pub use time_velocity::TimeVelocity;
@@ -48,7 +55,6 @@ pub use trades::Trades;
 pub use volume::Volume;
 pub use volume_buys::VolumeBuys;
 pub use volume_sells::VolumeSells;
-pub use vpin::Vpin;
 pub use weighted_price::WeightedPrice;
 
 #[cfg(test)]
