@@ -23,8 +23,7 @@ impl SignedVolumeRule {
     ///
     /// # Arguments:
     /// `threshold`: The absolute net volume at which a candle closes.
-    /// `by`: Whether to sum the trade sizes as they are (`By::Quote`) or divided by the price (`By::Base`),
-    ///     as for the [`VolumeRule`](crate::VolumeRule).
+    /// `by`: The currency in which to sum the trade sizes, as for the [`VolumeRule`](crate::VolumeRule).
     ///
     /// # Errors:
     /// [`Error::InvalidParam`] if `threshold` is not positive and finite.
@@ -42,10 +41,7 @@ impl SignedVolumeRule {
 impl<T: TakerTrade> AggregationRule<T> for SignedVolumeRule {
     fn should_trigger(&mut self, trade: &T) -> bool {
         debug_assert!(trade.price() > 0.0, "prices must be positive");
-        self.net_volume += match self.by {
-            By::Quote => trade.size(),
-            By::Base => trade.size() / trade.price(),
-        };
+        self.net_volume += self.by.size(trade);
         let trigger = self.net_volume.abs() >= self.threshold;
         if trigger {
             self.net_volume = 0.0;

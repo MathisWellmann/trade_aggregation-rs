@@ -46,6 +46,9 @@ impl Timestamped for Tick {
 }
 
 impl TakerTrade for Tick {
+    // The example data are BitMEX XBTUSD trades, whose sizes are USD contracts.
+    const SIZE_UNIT: SizeUnit = SizeUnit::Quote;
+
     #[inline(always)]
     fn price(&self) -> f64 {
         self.trade_price

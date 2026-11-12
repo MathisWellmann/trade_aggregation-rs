@@ -1,6 +1,6 @@
 //! Helpers for the tests of the aggregation rules.
 
-use crate::{AggregationRule, TakerTrade, TimestampResolution, Timestamped, Trade};
+use crate::{AggregationRule, SizeUnit, TakerTrade, TimestampResolution, Timestamped, Trade};
 
 /// A trade with a millisecond timestamp.
 pub(crate) fn trade(timestamp: i64, price: f64, size: f64) -> Trade {
@@ -61,6 +61,8 @@ impl Timestamped for MicroTrade {
 }
 
 impl TakerTrade for MicroTrade {
+    const SIZE_UNIT: SizeUnit = SizeUnit::Quote;
+
     fn price(&self) -> f64 {
         self.0.price
     }
@@ -83,6 +85,8 @@ impl Timestamped for NanoTrade {
 }
 
 impl TakerTrade for NanoTrade {
+    const SIZE_UNIT: SizeUnit = SizeUnit::Quote;
+
     fn price(&self) -> f64 {
         self.0.price
     }

@@ -38,10 +38,7 @@ impl<T: TakerTrade> AggregationRule<T> for VolumeRule {
             self.cum_vol -= self.threshold_vol;
             debug_assert!(self.cum_vol >= 0.0);
         }
-        self.cum_vol += match self.by {
-            By::Quote => trade.size().abs(),
-            By::Base => trade.size().abs() / trade.price(),
-        };
+        self.cum_vol += self.by.size(trade).abs();
 
         self.cum_vol >= self.threshold_vol
     }
