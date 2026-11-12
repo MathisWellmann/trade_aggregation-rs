@@ -19,6 +19,7 @@ mod open;
 mod open_datetime;
 mod open_timestamp;
 mod quote_volume;
+mod quotes;
 mod realized;
 mod std_dev_prices;
 mod std_dev_sizes;
@@ -47,6 +48,10 @@ pub use open::Open;
 pub use open_datetime::OpenDateTime;
 pub use open_timestamp::OpenTimeStamp;
 pub use quote_volume::QuoteVolume;
+pub use quotes::{
+    EffectiveSpread, MidClose, MidHigh, MidLow, MidOpen, OrderFlowImbalance, QuoteUpdates,
+    TimeWeightedImbalance, TimeWeightedSpread, WapRealizedVariance,
+};
 pub use realized::{BipowerVariation, RealizedQuarticity, RealizedVariance};
 pub use std_dev_prices::StdDevPrices;
 pub use std_dev_sizes::StdDevSizes;

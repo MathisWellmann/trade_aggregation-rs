@@ -1,7 +1,10 @@
 //! Candles over a stream that mixes trades and quotes.
 
 use trade_aggregation::{
-    candle_components::{Close, NumTrades, OpenTimeStamp},
+    candle_components::{
+        Close, EffectiveSpread, MidClose, NumTrades, OpenTimeStamp, QuoteUpdates,
+        TimeWeightedSpread,
+    },
     Aggregator, AlignedTimeRule, By, Candle, GenericAggregator, MarketEvent, MillisecondPeriod,
     Quote, Trade, VolumeRule,
 };
@@ -74,4 +77,52 @@ fn time_rules_close_on_quotes_too() {
     assert_eq!(bars.len(), 1);
     assert_eq!(bars[0].close_ts(), 100);
     assert_eq!(bars[0].candle().num_trades(), 1);
+}
+
+/// Trade and quote statistics over the same interval.
+#[derive(Debug, Default, Clone, Candle)]
+#[candle(record = FusedRecord, record_derive(Debug, Clone, Copy, PartialEq))]
+struct Fused {
+    close: Close,
+    num_trades: NumTrades<u32>,
+    mid_close: MidClose,
+    quote_updates: QuoteUpdates,
+    spread: TimeWeightedSpread,
+    effective_spread: EffectiveSpread,
+}
+
+#[test]
+fn one_candle_holds_trade_and_quote_statistics() {
+    let events = [
+        quote(0, 99.0, 101.0),
+        trade(10, 101.0, 1.0),
+        quote(50, 98.0, 102.0),
+        trade(60, 98.0, 1.0),
+        quote(150, 99.0, 101.0),
+    ];
+    let rule = AlignedTimeRule::new(MillisecondPeriod::from_non_zero(100));
+    let mut a = GenericAggregator::<Fused, _, Event>::new(rule, false);
+    let mut bars = Vec::new();
+    for e in &events {
+        a.update(e, &mut bars);
+    }
+    assert_eq!(bars.len(), 1);
+    let record = bars[0].candle().record();
+    assert_eq!(record.close, 98.0);
+    assert_eq!(record.num_trades, 2);
+    assert_eq!(record.mid_close, Some(100.0));
+    assert_eq!(record.quote_updates, 2);
+    // A relative spread of 0.02 for 50 ms and 0.04 until the close at 100.
+    let spread = record.spread.expect("quotes");
+    assert!((spread - 0.03).abs() < 1e-15, "{spread}");
+    // Both trades are 1 or 2 away from a mid of 100, with the same base size (1 / price).
+    let effective = record.effective_spread.expect("trades");
+    let (w1, w2) = (1.0 / 101.0, 1.0 / 98.0);
+    let expected = (w1 * 0.02 + w2 * 0.04) / (w1 + w2);
+    assert!((effective - expected).abs() < 1e-15, "{effective}");
+
+    // The next candle starts with the quote in effect at 100.
+    let provisional = a.provisional(150).expect("a candle is open");
+    let spread = provisional.candle().spread().expect("quotes");
+    assert!((spread - 0.04).abs() < 1e-15, "{spread}");
 }

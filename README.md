@@ -109,6 +109,13 @@ These pre-existing 'CandleComponents' exist out of the box:
 `RealizedVariance`  | The sum of the squared log returns between trades, starting at the previous close
 `BipowerVariation`  | The jump-robust bipower variation of the log returns between trades
 `RealizedQuarticity`| The realized quarticity of the log returns between trades
+`MidOpen`, `MidHigh`, `MidLow`, `MidClose` | The mid price path of the quotes, starting at the mid in effect
+`QuoteUpdates`      | The number of quote updates
+`WapRealizedVariance` | The realized variance of the weighted average price (WAP) of the quotes
+`TimeWeightedSpread` | The relative bid-ask spread, averaged over the time of the candle
+`TimeWeightedImbalance` | The level 1 size imbalance, averaged over the time of the candle
+`OrderFlowImbalance` | The order flow imbalance of the quote updates (Cont, Kukanov and Stoikov)
+`EffectiveSpread`   | The size-weighted effective spread of the trades against the mid price
 `NumTrades`         | The number of trades during the candle
 `AveragePrice`      | The equally weighted average price
 `WeightedPrice`     | The volume weighted price
