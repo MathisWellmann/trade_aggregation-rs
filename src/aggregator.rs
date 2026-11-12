@@ -1,18 +1,18 @@
 use std::marker::PhantomData;
 
-use crate::{AggregationRule, ModularCandle, TakerTrade};
+use crate::{AggregationRule, ModularCandle};
 
 /// Defines the needed methods for any online `Aggregator`
-pub trait Aggregator<Candle, T: TakerTrade> {
-    /// Updates the aggregation state with a new trade
+pub trait Aggregator<Candle, E> {
+    /// Updates the aggregation state with a new event
     ///
     /// # Arguments:
-    /// trade: the trade information to add to the aggregation process
+    /// event: the event, e.g. a trade, to add to the aggregation process
     ///
     /// # Returns:
     /// Some output only when a new candle has been created,
     /// otherwise it returns None
-    fn update(&mut self, trade: &T) -> Option<Candle>;
+    fn update(&mut self, event: &E) -> Option<Candle>;
 
     /// Get a reference to an unfinished `Candle`.
     /// Accessing a `Candle` using this method does not guarantee that the `AggregationRule` is respected.
@@ -42,18 +42,17 @@ pub enum TriggerTrade {
 /// the type of Candle being produced,
 /// as well as by which rule the candle is created
 #[derive(Debug, Clone)]
-pub struct GenericAggregator<C, R, T> {
+pub struct GenericAggregator<C, R, E> {
     candle: C,
     aggregation_rule: R,
     trigger_trade: TriggerTrade,
-    _trade_type: PhantomData<T>,
+    _event_type: PhantomData<E>,
 }
 
-impl<C, R, T> GenericAggregator<C, R, T>
+impl<C, R, E> GenericAggregator<C, R, E>
 where
-    C: ModularCandle<T>,
-    R: AggregationRule<C, T>,
-    T: TakerTrade,
+    C: ModularCandle<E>,
+    R: AggregationRule<E>,
 {
     /// Create a new instance with a concrete aggregation rule
     /// and an empty candle.
@@ -90,19 +89,18 @@ where
             candle: Default::default(),
             aggregation_rule,
             trigger_trade,
-            _trade_type: PhantomData,
+            _event_type: PhantomData,
         }
     }
 }
 
-impl<C, R, T> Aggregator<C, T> for GenericAggregator<C, R, T>
+impl<C, R, E> Aggregator<C, E> for GenericAggregator<C, R, E>
 where
-    C: ModularCandle<T>,
-    R: AggregationRule<C, T>,
-    T: TakerTrade,
+    C: ModularCandle<E>,
+    R: AggregationRule<E>,
 {
-    fn update(&mut self, trade: &T) -> Option<C> {
-        if self.aggregation_rule.should_trigger(trade, &self.candle) {
+    fn update(&mut self, trade: &E) -> Option<C> {
+        if self.aggregation_rule.should_trigger(trade) {
             if matches!(
                 self.trigger_trade,
                 TriggerTrade::ClosingCandle | TriggerTrade::Both

@@ -1,4 +1,4 @@
-//! This example shows how to implement the TakerTrade trait for your own
+//! This example shows how to implement the Timestamped and TakerTrade traits for your own
 //! input type.  It builds on the `aggregate_all_ohlc.rs` example. However, instead
 //! of using the default `Trade` type we define a custom type called `Tick`,
 //! which is very similar to `Trade`.  Take note of the `input` field on
@@ -36,12 +36,16 @@ pub struct Tick {
     pub side: Side,
 }
 
-impl TakerTrade for Tick {
+impl Timestamped for Tick {
+    const TIMESTAMP_RESOLUTION: TimestampResolution = TimestampResolution::Millisecond;
+
     #[inline(always)]
     fn timestamp(&self) -> i64 {
         self.date_stamp
     }
+}
 
+impl TakerTrade for Tick {
     #[inline(always)]
     fn price(&self) -> f64 {
         self.trade_price

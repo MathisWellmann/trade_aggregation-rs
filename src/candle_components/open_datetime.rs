@@ -1,6 +1,6 @@
 use chrono::{DateTime, TimeZone, Utc};
 
-use crate::{CandleComponent, CandleComponentUpdate, TakerTrade, TimestampResolution};
+use crate::{CandleComponent, CandleComponentUpdate, TimestampResolution, Timestamped};
 
 /// This 'CandleComponent' keeps track of the opening [`DateTime<Utc>`] of a Candle.
 #[derive(Debug, Clone)]
@@ -32,13 +32,13 @@ impl CandleComponent<DateTime<Utc>> for OpenDateTime {
     }
 }
 
-impl<T: TakerTrade> CandleComponentUpdate<T> for OpenDateTime {
+impl<T: Timestamped> CandleComponentUpdate<T> for OpenDateTime {
     /// Only update the open price if this module is in init mode
     #[inline(always)]
     fn update(&mut self, trade: &T) {
         if self.init {
             let stamp = trade.timestamp();
-            self.value = match trade.timestamp_resolution() {
+            self.value = match T::TIMESTAMP_RESOLUTION {
                 TimestampResolution::Second => Utc.timestamp(stamp, 0),
                 TimestampResolution::Millisecond => Utc.timestamp_millis(trade.timestamp()),
                 TimestampResolution::Microsecond => Utc.timestamp_nanos(stamp * 1000),

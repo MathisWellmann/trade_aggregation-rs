@@ -1,4 +1,4 @@
-use crate::{CandleComponent, CandleComponentUpdate, TakerTrade, TimestampResolution};
+use crate::{CandleComponent, CandleComponentUpdate, TimestampResolution, Timestamped};
 
 /// Measures the velocity of candle creation based on the formula:
 /// 1.0 / t  , where t is measured in seconds
@@ -39,10 +39,10 @@ impl CandleComponent<f64> for TimeVelocity {
     }
 }
 
-impl<T: TakerTrade> CandleComponentUpdate<T> for TimeVelocity {
+impl<T: Timestamped> CandleComponentUpdate<T> for TimeVelocity {
     #[inline(always)]
     fn update(&mut self, trade: &T) {
-        let div = match trade.timestamp_resolution() {
+        let div = match T::TIMESTAMP_RESOLUTION {
             TimestampResolution::Millisecond => 1_000,
             TimestampResolution::Microsecond => 1_000_000,
             TimestampResolution::Nanosecond => 1_000_000_000,

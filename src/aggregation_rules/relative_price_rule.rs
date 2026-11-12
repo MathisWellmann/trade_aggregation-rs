@@ -1,4 +1,4 @@
-use crate::{AggregationRule, Error, ModularCandle, Result, TakerTrade, ThresholdRule};
+use crate::{AggregationRule, Error, Result, TakerTrade, ThresholdRule};
 
 /// Creates Candles once the price changed by a give relative absolute price delta
 #[derive(Debug, Clone)]
@@ -26,12 +26,8 @@ impl RelativePriceRule {
     }
 }
 
-impl<C, T> AggregationRule<C, T> for RelativePriceRule
-where
-    C: ModularCandle<T>,
-    T: TakerTrade,
-{
-    fn should_trigger(&mut self, trade: &T, _candle: &C) -> bool {
+impl<T: TakerTrade> AggregationRule<T> for RelativePriceRule {
+    fn should_trigger(&mut self, trade: &T) -> bool {
         if self.init {
             self.init = false;
             self.init_price = trade.price();
@@ -81,58 +77,43 @@ mod tests {
         let mut rule = RelativePriceRule::new(0.01).unwrap();
 
         assert_eq!(
-            rule.should_trigger(
-                &Trade {
-                    timestamp: 0,
-                    price: 100.0,
-                    size: 10.0
-                },
-                &OhlcCandle::default()
-            ),
+            rule.should_trigger(&Trade {
+                timestamp: 0,
+                price: 100.0,
+                size: 10.0
+            }),
             false
         );
         assert_eq!(
-            rule.should_trigger(
-                &Trade {
-                    timestamp: 0,
-                    price: 100.5,
-                    size: 10.0
-                },
-                &OhlcCandle::default()
-            ),
+            rule.should_trigger(&Trade {
+                timestamp: 0,
+                price: 100.5,
+                size: 10.0
+            }),
             false
         );
         assert_eq!(
-            rule.should_trigger(
-                &Trade {
-                    timestamp: 0,
-                    price: 101.0,
-                    size: 10.0
-                },
-                &OhlcCandle::default()
-            ),
+            rule.should_trigger(&Trade {
+                timestamp: 0,
+                price: 101.0,
+                size: 10.0
+            }),
             true
         );
         assert_eq!(
-            rule.should_trigger(
-                &Trade {
-                    timestamp: 0,
-                    price: 100.5,
-                    size: 10.0
-                },
-                &OhlcCandle::default()
-            ),
+            rule.should_trigger(&Trade {
+                timestamp: 0,
+                price: 100.5,
+                size: 10.0
+            }),
             false
         );
         assert_eq!(
-            rule.should_trigger(
-                &Trade {
-                    timestamp: 0,
-                    price: 99.0,
-                    size: 10.0
-                },
-                &OhlcCandle::default()
-            ),
+            rule.should_trigger(&Trade {
+                timestamp: 0,
+                price: 99.0,
+                size: 10.0
+            }),
             true
         );
     }

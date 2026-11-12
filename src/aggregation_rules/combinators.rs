@@ -6,15 +6,14 @@
 //! With [`TriggerTrade::ClosingCandle`](crate::TriggerTrade::ClosingCandle) the candle opens one trade later,
 //! so the measured duration is slightly longer than the candle.
 
-use crate::{AggregationRule, MillisecondPeriod, TakerTrade};
+use crate::{AggregationRule, MillisecondPeriod, Timestamped};
 
 /// Reset the inner rules that did not trigger on the current trade,
 /// because a candle closed while they were still accumulating.
 /// A rule that did trigger has already restarted its own state.
-fn reset_untriggered<C, T, R>(rule: &mut R, triggered_now: bool)
+fn reset_untriggered<E, R>(rule: &mut R, triggered_now: bool)
 where
-    T: TakerTrade,
-    R: AggregationRule<C, T>,
+    R: AggregationRule<E>,
 {
     if !triggered_now {
         rule.reset();
@@ -22,7 +21,7 @@ where
 }
 
 /// The time from `open_timestamp` to the timestamp of `trade`, in the units of `trade`.
-fn elapsed<T: TakerTrade>(open_timestamp: i64, trade: &T) -> i64 {
+fn elapsed<E: Timestamped>(open_timestamp: i64, trade: &E) -> i64 {
     let elapsed = trade.timestamp().saturating_sub(open_timestamp);
     debug_assert!(elapsed >= 0, "trades must arrive in time order");
     elapsed
@@ -48,20 +47,19 @@ impl<A, B> AnyRule<A, B> {
     }
 }
 
-impl<C, T, A, B> AggregationRule<C, T> for AnyRule<A, B>
+impl<E, A, B> AggregationRule<E> for AnyRule<A, B>
 where
-    T: TakerTrade,
-    A: AggregationRule<C, T>,
-    B: AggregationRule<C, T>,
+    A: AggregationRule<E>,
+    B: AggregationRule<E>,
 {
-    fn should_trigger(&mut self, trade: &T, candle: &C) -> bool {
+    fn should_trigger(&mut self, trade: &E) -> bool {
         // Evaluate both rules, so that neither misses a trade.
-        let a = self.a.should_trigger(trade, candle);
-        let b = self.b.should_trigger(trade, candle);
+        let a = self.a.should_trigger(trade);
+        let b = self.b.should_trigger(trade);
         let trigger = a || b;
         if trigger {
-            reset_untriggered(&mut self.a, a);
-            reset_untriggered(&mut self.b, b);
+            reset_untriggered::<E, _>(&mut self.a, a);
+            reset_untriggered::<E, _>(&mut self.b, b);
         }
         trigger
     }
@@ -99,21 +97,20 @@ impl<A, B> AllRule<A, B> {
     }
 }
 
-impl<C, T, A, B> AggregationRule<C, T> for AllRule<A, B>
+impl<E, A, B> AggregationRule<E> for AllRule<A, B>
 where
-    T: TakerTrade,
-    A: AggregationRule<C, T>,
-    B: AggregationRule<C, T>,
+    A: AggregationRule<E>,
+    B: AggregationRule<E>,
 {
-    fn should_trigger(&mut self, trade: &T, candle: &C) -> bool {
-        let a = self.a.should_trigger(trade, candle);
-        let b = self.b.should_trigger(trade, candle);
+    fn should_trigger(&mut self, trade: &E) -> bool {
+        let a = self.a.should_trigger(trade);
+        let b = self.b.should_trigger(trade);
         self.a_triggered |= a;
         self.b_triggered |= b;
         let trigger = self.a_triggered && self.b_triggered;
         if trigger {
-            reset_untriggered(&mut self.a, a);
-            reset_untriggered(&mut self.b, b);
+            reset_untriggered::<E, _>(&mut self.a, a);
+            reset_untriggered::<E, _>(&mut self.b, b);
             self.a_triggered = false;
             self.b_triggered = false;
         }
@@ -154,19 +151,19 @@ impl<R> MinDuration<R> {
     }
 }
 
-impl<C, T, R> AggregationRule<C, T> for MinDuration<R>
+impl<E, R> AggregationRule<E> for MinDuration<R>
 where
-    T: TakerTrade,
-    R: AggregationRule<C, T>,
+    E: Timestamped,
+    R: AggregationRule<E>,
 {
-    fn should_trigger(&mut self, trade: &T, candle: &C) -> bool {
+    fn should_trigger(&mut self, trade: &E) -> bool {
         let open_timestamp = *self.open_timestamp.get_or_insert(trade.timestamp());
-        let inner = self.inner.should_trigger(trade, candle);
+        let inner = self.inner.should_trigger(trade);
         self.pending |= inner;
-        let min_units = self.min_duration.in_units(trade.timestamp_resolution());
+        let min_units = self.min_duration.in_units(E::TIMESTAMP_RESOLUTION);
         let trigger = self.pending && elapsed(open_timestamp, trade) >= min_units;
         if trigger {
-            reset_untriggered(&mut self.inner, inner);
+            reset_untriggered::<E, _>(&mut self.inner, inner);
             self.pending = false;
             self.open_timestamp = Some(trade.timestamp());
         }
@@ -204,19 +201,19 @@ impl<R> MaxDuration<R> {
     }
 }
 
-impl<C, T, R> AggregationRule<C, T> for MaxDuration<R>
+impl<E, R> AggregationRule<E> for MaxDuration<R>
 where
-    T: TakerTrade,
-    R: AggregationRule<C, T>,
+    E: Timestamped,
+    R: AggregationRule<E>,
 {
-    fn should_trigger(&mut self, trade: &T, candle: &C) -> bool {
+    fn should_trigger(&mut self, trade: &E) -> bool {
         let open_timestamp = *self.open_timestamp.get_or_insert(trade.timestamp());
-        let inner = self.inner.should_trigger(trade, candle);
-        let max_units = self.max_duration.in_units(trade.timestamp_resolution());
+        let inner = self.inner.should_trigger(trade);
+        let max_units = self.max_duration.in_units(E::TIMESTAMP_RESOLUTION);
         let timed_out = elapsed(open_timestamp, trade) > max_units;
         let trigger = inner || timed_out;
         if trigger {
-            reset_untriggered(&mut self.inner, inner);
+            reset_untriggered::<E, _>(&mut self.inner, inner);
             self.open_timestamp = Some(trade.timestamp());
         }
         trigger
@@ -264,7 +261,7 @@ mod tests {
         let mut rule = AnyRule::new(TickRule::new(3), TickRule::new(4));
         let t = trades(6);
         assert!(trigger_indices(&mut rule, &t[..2]).is_empty());
-        AggregationRule::<crate::plot::OhlcCandle, Trade>::reset(&mut rule);
+        AggregationRule::<Trade>::reset(&mut rule);
         assert_eq!(trigger_indices(&mut rule, &t[2..]), vec![2]);
     }
 
@@ -320,31 +317,24 @@ mod tests {
     fn max_duration_respects_the_timestamp_resolution() {
         #[derive(Debug, Clone, Copy)]
         struct MicroTrade(i64);
-        impl TakerTrade for MicroTrade {
+        impl Timestamped for MicroTrade {
+            const TIMESTAMP_RESOLUTION: crate::TimestampResolution =
+                crate::TimestampResolution::Microsecond;
             fn timestamp(&self) -> i64 {
                 self.0
             }
-            fn timestamp_resolution(&self) -> crate::TimestampResolution {
-                crate::TimestampResolution::Microsecond
-            }
-            fn price(&self) -> f64 {
-                100.0
-            }
-            fn size(&self) -> f64 {
-                1.0
-            }
         }
-        /// A rule that never triggers, for any candle and trade type.
+        /// A rule that never triggers, for any event type.
         struct Never;
-        impl<C, T: TakerTrade> AggregationRule<C, T> for Never {
-            fn should_trigger(&mut self, _trade: &T, _candle: &C) -> bool {
+        impl<E> AggregationRule<E> for Never {
+            fn should_trigger(&mut self, _event: &E) -> bool {
                 false
             }
         }
         let mut rule = MaxDuration::new(Never, MillisecondPeriod::from_non_zero(1));
         let triggers: Vec<i64> = (0..3_000)
             .step_by(500)
-            .filter(|ts| rule.should_trigger(&MicroTrade(*ts), &()))
+            .filter(|ts| rule.should_trigger(&MicroTrade(*ts)))
             .collect();
         // 1 ms is 1000 us: the candle opened at 0 closes at 1500 (1000 would still fit).
         assert_eq!(triggers, vec![1_500]);

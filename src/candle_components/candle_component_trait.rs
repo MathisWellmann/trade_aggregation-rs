@@ -1,5 +1,3 @@
-use crate::TakerTrade;
-
 /// Each component of a Candle must fullfill this trait
 pub trait CandleComponent<T> {
     /// An associated type which is the output type of the value() method
@@ -10,8 +8,9 @@ pub trait CandleComponent<T> {
     fn reset(&mut self);
 }
 
-/// Each component of a Candle must fullfill this trait
-pub trait CandleComponentUpdate<T: TakerTrade> {
-    /// Updates the state with newest trade information
-    fn update(&mut self, trade: &T);
+/// Each component of a Candle must fullfill this trait,
+/// for every type of event `E` it accepts.
+pub trait CandleComponentUpdate<E> {
+    /// Updates the state with the newest event
+    fn update(&mut self, event: &E);
 }

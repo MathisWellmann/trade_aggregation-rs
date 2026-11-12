@@ -1,7 +1,7 @@
-use crate::{CandleComponent, CandleComponentUpdate, TakerTrade};
+use crate::{CandleComponent, CandleComponentUpdate, Timestamped};
 
 /// This 'CandleComponent' keeps track of the opening timestamp of a Candle, using the
-/// same unit resolution as the underlying input of [`TakerTrade.timestamp()`].
+/// same unit resolution as the underlying input of [`Timestamped::timestamp`].
 #[derive(Debug, Clone)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct OpenTimeStamp<T> {
@@ -30,7 +30,7 @@ impl CandleComponent<i64> for OpenTimeStamp<i64> {
     }
 }
 
-impl<T: TakerTrade> CandleComponentUpdate<T> for OpenTimeStamp<i64> {
+impl<T: Timestamped> CandleComponentUpdate<T> for OpenTimeStamp<i64> {
     #[inline(always)]
     fn update(&mut self, trade: &T) {
         if self.init {

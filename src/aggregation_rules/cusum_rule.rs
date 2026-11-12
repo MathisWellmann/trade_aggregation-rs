@@ -37,8 +37,8 @@ impl CusumRule {
     }
 }
 
-impl<C, T: TakerTrade> AggregationRule<C, T> for CusumRule {
-    fn should_trigger(&mut self, trade: &T, _candle: &C) -> bool {
+impl<T: TakerTrade> AggregationRule<T> for CusumRule {
+    fn should_trigger(&mut self, trade: &T) -> bool {
         let price = trade.price();
         debug_assert!(price > 0.0, "prices must be positive");
         let Some(previous_price) = self.previous_price.replace(price) else {
@@ -83,7 +83,6 @@ mod tests {
     use super::*;
     use crate::{
         aggregation_rules::test_utils::{trades_at_prices, trigger_indices},
-        plot::OhlcCandle,
         Trade,
     };
 
@@ -148,7 +147,7 @@ mod tests {
         let prices = prices_from_returns(&[0.008, 0.002, 0.008, 0.002]);
         let trades = trades_at_prices(&prices);
         assert!(trigger_indices(&mut r, &trades[..2]).is_empty());
-        AggregationRule::<OhlcCandle, Trade>::reset(&mut r);
+        AggregationRule::<Trade>::reset(&mut r);
         // From trade 1 on: 0.2% (trade 2), 1.0% (trade 3).
         assert_eq!(trigger_indices(&mut r, &trades[2..]), vec![1]);
     }
