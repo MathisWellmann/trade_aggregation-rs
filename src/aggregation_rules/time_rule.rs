@@ -75,7 +75,10 @@ mod tests {
             TimeRule::new(M15, TimestampResolution::Millisecond),
             false,
         );
-        let candles = aggregate_all_trades(&trades, &mut aggregator);
+        let candles: Vec<_> = aggregate_all_trades(&trades, &mut aggregator)
+            .into_iter()
+            .map(crate::Bar::into_candle)
+            .collect();
         println!("got {} candles", candles.len());
 
         plot_ohlc_candles(&candles, "img/time_candles_plot.png", (2560, 1440)).unwrap();
@@ -89,21 +92,30 @@ mod tests {
             TimeRule::new(M15, TimestampResolution::Millisecond),
             false,
         );
-        let candles = aggregate_all_trades(&trades, &mut aggregator);
+        let candles: Vec<_> = aggregate_all_trades(&trades, &mut aggregator)
+            .into_iter()
+            .map(crate::Bar::into_candle)
+            .collect();
         assert_eq!(candles.len(), 396);
 
         let mut aggregator = GenericAggregator::<OhlcCandle, TimeRule, Trade>::new(
             TimeRule::new(M5, TimestampResolution::Millisecond),
             false,
         );
-        let candles = aggregate_all_trades(&trades, &mut aggregator);
+        let candles: Vec<_> = aggregate_all_trades(&trades, &mut aggregator)
+            .into_iter()
+            .map(crate::Bar::into_candle)
+            .collect();
         assert_eq!(candles.len(), 1190);
 
         let mut aggregator = GenericAggregator::<OhlcCandle, TimeRule, Trade>::new(
             TimeRule::new(H1, TimestampResolution::Millisecond),
             false,
         );
-        let candles = aggregate_all_trades(&trades, &mut aggregator);
+        let candles: Vec<_> = aggregate_all_trades(&trades, &mut aggregator)
+            .into_iter()
+            .map(crate::Bar::into_candle)
+            .collect();
         assert_eq!(candles.len(), 99);
     }
 
@@ -135,21 +147,30 @@ mod tests {
             TimeRule::new(M15, TimestampResolution::Millisecond),
             false,
         );
-        let candles = aggregate_all_trades(&trades_ms, &mut aggregator);
+        let candles: Vec<_> = aggregate_all_trades(&trades_ms, &mut aggregator)
+            .into_iter()
+            .map(crate::Bar::into_candle)
+            .collect();
         assert_eq!(candles.len(), 396);
 
         let mut aggregator = GenericAggregator::<OhlcCandle, TimeRule, Trade>::new(
             TimeRule::new(M15, TimestampResolution::Microsecond),
             false,
         );
-        let candles = aggregate_all_trades(&trades_micros, &mut aggregator);
+        let candles: Vec<_> = aggregate_all_trades(&trades_micros, &mut aggregator)
+            .into_iter()
+            .map(crate::Bar::into_candle)
+            .collect();
         assert_eq!(candles.len(), 396);
 
         let mut aggregator = GenericAggregator::<OhlcCandle, TimeRule, Trade>::new(
             TimeRule::new(M15, TimestampResolution::Nanosecond),
             false,
         );
-        let candles = aggregate_all_trades(&trades_ns, &mut aggregator);
+        let candles: Vec<_> = aggregate_all_trades(&trades_ns, &mut aggregator)
+            .into_iter()
+            .map(crate::Bar::into_candle)
+            .collect();
         assert_eq!(candles.len(), 396);
     }
 }

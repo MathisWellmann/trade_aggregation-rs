@@ -159,7 +159,10 @@ mod tests {
             RangeRule::new(threshold).expect("valid threshold"),
             false,
         );
-        let candles = aggregate_all_trades(&trades, &mut aggregator);
+        let candles: Vec<_> = aggregate_all_trades(&trades, &mut aggregator)
+            .into_iter()
+            .map(crate::Bar::into_candle)
+            .collect();
         assert!(candles.len() > 100, "got {} candles", candles.len());
         for c in &candles {
             assert!((c.high() - c.low()) / c.open() < threshold);

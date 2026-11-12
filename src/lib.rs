@@ -7,6 +7,7 @@ mod plot;
 
 mod aggregation_rules;
 mod aggregator;
+mod bar;
 pub mod candle_components;
 mod constants;
 mod errors;
@@ -17,6 +18,7 @@ mod welford_online;
 
 pub use aggregation_rules::*;
 pub use aggregator::*;
+pub use bar::{Bar, BarKind};
 pub use candle_components::{CandleComponent, CandleComponentUpdate};
 pub use constants::*;
 pub use errors::*;

@@ -73,7 +73,10 @@ mod tests {
 
         let mut aggregator =
             GenericAggregator::<OhlcCandle, TickRule, Trade>::new(TickRule::new(1000), false);
-        let candles = aggregate_all_trades(&trades, &mut aggregator);
+        let candles: Vec<_> = aggregate_all_trades(&trades, &mut aggregator)
+            .into_iter()
+            .map(crate::Bar::into_candle)
+            .collect();
         // As there are 1 million trades in the test data, this will create 1000 candles
         assert_eq!(candles.len(), 1000);
     }

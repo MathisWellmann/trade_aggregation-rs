@@ -121,10 +121,16 @@ fn main() {
     // the aggregation rule as well as the input trade data
     let mut aggregator = GenericAggregator::<MyCandle, TimeRule, Trade>::new(time_rule, false);
 
+    // Receives the candles that each trade closes; reused to avoid allocations.
+    let mut closed = Vec::new();
     for t in &trades {
-        if let Some(candle) = aggregator.update(t) {
+        aggregator.update(t, &mut closed);
+        for bar in closed.drain(..) {
+            let candle = bar.candle();
             println!(
-                "candle created with open: {}, high: {}, low: {}, close: {}",
+                "candle {} closed at {} with open: {}, high: {}, low: {}, close: {}",
+                bar.seq(),
+                bar.close_ts(),
                 candle.open(),
                 candle.high(),
                 candle.low(),
