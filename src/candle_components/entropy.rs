@@ -8,7 +8,9 @@ pub struct Entropy {
     total_observed_trades: usize,
 }
 
-impl CandleComponent<f64> for Entropy {
+impl CandleComponent for Entropy {
+    type Value = f64;
+
     fn value(&self) -> f64 {
         let pt = self.buys as f64 / self.total_observed_trades as f64;
         let pn = 1_f64 - pt;

@@ -1,10 +1,7 @@
 use plotters::prelude::*;
 use trade_aggregation_derive::Candle;
 
-use crate::{
-    candle_components::{CandleComponent, CandleComponentUpdate, Close, High, Low, Open},
-    ModularCandle, Trade,
-};
+use crate::candle_components::{Close, High, Low, Open};
 
 #[derive(Debug, Default, Clone, Candle)]
 pub(crate) struct OhlcCandle {

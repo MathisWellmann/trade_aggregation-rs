@@ -7,7 +7,9 @@ pub struct Close {
     value: f64,
 }
 
-impl CandleComponent<f64> for Close {
+impl CandleComponent for Close {
+    type Value = f64;
+
     #[inline(always)]
     fn value(&self) -> f64 {
         self.value

@@ -55,32 +55,22 @@ impl<E: Timestamped> AggregationRule<E> for TimeRule {
 
 #[cfg(test)]
 mod tests {
-    use std::marker::PhantomData;
-
     use trade_aggregation_derive::Candle;
 
     use super::*;
     use crate::{
         aggregate_all_trades,
         aggregation_rules::test_utils::{closed_periods, trade, MicroTrade, NanoTrade},
-        candle_components::{CandleComponent, CandleComponentUpdate, Close},
+        candle_components::Close,
         load_trades_from_csv,
         plot::{plot_ohlc_candles, OhlcCandle},
-        Bar, BarKind, Gaps, GenericAggregator, ModularCandle, Trade, H1, M15, M5,
+        Bar, BarKind, Gaps, GenericAggregator, Trade, H1, M15, M5,
     };
 
-    /// The close of microsecond trades.
+    /// The close, for trades of any timestamp resolution.
     #[derive(Debug, Default, Clone, Candle)]
-    struct MicroCandle {
+    struct CloseCandle {
         close: Close,
-        input: PhantomData<MicroTrade>,
-    }
-
-    /// The close of nanosecond trades.
-    #[derive(Debug, Default, Clone, Candle)]
-    struct NanoCandle {
-        close: Close,
-        input: PhantomData<NanoTrade>,
     }
 
     #[test]
@@ -145,14 +135,14 @@ mod tests {
         );
         let us = aggregate_all_trades(
             &micros,
-            &mut GenericAggregator::<MicroCandle, TimeRule, MicroTrade>::new(
+            &mut GenericAggregator::<CloseCandle, TimeRule, MicroTrade>::new(
                 TimeRule::new(M15),
                 false,
             ),
         );
         let ns = aggregate_all_trades(
             &nanos,
-            &mut GenericAggregator::<NanoCandle, TimeRule, NanoTrade>::new(
+            &mut GenericAggregator::<CloseCandle, TimeRule, NanoTrade>::new(
                 TimeRule::new(M15),
                 false,
             ),

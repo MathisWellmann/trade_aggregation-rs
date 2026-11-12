@@ -13,10 +13,12 @@ where
     trades: Vec<T>,
 }
 
-impl<T> CandleComponent<Vec<T>> for Trades<T>
+impl<T> CandleComponent for Trades<T>
 where
     T: TakerTrade + Clone,
 {
+    type Value = Vec<T>;
+
     #[inline(always)]
     fn value(&self) -> Vec<T> {
         // NOTE: due to the trait definition and borrowing lifetimes,

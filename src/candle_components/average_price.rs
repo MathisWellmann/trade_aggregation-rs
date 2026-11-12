@@ -8,7 +8,9 @@ pub struct AveragePrice {
     price_sum: f64,
 }
 
-impl CandleComponent<f64> for AveragePrice {
+impl CandleComponent for AveragePrice {
+    type Value = f64;
+
     #[inline(always)]
     fn value(&self) -> f64 {
         self.price_sum / self.num_trades

@@ -22,7 +22,9 @@ impl Default for High {
     }
 }
 
-impl CandleComponent<f64> for High {
+impl CandleComponent for High {
+    type Value = f64;
+
     #[inline(always)]
     fn value(&self) -> f64 {
         self.high

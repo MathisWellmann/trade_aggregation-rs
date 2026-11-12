@@ -1,17 +1,9 @@
 //! This example shows how to implement the Timestamped and TakerTrade traits for your own
 //! input type.  It builds on the `aggregate_all_ohlc.rs` example. However, instead
 //! of using the default `Trade` type we define a custom type called `Tick`,
-//! which is very similar to `Trade`.  Take note of the `input` field on
-//! `MyCandle` and the use of `PhantomData`, the `Candle` derive macro parses
-//! the `MyCandle` struct definition for this attribute and uses it to define the generic
-//! trait `ModularCandle<T>`.
-
-//! When deriving the 'Candle' macro, make sure the following things are in scope:
-//! - Trade
-//! - ModularCandle
-//! - CandleComponent
-
-use std::marker::PhantomData;
+//! which is very similar to `Trade`.  The `Candle` derive implements
+//! `ModularCandle<E>` for every event type `E` that all components accept,
+//! so `MyCandle` works with `Tick` as it does with `Trade`.
 
 use trade_aggregation::{
     candle_components::{Close, High, Low, Open},
@@ -85,7 +77,6 @@ struct MyCandle {
     high: High,
     low: Low,
     close: Close,
-    input: PhantomData<Tick>,
 }
 
 fn main() {

@@ -19,7 +19,9 @@ impl Default for OpenDateTime {
     }
 }
 
-impl CandleComponent<DateTime<Utc>> for OpenDateTime {
+impl CandleComponent for OpenDateTime {
+    type Value = DateTime<Utc>;
+
     /// Returns the open price of the candle
     #[inline(always)]
     fn value(&self) -> DateTime<Utc> {

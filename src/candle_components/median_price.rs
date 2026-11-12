@@ -7,7 +7,9 @@ pub struct MedianPrice {
     prices: Vec<f64>,
 }
 
-impl CandleComponent<f64> for MedianPrice {
+impl CandleComponent for MedianPrice {
+    type Value = f64;
+
     #[inline(always)]
     fn value(&self) -> f64 {
         let mut prices = self.prices.clone();

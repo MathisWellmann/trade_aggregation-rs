@@ -16,7 +16,9 @@ impl<T: Default> Default for CloseTimeStamp<T> {
     }
 }
 
-impl CandleComponent<i64> for CloseTimeStamp<i64> {
+impl CandleComponent for CloseTimeStamp<i64> {
+    type Value = i64;
+
     #[inline(always)]
     fn value(&self) -> i64 {
         self.value

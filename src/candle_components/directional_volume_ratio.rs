@@ -8,7 +8,9 @@ pub struct DirectionalVolumeRatio {
     buy_volume: f64,
 }
 
-impl CandleComponent<f64> for DirectionalVolumeRatio {
+impl CandleComponent for DirectionalVolumeRatio {
+    type Value = f64;
+
     #[inline(always)]
     fn value(&self) -> f64 {
         self.buy_volume / self.volume

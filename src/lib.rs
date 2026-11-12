@@ -2,6 +2,9 @@
 
 //! This crate is used for aggregating raw trade data into candles using various methods
 
+// The `Candle` derive refers to `::trade_aggregation`, also within this crate.
+extern crate self as trade_aggregation;
+
 #[cfg(test)]
 mod plot;
 

@@ -7,4 +7,8 @@ pub trait ModularCandle<E>: Clone + Default {
 
     /// Resets the state of the candle
     fn reset(&mut self);
+
+    /// The candle closes at `timestamp`, see [`CandleComponentUpdate::close_at`](crate::CandleComponentUpdate::close_at).
+    /// The default does nothing.
+    fn close_at(&mut self, _timestamp: i64) {}
 }
