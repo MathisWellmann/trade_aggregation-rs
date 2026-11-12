@@ -86,6 +86,13 @@ and you can plug and play it into the [`GenericAggregator`](src/aggregator.rs).
 Implement `reset` as well if your rule accumulates something per candle and should work inside the combinators,
 and `deadline`, `on_deadline` and `skip_to` if it closes candles on a clock.
 
+### Trades and quotes in one candle
+`MarketEvent<T, Q>` is either a trade `T` (a `TakerTrade`) or a quote `Q` (a `BestQuote`: best bid and ask),
+so that one aggregator can process both streams of a symbol in time order.
+Trade rules and trade components see only the trades (through `AsTrade`), quote components only the quotes (`AsQuote`),
+and time rules every event. A plain trade type keeps working without a wrapper.
+Both types must have the same timestamp resolution, which is checked at compile time.
+
 ### `CandleComponent`:
 These pre-existing 'CandleComponents' exist out of the box:
 'CandleComponent'   | Description

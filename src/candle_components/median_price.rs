@@ -1,4 +1,4 @@
-use crate::{CandleComponent, CandleComponentUpdate, TakerTrade};
+use crate::{AsTrade, CandleComponent, CandleComponentUpdate, TakerTrade};
 
 /// Computes the median price from a sorted list of trade prices
 #[derive(Debug, Default, Clone)]
@@ -24,9 +24,12 @@ impl CandleComponent for MedianPrice {
     }
 }
 
-impl<T: TakerTrade> CandleComponentUpdate<T> for MedianPrice {
+impl<E: AsTrade> CandleComponentUpdate<E> for MedianPrice {
     #[inline(always)]
-    fn update(&mut self, trade: &T) {
+    fn update(&mut self, event: &E) {
+        let Some(trade) = event.as_trade() else {
+            return;
+        };
         self.prices.push(trade.price());
     }
 }

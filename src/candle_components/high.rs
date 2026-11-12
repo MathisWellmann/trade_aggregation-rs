@@ -1,4 +1,4 @@
-use crate::{CandleComponent, CandleComponentUpdate, TakerTrade};
+use crate::{AsTrade, CandleComponent, CandleComponentUpdate, TakerTrade};
 
 /// This 'CandleComponent' keeps track of the high price.
 /// A candle without trades is flat at the close of the previous candle.
@@ -38,9 +38,12 @@ impl CandleComponent for High {
     }
 }
 
-impl<T: TakerTrade> CandleComponentUpdate<T> for High {
+impl<E: AsTrade> CandleComponentUpdate<E> for High {
     #[inline(always)]
-    fn update(&mut self, trade: &T) {
+    fn update(&mut self, event: &E) {
+        let Some(trade) = event.as_trade() else {
+            return;
+        };
         let price = trade.price();
         if self.empty || price > self.high {
             self.high = price;

@@ -1,6 +1,6 @@
 use crate::{
     aggregation_rules::flow_bars::{check_ticks, Ewma},
-    AggregationRule, FlowBarParams, FlowSignal, Result, TakerTrade, ThresholdRule,
+    AggregationRule, AsTrade, FlowBarParams, FlowSignal, Result, ThresholdRule,
 };
 
 /// Creates the tick, volume or dollar imbalance bars of López de Prado
@@ -67,8 +67,11 @@ impl ImbalanceRule {
     }
 }
 
-impl<T: TakerTrade> AggregationRule<T> for ImbalanceRule {
-    fn should_trigger(&mut self, trade: &T) -> bool {
+impl<E: AsTrade> AggregationRule<E> for ImbalanceRule {
+    fn should_trigger(&mut self, event: &E) -> bool {
+        let Some(trade) = event.as_trade() else {
+            return false;
+        };
         let flow = self.signal.flow(trade);
         let signed = flow.side * flow.magnitude;
         self.expected_imbalance.update(signed);

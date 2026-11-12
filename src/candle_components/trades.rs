@@ -1,4 +1,4 @@
-use crate::{CandleComponent, CandleComponentUpdate, TakerTrade};
+use crate::{AsTrade, CandleComponent, CandleComponentUpdate, TakerTrade};
 
 /// A `CandleComponent` that gathers all observed trades and returns them.
 /// Be careful, the `value` method clones the inner vector,
@@ -33,13 +33,16 @@ where
     }
 }
 
-impl<T> CandleComponentUpdate<T> for Trades<T>
+impl<E> CandleComponentUpdate<E> for Trades<E::Trade>
 where
-    T: TakerTrade + Clone,
+    E: AsTrade,
+    E::Trade: Clone,
 {
     #[inline(always)]
-    fn update(&mut self, trade: &T) {
-        self.trades.push(trade.clone());
+    fn update(&mut self, event: &E) {
+        if let Some(trade) = event.as_trade() {
+            self.trades.push(trade.clone());
+        }
     }
 }
 

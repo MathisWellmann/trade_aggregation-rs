@@ -1,4 +1,4 @@
-use crate::{CandleComponent, CandleComponentUpdate, TakerTrade};
+use crate::{AsTrade, CandleComponent, CandleComponentUpdate, TakerTrade};
 
 /// A `CandleComponent` that computes the binary entropy of whether a trade is a buy or a sell.
 #[derive(Default, Debug, Clone)]
@@ -29,8 +29,11 @@ impl CandleComponent for Entropy {
     }
 }
 
-impl<T: TakerTrade> CandleComponentUpdate<T> for Entropy {
-    fn update(&mut self, trade: &T) {
+impl<E: AsTrade> CandleComponentUpdate<E> for Entropy {
+    fn update(&mut self, event: &E) {
+        let Some(trade) = event.as_trade() else {
+            return;
+        };
         if trade.size() > 0.0 {
             self.buys += 1
         }

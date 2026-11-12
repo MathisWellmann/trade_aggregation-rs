@@ -1,4 +1,4 @@
-use crate::{AggregationRule, By, Error, Result, TakerTrade, ThresholdRule};
+use crate::{AggregationRule, AsTrade, By, Error, Result, TakerTrade, ThresholdRule};
 
 /// Creates order flow ("delta") bars: a candle closes when the net taker volume,
 /// buys minus sells, reaches `threshold` in either direction.
@@ -38,8 +38,11 @@ impl SignedVolumeRule {
     }
 }
 
-impl<T: TakerTrade> AggregationRule<T> for SignedVolumeRule {
-    fn should_trigger(&mut self, trade: &T) -> bool {
+impl<E: AsTrade> AggregationRule<E> for SignedVolumeRule {
+    fn should_trigger(&mut self, event: &E) -> bool {
+        let Some(trade) = event.as_trade() else {
+            return false;
+        };
         debug_assert!(trade.price() > 0.0, "prices must be positive");
         self.net_volume += self.by.size(trade);
         let trigger = self.net_volume.abs() >= self.threshold;

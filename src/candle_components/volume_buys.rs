@@ -1,4 +1,4 @@
-use crate::{CandleComponent, CandleComponentUpdate, TakerTrade};
+use crate::{AsTrade, CandleComponent, CandleComponentUpdate, TakerTrade};
 
 /// This 'CandleComponent' keeps track of the cumulative buy volume of trades.
 #[derive(Debug, Default, Clone)]
@@ -21,9 +21,12 @@ impl CandleComponent for VolumeBuys {
     }
 }
 
-impl<T: TakerTrade> CandleComponentUpdate<T> for VolumeBuys {
+impl<E: AsTrade> CandleComponentUpdate<E> for VolumeBuys {
     #[inline(always)]
-    fn update(&mut self, trade: &T) {
+    fn update(&mut self, event: &E) {
+        let Some(trade) = event.as_trade() else {
+            return;
+        };
         if trade.size() > 0.0 {
             self.buy_volume += trade.size().abs()
         }

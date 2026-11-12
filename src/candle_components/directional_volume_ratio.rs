@@ -1,4 +1,4 @@
-use crate::{CandleComponent, CandleComponentUpdate, TakerTrade};
+use crate::{AsTrade, CandleComponent, CandleComponentUpdate, TakerTrade};
 
 /// This 'CandleComponent' keeps track of the ratio of buy volume vs total volume
 #[derive(Clone, Debug, Default)]
@@ -23,9 +23,12 @@ impl CandleComponent for DirectionalVolumeRatio {
     }
 }
 
-impl<T: TakerTrade> CandleComponentUpdate<T> for DirectionalVolumeRatio {
+impl<E: AsTrade> CandleComponentUpdate<E> for DirectionalVolumeRatio {
     #[inline(always)]
-    fn update(&mut self, trade: &T) {
+    fn update(&mut self, event: &E) {
+        let Some(trade) = event.as_trade() else {
+            return;
+        };
         self.volume += trade.size().abs();
         if trade.size() > 0.0 {
             self.buy_volume += trade.size();

@@ -1,6 +1,6 @@
 use crate::{
     aggregation_rules::flow_bars::{check_ticks, Ewma},
-    AggregationRule, FlowBarParams, FlowSignal, Result, TakerTrade, ThresholdRule,
+    AggregationRule, AsTrade, FlowBarParams, FlowSignal, Result, ThresholdRule,
 };
 
 /// Creates the tick, volume or dollar run bars of López de Prado
@@ -59,8 +59,11 @@ impl RunRule {
     }
 }
 
-impl<T: TakerTrade> AggregationRule<T> for RunRule {
-    fn should_trigger(&mut self, trade: &T) -> bool {
+impl<E: AsTrade> AggregationRule<E> for RunRule {
+    fn should_trigger(&mut self, event: &E) -> bool {
+        let Some(trade) = event.as_trade() else {
+            return false;
+        };
         let flow = self.signal.flow(trade);
         let (buy, sell) = if flow.side > 0.0 {
             (flow.magnitude, 0.0)

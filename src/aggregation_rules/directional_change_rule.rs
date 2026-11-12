@@ -1,4 +1,4 @@
-use crate::{AggregationRule, Error, Result, TakerTrade, ThresholdRule};
+use crate::{AggregationRule, AsTrade, Error, Result, TakerTrade, ThresholdRule};
 
 /// The state of the price path, in the terms of the directional change framework.
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -92,8 +92,11 @@ fn next_trend(trend: Trend, price: f64, threshold: f64) -> (Trend, bool) {
     }
 }
 
-impl<T: TakerTrade> AggregationRule<T> for DirectionalChangeRule {
-    fn should_trigger(&mut self, trade: &T) -> bool {
+impl<E: AsTrade> AggregationRule<E> for DirectionalChangeRule {
+    fn should_trigger(&mut self, event: &E) -> bool {
+        let Some(trade) = event.as_trade() else {
+            return false;
+        };
         let price = trade.price();
         debug_assert!(price > 0.0, "prices must be positive");
         let (trend, confirmed) = next_trend(self.trend, price, self.threshold_fraction);
