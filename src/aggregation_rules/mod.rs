@@ -19,7 +19,7 @@ mod volume_rule;
 #[cfg(test)]
 pub(crate) mod test_utils;
 
-pub use adaptive::{Adaptive, ThresholdRule};
+pub use adaptive::{Adaptive, Scaling, ThresholdRule};
 pub use aggregation_rule_trait::AggregationRule;
 pub use aligned_time_rule::*;
 pub use combinators::{AllRule, AnyRule, MaxDuration, MinDuration};
