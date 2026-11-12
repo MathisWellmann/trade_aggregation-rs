@@ -5,7 +5,9 @@ use crate::TakerTrade;
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Vpin {}
 
-impl CandleComponent<f64> for Vpin {
+impl CandleComponent for Vpin {
+    type Value = f64;
+
     fn value(&self) -> f64 {
         todo!()
     }

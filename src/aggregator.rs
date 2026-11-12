@@ -219,8 +219,10 @@ where
             deadline.is_none_or(|deadline| now < deadline),
             "call advance_to({now}) before provisional({now}), the deadline {deadline:?} passed"
         );
+        let mut candle = self.candle.clone();
+        candle.close_at(now);
         Some(Bar::new(
-            self.candle.clone(),
+            candle,
             self.next_seq,
             (open_ts, now),
             self.num_events,
@@ -248,6 +250,7 @@ where
     /// Close the current candle at `close_ts` and open the next one there.
     fn close(&mut self, close_ts: i64, kind: BarKind) -> Bar<C> {
         let open_ts = self.open_ts.expect("a candle closes only after it opened");
+        self.candle.close_at(close_ts);
         let bar = Bar::new(
             self.candle.clone(),
             self.next_seq,
@@ -308,10 +311,8 @@ mod tests {
     use super::*;
     use crate::{
         aggregation_rules::test_utils::closed_periods,
-        candle_components::{
-            CandleComponent, CandleComponentUpdate, Close, NumTrades, Open, Volume,
-        },
-        load_trades_from_csv, ModularCandle, TickRule, TimeRule, Trade, M1,
+        candle_components::{Close, NumTrades, Open, Volume},
+        load_trades_from_csv, TickRule, TimeRule, Trade, M1,
     };
 
     #[derive(Default, Debug, Clone, Candle)]

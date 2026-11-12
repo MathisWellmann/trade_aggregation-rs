@@ -63,20 +63,16 @@ impl<E: Timestamped> AggregationRule<E> for AlignedTimeRule {
 
 #[cfg(test)]
 mod tests {
-    use std::marker::PhantomData;
-
     use trade_aggregation_derive::Candle;
 
     use super::*;
     use crate::{
         aggregate_all_trades,
         aggregation_rules::test_utils::{closed_periods, trade, MicroTrade},
-        candle_components::{
-            CandleComponent, CandleComponentUpdate, Close, High, Low, NumTrades, Open, Volume,
-        },
+        candle_components::{Close, High, Low, NumTrades, Open, Volume},
         load_trades_from_csv,
         plot::OhlcCandle,
-        Aggregator, BarKind, Gaps, GenericAggregator, ModularCandle, Trade, M1, M15,
+        Aggregator, BarKind, Gaps, GenericAggregator, Trade, M1, M15,
     };
 
     /// The candle of microsecond trades.
@@ -84,7 +80,6 @@ mod tests {
     struct MicroCandle {
         num_trades: NumTrades<u32>,
         volume: Volume,
-        input: PhantomData<MicroTrade>,
     }
 
     #[derive(Default, Debug, Clone, Candle)]

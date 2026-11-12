@@ -21,7 +21,9 @@ impl Default for Open {
     }
 }
 
-impl CandleComponent<f64> for Open {
+impl CandleComponent for Open {
+    type Value = f64;
+
     /// Returns the open price of the candle
     #[inline(always)]
     fn value(&self) -> f64 {

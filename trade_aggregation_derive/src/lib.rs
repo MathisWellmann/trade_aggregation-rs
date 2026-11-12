@@ -10,119 +10,191 @@
 //! }
 //! with the derive macro will create a "fn open(&self)" method which gets the inner value
 //!
-//! When deriving the 'Candle' macro, make sure the following things are in scope:
-//! - Trade
-//! - ModularCandle
-//! - CandleComponent
+//! The generated code uses absolute paths (`::trade_aggregation::...`),
+//! so nothing has to be in scope where the macro is used.
 
 #![deny(missing_docs)]
 
 use proc_macro::TokenStream;
-use quote::{__private::Span, quote};
+use quote::{format_ident, quote};
 use syn::{
-    self, AngleBracketedGenericArguments, Data, DataStruct, Fields, GenericArgument, Ident, Type,
-    TypePath,
+    parse_macro_input, punctuated::Punctuated, Data, DataStruct, DeriveInput, Field, Fields, Ident,
+    Path, Token, Type,
 };
 
 /// The 'Candle' macro takes a named struct,
 /// that has multiple fields of type 'CandleComponent'
 /// to automatically generate a struct that implements
-/// the 'ModularCandle' trait, which means it can then be used
-/// in the aggregation process.
-/// It also exposes getter functions for each 'CandleComponent' for convenience.
-#[proc_macro_derive(Candle)]
+/// the 'ModularCandle' trait for every event type that all components accept,
+/// which means it can then be used in the aggregation process.
+/// It also exposes getter functions for each 'CandleComponent' for convenience,
+/// and a `FIELDS` constant with the names of the components.
+///
+/// Fields of type `PhantomData` are not components and are ignored.
+///
+/// `#[candle(record = MyRecord)]` also generates a struct `MyRecord` with the value of each component
+/// as a public field, and a method `record(&self) -> MyRecord`, e.g. to serialize a closed candle.
+/// `#[candle(record_derive(Debug, Clone, serde::Serialize))]` adds derives to that struct.
+#[proc_macro_derive(Candle, attributes(candle))]
 pub fn candle_macro_derive(input: TokenStream) -> TokenStream {
-    // Construct a representation of Rust code as a syntax tree
-    // that we can manipulate
-    let ast = syn::parse(input).unwrap();
-
-    // Build the trait implementation
+    let ast = parse_macro_input!(input as DeriveInput);
     impl_candle_macro(&ast)
+        .unwrap_or_else(syn::Error::into_compile_error)
+        .into()
 }
 
-fn phantom_path_to_type(path: &syn::Path) -> Option<Ident> {
-    if path.leading_colon.is_some() {
-        return None;
-    }
-    let mut it = path.segments.iter();
-    let segment = it.next()?;
-    match &segment.arguments {
-        syn::PathArguments::AngleBracketed(AngleBracketedGenericArguments { args: x, .. }) => {
-            match x.first() {
-                Some(GenericArgument::Type(Type::Path(TypePath {
-                    path: syn::Path { segments: segs, .. },
-                    ..
-                }))) => segs.first().map(|x| x.ident.clone()),
-                _ => None,
+/// The options of the `#[candle(...)]` attribute.
+#[derive(Default)]
+struct Options {
+    record: Option<Ident>,
+    record_derives: Vec<Path>,
+}
+
+fn parse_options(ast: &DeriveInput) -> syn::Result<Options> {
+    let mut options = Options::default();
+    for attr in ast.attrs.iter().filter(|a| a.path().is_ident("candle")) {
+        attr.parse_nested_meta(|meta| {
+            if meta.path.is_ident("record") {
+                options.record = Some(meta.value()?.parse()?);
+                return Ok(());
             }
-        }
-        _ => None,
+            if meta.path.is_ident("record_derive") {
+                let content;
+                syn::parenthesized!(content in meta.input);
+                let paths = Punctuated::<Path, Token![,]>::parse_terminated(&content)?;
+                options.record_derives.extend(paths);
+                return Ok(());
+            }
+            Err(meta.error("expected `record = Name` or `record_derive(...)`"))
+        })?;
+    }
+    if options.record.is_none() && !options.record_derives.is_empty() {
+        return Err(syn::Error::new_spanned(
+            &ast.ident,
+            "`record_derive` needs `record = Name`",
+        ));
+    }
+    Ok(options)
+}
+
+/// Whether the field is a `PhantomData`, e.g. the `input` marker of older versions.
+fn is_phantom(field: &Field) -> bool {
+    match &field.ty {
+        Type::Path(p) => p
+            .path
+            .segments
+            .last()
+            .is_some_and(|s| s.ident == "PhantomData"),
+        _ => false,
     }
 }
 
-fn impl_candle_macro(ast: &syn::DeriveInput) -> TokenStream {
+fn impl_candle_macro(ast: &DeriveInput) -> syn::Result<proc_macro2::TokenStream> {
     let name = &ast.ident;
-    let components = match &ast.data {
+    let vis = &ast.vis;
+    let fields = match &ast.data {
         Data::Struct(DataStruct {
             fields: Fields::Named(fields),
             ..
         }) => &fields.named,
-        _ => panic!("Use a named struct"),
-    };
-
-    let default_output_type = Ident::new("f64", Span::call_site());
-    let mut input_type = Some(Ident::new("Trade", Span::call_site()));
-    let mut value_idents = vec![];
-    let mut value_types = vec![];
-
-    for c in components {
-        if let syn::Field {
-            ty: syn::Type::Path(syn::TypePath { path: p, .. }),
-            ident,
-            ..
-        } = c
-        {
-            if ident.clone().unwrap().to_string().as_str() == "input" {
-                input_type = phantom_path_to_type(p);
-            } else if let Some(type_) = phantom_path_to_type(p) {
-                value_idents.push(ident);
-                value_types.push(type_);
-            } else {
-                value_idents.push(ident);
-                value_types.push(default_output_type.clone());
-            }
+        _ => {
+            return Err(syn::Error::new_spanned(
+                &ast.ident,
+                "`Candle` needs a struct with named fields",
+            ))
         }
+    };
+    let options = parse_options(ast)?;
+
+    let components: Vec<&Field> = fields.iter().filter(|f| !is_phantom(f)).collect();
+    let idents: Vec<&Ident> = components
+        .iter()
+        .map(|f| f.ident.as_ref().expect("named fields have identifiers"))
+        .collect();
+    let types: Vec<&Type> = components.iter().map(|f| &f.ty).collect();
+    let names: Vec<String> = idents.iter().map(|i| i.to_string()).collect();
+    let count = names.len();
+
+    let ta = quote!(::trade_aggregation);
+    let event = format_ident!("__CandleEvent");
+    let (impl_generics, ty_generics, where_clause) = ast.generics.split_for_impl();
+    let mut event_generics = ast.generics.clone();
+    event_generics.params.push(syn::parse_quote!(#event));
+    let (event_impl_generics, _, _) = event_generics.split_for_impl();
+    let mut event_where = where_clause
+        .cloned()
+        .unwrap_or_else(|| syn::parse_quote!(where));
+    for ty in &types {
+        event_where
+            .predicates
+            .push(syn::parse_quote!(#ty: #ta::CandleComponentUpdate<#event>));
     }
 
-    let fn_names0 = value_idents.clone();
-    let fn_names1 = fn_names0.clone();
-    let fn_names2 = fn_names1.clone();
-    let input_name = input_type.expect("No PhantomData for input attribute type!");
+    let record = match &options.record {
+        None => quote!(),
+        Some(record) => {
+            if !ast.generics.params.is_empty() {
+                return Err(syn::Error::new_spanned(
+                    &ast.generics,
+                    "`record` needs a candle without generic parameters",
+                ));
+            }
+            let derives = &options.record_derives;
+            quote! {
+                /// The values of the components of a candle.
+                #[derive(#(#derives),*)]
+                #vis struct #record {
+                    #(
+                        #[doc = concat!("The value of `", #names, "`.")]
+                        pub #idents: <#types as #ta::CandleComponent>::Value,
+                    )*
+                }
 
-    let gen = quote! {
-        impl #name {
+                impl #name {
+                    /// The values of all components.
+                    pub fn record(&self) -> #record {
+                        #record {
+                            #( #idents: self.#idents(), )*
+                        }
+                    }
+                }
+            }
+        }
+    };
+
+    Ok(quote! {
+        impl #impl_generics #name #ty_generics #where_clause {
+            /// The names of the components, in the order of the fields.
+            pub const FIELDS: [&'static str; #count] = [#(#names),*];
+
             #(
                 /// Get the value of this candle component.
-                pub fn #fn_names0(&self) -> #value_types {
-                    self.#fn_names0.value()
+                pub fn #idents(&self) -> <#types as #ta::CandleComponent>::Value {
+                    #ta::CandleComponent::value(&self.#idents)
                 }
             )*
         }
 
-        impl ModularCandle<#input_name> for #name {
-            fn update(&mut self, trade: &#input_name) {
+        impl #event_impl_generics #ta::ModularCandle<#event> for #name #ty_generics #event_where {
+            fn update(&mut self, event: &#event) {
                 #(
-                    self.#fn_names1.update(trade);
+                    #ta::CandleComponentUpdate::<#event>::update(&mut self.#idents, event);
                 )*
             }
 
             fn reset(&mut self) {
                 #(
-                    self.#fn_names2.reset();
+                    #ta::CandleComponent::reset(&mut self.#idents);
+                )*
+            }
+
+            fn close_at(&mut self, timestamp: i64) {
+                #(
+                    #ta::CandleComponentUpdate::<#event>::close_at(&mut self.#idents, timestamp);
                 )*
             }
         }
-    };
 
-    gen.into()
+        #record
+    })
 }

@@ -14,7 +14,9 @@ impl Default for StdDevSizes {
         }
     }
 }
-impl CandleComponent<f64> for StdDevSizes {
+impl CandleComponent for StdDevSizes {
+    type Value = f64;
+
     #[inline(always)]
     fn value(&self) -> f64 {
         self.welford.std_dev()

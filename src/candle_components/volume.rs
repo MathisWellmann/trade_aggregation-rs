@@ -7,7 +7,9 @@ pub struct Volume {
     volume: f64,
 }
 
-impl CandleComponent<f64> for Volume {
+impl CandleComponent for Volume {
+    type Value = f64;
+
     #[inline(always)]
     fn value(&self) -> f64 {
         self.volume

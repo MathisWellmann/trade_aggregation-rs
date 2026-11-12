@@ -1,10 +1,5 @@
 //! This example shows how to aggregate all trades into time based
 //! 1 minute candles all at once. The candle will contain the open, high, low and close price
-//!
-//! When deriving the 'Candle' macro, make sure the following things are in scope:
-//! - Trade
-//! - ModularCandle
-//! - CandleComponent
 
 use trade_aggregation::{
     candle_components::{Close, High, Low, Open},

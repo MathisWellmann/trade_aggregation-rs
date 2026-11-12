@@ -23,7 +23,7 @@ all = "deny"
 csv = "1"
 thiserror = "1"
 
-trade_aggregation_derive = { path = "./trade_aggregation_derive", version = "0.4.1" }
+trade_aggregation_derive = { path = "./trade_aggregation_derive", version = "0.5.0" }
 
 # Optionals
 serde = { version = "1", features = ["derive"], optional = true }

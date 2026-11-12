@@ -7,7 +7,9 @@ pub struct NumTrades<T> {
     value: T,
 }
 
-impl CandleComponent<u32> for NumTrades<u32> {
+impl CandleComponent for NumTrades<u32> {
+    type Value = u32;
+
     #[inline(always)]
     fn value(&self) -> u32 {
         self.value
