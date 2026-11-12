@@ -102,7 +102,10 @@ mod tests {
             AlignedTimeRule::new(M15, TimestampResolution::Millisecond),
             false,
         );
-        let candles = aggregate_all_trades(&trades, &mut aggregator);
+        let candles: Vec<_> = aggregate_all_trades(&trades, &mut aggregator)
+            .into_iter()
+            .map(crate::Bar::into_candle)
+            .collect();
         assert_eq!(candles.len(), 396);
 
         // make sure that the aggregator starts a new candle with the "trigger tick",
@@ -123,7 +126,10 @@ mod tests {
             AlignedTimeRule::new(M1, TimestampResolution::Microsecond),
             false,
         );
-        let candles = aggregate_all_trades(&trades, &mut aggregator);
+        let candles: Vec<_> = aggregate_all_trades(&trades, &mut aggregator)
+            .into_iter()
+            .map(crate::Bar::into_candle)
+            .collect();
 
         let c = &candles[0];
         assert_eq!(c.num_trades(), 10);
@@ -164,7 +170,10 @@ mod tests {
             AlignedTimeRule::new(M1, TimestampResolution::Millisecond),
             false,
         );
-        let candles = aggregate_all_trades(&trades, &mut aggregator);
+        let candles: Vec<_> = aggregate_all_trades(&trades, &mut aggregator)
+            .into_iter()
+            .map(crate::Bar::into_candle)
+            .collect();
         assert_eq!(candles.len(), 2);
         assert_eq!(candles[0].open(), 100.00);
         assert_eq!(candles[0].close(), 101.00);
@@ -201,7 +210,10 @@ mod tests {
             AlignedTimeRule::new(M1, TimestampResolution::Millisecond),
             false,
         );
-        let candles = aggregate_all_trades(&trades, &mut aggregator);
+        let candles: Vec<_> = aggregate_all_trades(&trades, &mut aggregator)
+            .into_iter()
+            .map(crate::Bar::into_candle)
+            .collect();
         assert_eq!(candles.len(), 2);
         assert_eq!(candles[0].open(), 100.0);
         assert_eq!(candles[0].close(), 101.0);

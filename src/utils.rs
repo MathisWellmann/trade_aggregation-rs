@@ -1,6 +1,6 @@
 use std::fs::File;
 
-use crate::{errors::Result, Aggregator, ModularCandle, Trade};
+use crate::{errors::Result, Aggregator, Bar, ModularCandle, Trade};
 
 /// Determine the candle volume which produces the same number of candles
 /// as the given time aggregation equivalent
@@ -33,20 +33,16 @@ pub fn candle_volume_from_time_period(
 /// aggregator: Something that can aggregate
 ///
 /// # Returns:
-/// A vector of aggregated candle data
-pub fn aggregate_all_trades<A, C, E>(trades: &[E], aggregator: &mut A) -> Vec<C>
+/// The closed candles. The last, unfinished candle is not included.
+pub fn aggregate_all_trades<A, C, E>(trades: &[E], aggregator: &mut A) -> Vec<Bar<C>>
 where
     A: Aggregator<C, E>,
     C: ModularCandle<E>,
 {
-    let mut out: Vec<C> = vec![];
-
+    let mut out = Vec::new();
     for t in trades {
-        if let Some(candle) = aggregator.update(t) {
-            out.push(candle)
-        }
+        aggregator.update(t, &mut out);
     }
-
     out
 }
 

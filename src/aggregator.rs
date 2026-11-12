@@ -1,18 +1,17 @@
 use std::marker::PhantomData;
 
-use crate::{AggregationRule, ModularCandle};
+use crate::{AggregationRule, Bar, BarKind, ModularCandle, Timestamped};
 
 /// Defines the needed methods for any online `Aggregator`
 pub trait Aggregator<Candle, E> {
-    /// Updates the aggregation state with a new event
+    /// Updates the aggregation state with a new event.
     ///
     /// # Arguments:
-    /// event: the event, e.g. a trade, to add to the aggregation process
-    ///
-    /// # Returns:
-    /// Some output only when a new candle has been created,
-    /// otherwise it returns None
-    fn update(&mut self, event: &E) -> Option<Candle>;
+    /// `event`: the event, e.g. a trade, to add to the aggregation process.
+    ///     Events must arrive in time order.
+    /// `out`: receives the candles that the event closed, in order.
+    ///     An event can close more than one candle, e.g. after a gap in the data.
+    fn update(&mut self, event: &E, out: &mut impl Extend<Bar<Candle>>);
 
     /// Get a reference to an unfinished `Candle`.
     /// Accessing a `Candle` using this method does not guarantee that the `AggregationRule` is respected.
@@ -46,6 +45,14 @@ pub struct GenericAggregator<C, R, E> {
     candle: C,
     aggregation_rule: R,
     trigger_trade: TriggerTrade,
+    /// The number of candles closed so far, which is the `seq` of the next one.
+    next_seq: u64,
+    /// When the current candle opened, `None` before the first event.
+    open_ts: Option<i64>,
+    /// The number of events in the current candle.
+    num_events: u64,
+    /// The latest time the aggregator has seen, to check that time does not run backwards.
+    now: Option<i64>,
     _event_type: PhantomData<E>,
 }
 
@@ -53,6 +60,7 @@ impl<C, R, E> GenericAggregator<C, R, E>
 where
     C: ModularCandle<E>,
     R: AggregationRule<E>,
+    E: Timestamped,
 {
     /// Create a new instance with a concrete aggregation rule
     /// and an empty candle.
@@ -89,8 +97,72 @@ where
             candle: Default::default(),
             aggregation_rule,
             trigger_trade,
+            next_seq: 0,
+            open_ts: None,
+            num_events: 0,
+            now: None,
             _event_type: PhantomData,
         }
+    }
+
+    /// The rule, e.g. to read the threshold of an [`Adaptive`](crate::Adaptive) rule.
+    pub fn rule(&self) -> &R {
+        &self.aggregation_rule
+    }
+
+    /// The `seq` the current candle gets when it closes.
+    pub fn next_seq(&self) -> u64 {
+        self.next_seq
+    }
+
+    /// A snapshot of the unfinished candle as of `now`, e.g. for features over a window that ends now.
+    /// `None` before the first event.
+    ///
+    /// # Panics:
+    /// If `now` is earlier than the latest event.
+    pub fn provisional(&self, now: i64) -> Option<Bar<C>> {
+        let open_ts = self.open_ts?;
+        self.assert_in_order(now);
+        Some(Bar::new(
+            self.candle.clone(),
+            self.next_seq,
+            (open_ts, now),
+            self.num_events,
+            BarKind::Provisional,
+        ))
+    }
+
+    /// Time must not run backwards, or candles would close in the past.
+    fn assert_in_order(&self, timestamp: i64) {
+        if let Some(now) = self.now {
+            assert!(
+                timestamp >= now,
+                "events must arrive in time order: {timestamp} after {now}"
+            );
+        }
+    }
+
+    /// Add `event` to the current candle.
+    fn add(&mut self, event: &E) {
+        self.candle.update(event);
+        self.num_events += 1;
+    }
+
+    /// Close the current candle at `close_ts` and open the next one there.
+    fn close(&mut self, close_ts: i64, kind: BarKind) -> Bar<C> {
+        let open_ts = self.open_ts.expect("a candle closes only after it opened");
+        let bar = Bar::new(
+            self.candle.clone(),
+            self.next_seq,
+            (open_ts, close_ts),
+            self.num_events,
+            kind,
+        );
+        self.candle.reset();
+        self.next_seq += 1;
+        self.open_ts = Some(close_ts);
+        self.num_events = 0;
+        bar
     }
 }
 
@@ -98,32 +170,31 @@ impl<C, R, E> Aggregator<C, E> for GenericAggregator<C, R, E>
 where
     C: ModularCandle<E>,
     R: AggregationRule<E>,
+    E: Timestamped,
 {
-    fn update(&mut self, trade: &E) -> Option<C> {
-        if self.aggregation_rule.should_trigger(trade) {
-            if matches!(
-                self.trigger_trade,
-                TriggerTrade::ClosingCandle | TriggerTrade::Both
-            ) {
-                self.candle.update(trade);
-            }
-            let candle = self.candle.clone();
+    fn update(&mut self, event: &E, out: &mut impl Extend<Bar<C>>) {
+        let timestamp = event.timestamp();
+        self.assert_in_order(timestamp);
+        self.now = Some(timestamp);
+        self.open_ts.get_or_insert(timestamp);
 
-            // Create a new candle.
-            self.candle.reset();
-            if matches!(
-                self.trigger_trade,
-                TriggerTrade::NextCandle | TriggerTrade::Both
-            ) {
-                self.candle.update(trade);
-            }
-
-            return Some(candle);
+        if !self.aggregation_rule.should_trigger(event) {
+            self.add(event);
+            return;
         }
-
-        self.candle.update(trade);
-
-        None
+        if matches!(
+            self.trigger_trade,
+            TriggerTrade::ClosingCandle | TriggerTrade::Both
+        ) {
+            self.add(event);
+        }
+        out.extend([self.close(timestamp, BarKind::Rule)]);
+        if matches!(
+            self.trigger_trade,
+            TriggerTrade::NextCandle | TriggerTrade::Both
+        ) {
+            self.add(event);
+        }
     }
 
     fn unfinished_candle(&self) -> &C {
@@ -162,16 +233,31 @@ mod tests {
             .collect()
     }
 
-    /// Aggregate `ten_trades` into candles of three trades and return the
-    /// finished candles and the unfinished one.
-    fn aggregate_ten(trigger_trade: TriggerTrade) -> (Vec<CountingCandle>, CountingCandle) {
+    /// Aggregate `ten_trades` into candles of three trades.
+    fn aggregate_ten_bars(
+        trigger_trade: TriggerTrade,
+    ) -> (
+        Vec<Bar<CountingCandle>>,
+        GenericAggregator<CountingCandle, TickRule, Trade>,
+    ) {
         let mut a = GenericAggregator::<CountingCandle, TickRule, Trade>::with_trigger_trade(
             TickRule::new(3),
             trigger_trade,
         );
-        let candles: Vec<CountingCandle> =
-            ten_trades().iter().filter_map(|t| a.update(t)).collect();
-        (candles, a.unfinished_candle().clone())
+        let mut bars = Vec::new();
+        for t in &ten_trades() {
+            a.update(t, &mut bars);
+        }
+        (bars, a)
+    }
+
+    /// The finished candles of `aggregate_ten_bars` and the unfinished one.
+    fn aggregate_ten(trigger_trade: TriggerTrade) -> (Vec<CountingCandle>, CountingCandle) {
+        let (bars, a) = aggregate_ten_bars(trigger_trade);
+        (
+            bars.into_iter().map(Bar::into_candle).collect(),
+            a.unfinished_candle().clone(),
+        )
     }
 
     fn total_volume(candles: &[CountingCandle], unfinished: &CountingCandle) -> f64 {
@@ -247,18 +333,81 @@ mod tests {
         let rule = TimeRule::new(M1, TimestampResolution::Millisecond);
         let mut a = GenericAggregator::<MyCandle, TimeRule, Trade>::new(rule, false);
 
-        let mut candle_counter: usize = 0;
+        let mut bars = Vec::new();
         for t in trades.iter() {
-            if let Some(_candle) = a.update(t) {
-                // println!(
-                //     "got candle: {:?} at {:?}, {:?}",
-                //     candle, t.timestamp, t.price
-                // );
-
-                candle_counter += 1;
-            }
+            a.update(t, &mut bars);
         }
-        assert_eq!(candle_counter, 5953);
+        assert_eq!(bars.len(), 5953);
+    }
+
+    #[test]
+    fn bars_number_and_stamp_the_candles() {
+        let (bars, a) = aggregate_ten_bars(TriggerTrade::NextCandle);
+        let seqs: Vec<u64> = bars.iter().map(Bar::seq).collect();
+        assert_eq!(seqs, vec![0, 1, 2]);
+        // The trigger trades 3, 6 and 9 close the candles at their timestamps.
+        let stamps: Vec<(i64, i64)> = bars.iter().map(|b| (b.open_ts(), b.close_ts())).collect();
+        assert_eq!(stamps, vec![(1, 3), (3, 6), (6, 9)]);
+        let events: Vec<u64> = bars.iter().map(Bar::num_events).collect();
+        assert_eq!(events, vec![2, 3, 3]);
+        assert!(bars.iter().all(|b| b.kind() == BarKind::Rule));
+        assert_eq!(a.next_seq(), 3);
+    }
+
+    #[test]
+    fn closing_candle_counts_the_trigger_in_the_closed_bar() {
+        let (bars, _) = aggregate_ten_bars(TriggerTrade::ClosingCandle);
+        let events: Vec<u64> = bars.iter().map(Bar::num_events).collect();
+        assert_eq!(events, vec![3, 3, 3]);
+        let both: Vec<u64> = aggregate_ten_bars(TriggerTrade::Both)
+            .0
+            .iter()
+            .map(Bar::num_events)
+            .collect();
+        assert_eq!(both, vec![3, 4, 4]);
+    }
+
+    #[test]
+    fn provisional_snapshots_the_unfinished_candle() {
+        let mut a =
+            GenericAggregator::<CountingCandle, TickRule, Trade>::new(TickRule::new(3), false);
+        assert!(
+            a.provisional(0).is_none(),
+            "no candle before the first event"
+        );
+        let mut bars = Vec::new();
+        for t in &ten_trades()[..4] {
+            a.update(t, &mut bars);
+        }
+        assert_eq!(bars.len(), 1);
+        let p = a.provisional(7).expect("a candle is open");
+        assert_eq!(p.kind(), BarKind::Provisional);
+        assert_eq!(p.seq(), 1, "the seq the candle gets when it closes");
+        assert_eq!((p.open_ts(), p.close_ts()), (3, 7));
+        assert_eq!(p.num_events(), 2);
+        assert_eq!(p.candle().open(), 3.0);
+        assert_eq!(p.candle().close(), 4.0);
+    }
+
+    #[test]
+    #[should_panic(expected = "time order")]
+    fn events_must_arrive_in_time_order() {
+        let mut a =
+            GenericAggregator::<CountingCandle, TickRule, Trade>::new(TickRule::new(3), false);
+        let mut bars = Vec::new();
+        let trades = ten_trades();
+        a.update(&trades[1], &mut bars);
+        a.update(&trades[0], &mut bars);
+    }
+
+    #[test]
+    #[should_panic(expected = "time order")]
+    fn a_provisional_bar_cannot_be_in_the_past() {
+        let mut a =
+            GenericAggregator::<CountingCandle, TickRule, Trade>::new(TickRule::new(3), false);
+        let mut bars = Vec::new();
+        a.update(&ten_trades()[1], &mut bars);
+        let _ = a.provisional(1);
     }
 
     #[test]
