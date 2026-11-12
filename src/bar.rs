@@ -61,7 +61,10 @@ impl<C> Bar<C> {
         self.candle
     }
 
-    /// The number of candles the aggregator closed before this one, starting at 0.
+    /// The number of candles the aggregator closed before this one, starting at 0
+    /// or at [`GenericAggregator::with_next_seq`](crate::GenericAggregator::with_next_seq).
+    /// It counts from the start of the aggregator, so a replay that starts elsewhere numbers
+    /// the same candles differently: restore a saved aggregator to keep the numbers.
     ///
     /// A provisional bar has the number the candle gets when it closes,
     /// so a consumer can replace provisional bars by the closed one with the same number.
