@@ -20,6 +20,7 @@ pub trait ThresholdRule {
 
 /// How the activity that closes a candle grows with the duration of the candle.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum Scaling {
     /// In proportion to the duration, e.g. the volume or the number of trades:
     /// `activity ~ duration`.
@@ -69,6 +70,7 @@ impl Scaling {
 ///   Slow inner triggers therefore lower the threshold.
 ///   Wrap the combinator around `Adaptive` (`MaxDuration<Adaptive<R>>`), not the other way round.
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Adaptive<R> {
     inner: R,
     target_duration: MillisecondPeriod,

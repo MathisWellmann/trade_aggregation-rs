@@ -21,6 +21,7 @@ pub trait Aggregator<Candle, E> {
 
 /// Which candle receives the trade that triggers the `AggregationRule`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum TriggerTrade {
     /// The trade opens the next candle and is not part of the candle it closes.
     /// Every trade is counted once.
@@ -40,6 +41,7 @@ pub enum TriggerTrade {
 /// What the aggregator emits for a period without events,
 /// when the [deadline](AggregationRule::deadline) of a rule passes and the candle is empty.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum Gaps {
     /// Emit nothing: the next candle holds the next event.
     #[default]
@@ -74,6 +76,7 @@ impl Gaps {
 /// so a live consumer closes time candles on a heartbeat instead of waiting for the next event.
 /// The candles do not depend on when the heartbeats come.
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct GenericAggregator<C, R, E> {
     candle: C,
     aggregation_rule: R,
@@ -660,5 +663,88 @@ mod tests {
         // make sure the 'open' and 'close' getters have been generated
         println!("open: {}", my_candle.open());
         println!("close: {}", my_candle.close());
+    }
+
+    /// The candle of the checkpoint test, which serde can save.
+    #[cfg(feature = "serde")]
+    #[derive(Default, Debug, Clone, Candle, serde::Serialize, serde::Deserialize)]
+    struct SavedCandle {
+        open: Open,
+        close: Close,
+        volume: Volume,
+        num_trades: NumTrades<u32>,
+    }
+
+    /// Aggregate `trades`, saving the aggregator to JSON and restoring it before each trade
+    /// for which `restore` is true.
+    #[cfg(feature = "serde")]
+    fn run_with_restarts<R>(
+        rule: R,
+        trades: &[Trade],
+        restore: impl Fn(usize) -> bool,
+    ) -> Vec<Bar<SavedCandle>>
+    where
+        R: AggregationRule<Trade> + serde::Serialize + serde::de::DeserializeOwned,
+    {
+        let mut a = GenericAggregator::<SavedCandle, R, Trade>::new(rule, false)
+            .with_gaps(Gaps::Flat { max_candles: 3 });
+        let mut bars = Vec::new();
+        for (i, t) in trades.iter().enumerate() {
+            if restore(i) {
+                let saved = serde_json::to_string(&a).expect("serializable");
+                a = serde_json::from_str(&saved).expect("deserializable");
+            }
+            a.update(t, &mut bars);
+        }
+        bars
+    }
+
+    #[cfg(feature = "serde")]
+    fn assert_restarts_do_not_change_the_bars<R>(rule: R)
+    where
+        R: AggregationRule<Trade> + Clone + serde::Serialize + serde::de::DeserializeOwned,
+    {
+        let trades = gappy_trades(3_000, 5);
+        let uninterrupted = run_with_restarts(rule.clone(), &trades, |_| false);
+        assert!(uninterrupted.len() > 10, "the test needs candles");
+        let as_json = |bars: &[Bar<SavedCandle>]| serde_json::to_string(bars).expect("bars");
+        for step in [1, 7, 101] {
+            let restarted = run_with_restarts(rule.clone(), &trades, |i| i % step == 0);
+            assert_eq!(as_json(&uninterrupted), as_json(&restarted), "every {step}");
+        }
+    }
+
+    #[cfg(feature = "serde")]
+    #[test]
+    fn a_restored_aggregator_continues_where_it_was_saved() {
+        use crate::{
+            Adaptive, AlignedTimeRule, AnyRule, By, MaxDuration, MillisecondPeriod, Scaling,
+            SignedVolumeRule,
+        };
+        assert_restarts_do_not_change_the_bars(AlignedTimeRule::new(
+            MillisecondPeriod::from_non_zero(1_000),
+        ));
+        let delta = Adaptive::new(
+            SignedVolumeRule::new(4.0, By::Quote).expect("valid threshold"),
+            MillisecondPeriod::from_non_zero(2_000),
+            0.1,
+            0.04,
+            400.0,
+        )
+        .expect("valid parameters")
+        .with_scaling(Scaling::Diffusive);
+        assert_restarts_do_not_change_the_bars(AnyRule::new(
+            MaxDuration::new(delta, MillisecondPeriod::from_non_zero(10_000)),
+            AlignedTimeRule::new(MillisecondPeriod::from_non_zero(60_000)),
+        ));
+    }
+
+    #[cfg(feature = "serde")]
+    #[test]
+    fn a_zero_period_does_not_deserialize() {
+        let saved = serde_json::to_string(&TimeRule::new(M1)).expect("serializable");
+        assert!(saved.contains("60000"), "{saved}");
+        let broken = saved.replace("60000", "0");
+        assert!(serde_json::from_str::<TimeRule>(&broken).is_err());
     }
 }

@@ -10,6 +10,7 @@ use crate::{AggregationRule, Error, Result, TakerTrade, ThresholdRule};
 /// do not restart it, and noise around a level does not add up as in a volatility rule:
 /// it samples when the price has drifted in one direction.
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct CusumRule {
     threshold: f64,
     previous_price: Option<f64>,

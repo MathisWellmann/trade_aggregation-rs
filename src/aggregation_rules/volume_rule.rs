@@ -4,6 +4,7 @@ use crate::{AggregationRule, By, Error, Result, TakerTrade, ThresholdRule};
 /// If the last trade needed to complete a bucket is for a size greater than required,
 /// the excess size is given to the next bucket
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct VolumeRule {
     /// See docs on By enum for details
     by: By,

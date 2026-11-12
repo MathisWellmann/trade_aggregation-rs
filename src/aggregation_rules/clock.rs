@@ -4,6 +4,7 @@ use crate::{MillisecondPeriod, TimestampResolution};
 
 /// Where the periods of a [`Clock`] start.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub(crate) enum Origin {
     /// At `offset` milliseconds after the Unix epoch, and every period from there.
     Epoch {
@@ -16,6 +17,7 @@ pub(crate) enum Origin {
 
 /// Consecutive periods `[start, start + period)` that tile the time line from an origin.
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub(crate) struct Clock {
     period: MillisecondPeriod,
     origin: Origin,

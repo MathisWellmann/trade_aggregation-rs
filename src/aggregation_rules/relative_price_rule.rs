@@ -2,6 +2,7 @@ use crate::{AggregationRule, Error, Result, TakerTrade, ThresholdRule};
 
 /// Creates Candles once the price changed by a give relative absolute price delta
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct RelativePriceRule {
     init: bool,
     init_price: f64,

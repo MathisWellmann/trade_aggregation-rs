@@ -13,6 +13,7 @@ use crate::{
 /// Each candle covers the half-open interval `[start, start + period)` and closes at its end,
 /// see [`AggregationRule::deadline`].
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct TimeRule {
     clock: Clock,
 }

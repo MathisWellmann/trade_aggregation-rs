@@ -11,6 +11,7 @@ use crate::{AggregationRule, By, Error, Result, TakerTrade, ThresholdRule};
 /// threshold is known to collapse or explode; wrap it in [`Adaptive`](crate::Adaptive)
 /// for a threshold that follows the activity of the market instead.
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct SignedVolumeRule {
     by: By,
     threshold: f64,

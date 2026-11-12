@@ -73,6 +73,7 @@ pub trait TakerTrade: Timestamped {
 
 /// The resolution of the [`Timestamped`] timestamps
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum TimestampResolution {
     /// The timestamp of the TakerTrade is measured in milliseconds
     Millisecond,
@@ -97,7 +98,28 @@ impl TimestampResolution {
 
 /// A period measured in milliseconds which must be non-zero.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "serde", serde(try_from = "u64", into = "u64"))]
 pub struct MillisecondPeriod(u64);
+
+impl TryFrom<u64> for MillisecondPeriod {
+    type Error = crate::Error;
+
+    /// # Errors:
+    /// [`Error::InvalidParam`](crate::Error::InvalidParam) if `millis` is zero.
+    fn try_from(millis: u64) -> crate::Result<Self> {
+        if millis == 0 {
+            return Err(crate::Error::InvalidParam);
+        }
+        Ok(Self(millis))
+    }
+}
+
+impl From<MillisecondPeriod> for u64 {
+    fn from(period: MillisecondPeriod) -> Self {
+        period.0
+    }
+}
 
 impl MillisecondPeriod {
     /// Try to create the `MillisecondPeriod` from millisecond units.
@@ -142,6 +164,15 @@ mod test {
     fn millisecond_period_from_non_zero_secs_panic() {
         // panics as it cannot be zero
         MillisecondPeriod::from_non_zero_secs(0);
+    }
+
+    #[test]
+    fn millisecond_period_try_from_rejects_zero() {
+        assert!(MillisecondPeriod::try_from(0).is_err());
+        assert_eq!(
+            MillisecondPeriod::try_from(5).expect("non-zero"),
+            MillisecondPeriod(5)
+        );
     }
 
     #[test]

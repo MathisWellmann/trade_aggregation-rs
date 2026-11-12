@@ -9,6 +9,7 @@ use crate::{By, Error, Result, TakerTrade};
 /// The side of a trade is the sign of [`TakerTrade::size`], the side of the taker.
 /// This is exact, unlike the tick rule of the book, which infers the side from price changes.
 #[derive(Debug, Clone, Copy)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum FlowSignal {
     /// Every trade counts 1: tick imbalance and tick run bars.
     Ticks,
@@ -60,6 +61,7 @@ impl FlowSignal {
 /// To keep bars at a target duration, leave it fixed and wrap the rule in
 /// [`Adaptive`](crate::Adaptive), which calibrates the expected ticks per bar.
 #[derive(Debug, Clone, Copy)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct FlowBarParams {
     expected_ticks: f64,
     bar_alpha: f64,
@@ -185,6 +187,7 @@ fn check_alpha(alpha: f64) -> Result<()> {
 
 /// An exponentially weighted moving average, starting at the first value.
 #[derive(Debug, Clone, Copy)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub(crate) struct Ewma {
     alpha: f64,
     value: Option<f64>,

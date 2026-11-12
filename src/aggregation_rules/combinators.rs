@@ -61,6 +61,7 @@ fn elapsed<E: Timestamped>(open_timestamp: i64, trade: &E) -> i64 {
 /// so that both start the next candle from scratch.
 /// Nest `AnyRule`s to combine more than two rules.
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct AnyRule<A, B> {
     a: A,
     b: B,
@@ -121,6 +122,7 @@ where
 /// [reset](AggregationRule::reset), so that both start the next candle from scratch.
 /// Nest `AllRule`s to combine more than two rules.
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct AllRule<A, B> {
     a: A,
     b: B,
@@ -201,6 +203,7 @@ where
 /// or at the first trade from then on when the rule is used alone.
 /// Further triggers of the inner rule in the meantime merge into that candle.
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct MinDuration<R> {
     inner: R,
     min_duration: MillisecondPeriod,
@@ -287,6 +290,7 @@ where
 /// Used alone, the rule only sees trades and triggers at the first trade from then on.
 /// On a timeout the inner rule is [reset](AggregationRule::reset).
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct MaxDuration<R> {
     inner: R,
     max_duration: MillisecondPeriod,

@@ -2,6 +2,7 @@ use crate::{AggregationRule, Error, Result, TakerTrade, ThresholdRule};
 
 /// Creates candles every n ticks
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct TickRule {
     init: bool,
     tick_counter: usize,

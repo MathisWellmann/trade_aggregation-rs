@@ -251,6 +251,10 @@ The more 'CandleComponent's you use, the longer it takes obviously.
 
 ### Features
 The serde feature exists which, when enabled, derives Serialize and Deserialize
+for the candle components, the rules and the `GenericAggregator` with its state.
+A live process can save the aggregator with the offset of its input
+and resume in the middle of a candle after a restart, with the same candles as without the restart.
+Deserialize only state that this crate serialized: the rule parameters are checked when a rule is created, not when it is deserialized.
 
 
 ### TODOs:
