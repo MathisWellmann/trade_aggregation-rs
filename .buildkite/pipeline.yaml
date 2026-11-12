@@ -14,8 +14,8 @@ steps:
     agents:
       queue: nixos
 
-  - label: ":nixos: :rust: test serde"
-    command: RUSTFLAGS="-D warnings" nix develop --command bash -c "cargo test --features serde"
+  - label: ":nixos: :rust: test all features"
+    command: RUSTFLAGS="-D warnings" nix develop --command bash -c "cargo test --all-features"
     agents:
       queue: nixos
 

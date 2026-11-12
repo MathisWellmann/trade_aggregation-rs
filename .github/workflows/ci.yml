@@ -30,10 +30,10 @@ jobs:
           RUSTFLAGS: "-D warnings" # Make all warnings deny.
         run: nix develop --command cargo test
 
-      - name: cargo-test-serde
+      - name: cargo-test-all-features
         env:
           RUSTFLAGS: "-D warnings" # Make all warnings deny.
-        run: nix develop --command cargo test --features serde # The checkpoint tests need serde.
+        run: nix develop --command cargo test --all-features # The checkpoint tests need serde; chrono must build too.
 
       # TODO: make clippy work
       # - name: cargo-clippy
