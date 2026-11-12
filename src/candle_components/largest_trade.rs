@@ -1,4 +1,4 @@
-use crate::{CandleComponent, CandleComponentUpdate, TakerTrade};
+use crate::{AsTrade, CandleComponent, CandleComponentUpdate, TakerTrade};
 
 /// The size of the largest trade in the base currency, 0 for a candle without trades.
 #[derive(Debug, Default, Clone)]
@@ -21,9 +21,12 @@ impl CandleComponent for LargestTrade {
     }
 }
 
-impl<T: TakerTrade> CandleComponentUpdate<T> for LargestTrade {
+impl<E: AsTrade> CandleComponentUpdate<E> for LargestTrade {
     #[inline(always)]
-    fn update(&mut self, trade: &T) {
+    fn update(&mut self, event: &E) {
+        let Some(trade) = event.as_trade() else {
+            return;
+        };
         self.largest = self.largest.max(trade.base_size().abs());
     }
 }

@@ -1,4 +1,4 @@
-use crate::{CandleComponent, CandleComponentUpdate, TakerTrade};
+use crate::{AsTrade, CandleComponent, CandleComponentUpdate};
 
 /// This 'CandleComponent' keeps track of the number of trades
 #[derive(Debug, Default, Clone)]
@@ -20,9 +20,12 @@ impl CandleComponent for NumTrades<u32> {
         self.value = 0;
     }
 }
-impl<T: TakerTrade> CandleComponentUpdate<T> for NumTrades<u32> {
+impl<E: AsTrade> CandleComponentUpdate<E> for NumTrades<u32> {
     #[inline(always)]
-    fn update(&mut self, _: &T) {
+    fn update(&mut self, event: &E) {
+        if event.as_trade().is_none() {
+            return;
+        }
         self.value += 1;
     }
 }

@@ -1,4 +1,4 @@
-use crate::{AggregationRule, Error, Result, TakerTrade, ThresholdRule};
+use crate::{AggregationRule, AsTrade, Error, Result, TakerTrade, ThresholdRule};
 
 /// Creates Candles once the price changed by a give relative absolute price delta
 #[derive(Debug, Clone)]
@@ -27,8 +27,11 @@ impl RelativePriceRule {
     }
 }
 
-impl<T: TakerTrade> AggregationRule<T> for RelativePriceRule {
-    fn should_trigger(&mut self, trade: &T) -> bool {
+impl<E: AsTrade> AggregationRule<E> for RelativePriceRule {
+    fn should_trigger(&mut self, event: &E) -> bool {
+        let Some(trade) = event.as_trade() else {
+            return false;
+        };
         if self.init {
             self.init = false;
             self.init_price = trade.price();

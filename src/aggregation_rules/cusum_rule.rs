@@ -1,4 +1,4 @@
-use crate::{AggregationRule, Error, Result, TakerTrade, ThresholdRule};
+use crate::{AggregationRule, AsTrade, Error, Result, TakerTrade, ThresholdRule};
 
 /// Closes a candle when a symmetric CUSUM filter on the log returns of the trades fires
 /// (Lam and Yam 1997; López de Prado, Advances in Financial Machine Learning, ch. 2.5.2.1).
@@ -38,8 +38,11 @@ impl CusumRule {
     }
 }
 
-impl<T: TakerTrade> AggregationRule<T> for CusumRule {
-    fn should_trigger(&mut self, trade: &T) -> bool {
+impl<E: AsTrade> AggregationRule<E> for CusumRule {
+    fn should_trigger(&mut self, event: &E) -> bool {
+        let Some(trade) = event.as_trade() else {
+            return false;
+        };
         let price = trade.price();
         debug_assert!(price > 0.0, "prices must be positive");
         let Some(previous_price) = self.previous_price.replace(price) else {

@@ -1,4 +1,6 @@
-use crate::{welford_online::WelfordOnline, CandleComponent, CandleComponentUpdate, TakerTrade};
+use crate::{
+    welford_online::WelfordOnline, AsTrade, CandleComponent, CandleComponentUpdate, TakerTrade,
+};
 
 /// This 'CandleComponent' keeps track of the standard deviation in the trade sizes
 #[derive(Debug, Clone)]
@@ -28,9 +30,12 @@ impl CandleComponent for StdDevSizes {
     }
 }
 
-impl<T: TakerTrade> CandleComponentUpdate<T> for StdDevSizes {
+impl<E: AsTrade> CandleComponentUpdate<E> for StdDevSizes {
     #[inline(always)]
-    fn update(&mut self, trade: &T) {
+    fn update(&mut self, event: &E) {
+        let Some(trade) = event.as_trade() else {
+            return;
+        };
         self.welford.add(trade.size());
     }
 }

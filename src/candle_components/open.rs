@@ -1,4 +1,4 @@
-use crate::{CandleComponent, CandleComponentUpdate, TakerTrade};
+use crate::{AsTrade, CandleComponent, CandleComponentUpdate, TakerTrade};
 
 /// This 'CandleComponent' keeps track of the opening price of a Candle.
 /// A candle without trades opens at the close of the previous candle.
@@ -37,10 +37,13 @@ impl CandleComponent for Open {
     }
 }
 
-impl<T: TakerTrade> CandleComponentUpdate<T> for Open {
+impl<E: AsTrade> CandleComponentUpdate<E> for Open {
     /// Only update the open price if this module is in init mode
     #[inline(always)]
-    fn update(&mut self, trade: &T) {
+    fn update(&mut self, event: &E) {
+        let Some(trade) = event.as_trade() else {
+            return;
+        };
         if self.init {
             self.value = trade.price();
             self.init = false;

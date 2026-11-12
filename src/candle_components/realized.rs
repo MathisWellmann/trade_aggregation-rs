@@ -4,7 +4,7 @@
 //! so that no return is lost at a candle boundary and the sum over candles equals the
 //! statistic over the whole series.
 
-use crate::{CandleComponent, CandleComponentUpdate, TakerTrade};
+use crate::{AsTrade, CandleComponent, CandleComponentUpdate, TakerTrade};
 
 /// The log return of `price` from the previous trade price, `None` for the first trade.
 #[inline(always)]
@@ -36,9 +36,12 @@ impl CandleComponent for RealizedVariance {
     }
 }
 
-impl<T: TakerTrade> CandleComponentUpdate<T> for RealizedVariance {
+impl<E: AsTrade> CandleComponentUpdate<E> for RealizedVariance {
     #[inline(always)]
-    fn update(&mut self, trade: &T) {
+    fn update(&mut self, event: &E) {
+        let Some(trade) = event.as_trade() else {
+            return;
+        };
         let price = trade.price();
         if let Some(r) = log_return(self.last_price, price) {
             self.sum += r * r;

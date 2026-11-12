@@ -1,4 +1,4 @@
-use crate::{AggregationRule, Error, Result, TakerTrade, ThresholdRule};
+use crate::{AggregationRule, AsTrade, Error, Result, TakerTrade, ThresholdRule};
 
 /// The prices of the current candle.
 #[derive(Debug, Clone, Copy)]
@@ -53,8 +53,11 @@ impl RangeRule {
     }
 }
 
-impl<T: TakerTrade> AggregationRule<T> for RangeRule {
-    fn should_trigger(&mut self, trade: &T) -> bool {
+impl<E: AsTrade> AggregationRule<E> for RangeRule {
+    fn should_trigger(&mut self, event: &E) -> bool {
+        let Some(trade) = event.as_trade() else {
+            return false;
+        };
         let price = trade.price();
         debug_assert!(price > 0.0, "prices must be positive");
         let Some(extent) = self.extent.as_mut() else {

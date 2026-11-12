@@ -1,4 +1,4 @@
-use crate::{CandleComponent, CandleComponentUpdate, TakerTrade};
+use crate::{AsTrade, CandleComponent, CandleComponentUpdate, TakerTrade};
 
 /// This 'CandleComponent' keeps track of the volume weighted price
 #[derive(Debug, Default, Clone)]
@@ -22,9 +22,12 @@ impl CandleComponent for WeightedPrice {
         self.weighted_sum = 0.0;
     }
 }
-impl<T: TakerTrade> CandleComponentUpdate<T> for WeightedPrice {
+impl<E: AsTrade> CandleComponentUpdate<E> for WeightedPrice {
     #[inline(always)]
-    fn update(&mut self, trade: &T) {
+    fn update(&mut self, event: &E) {
+        let Some(trade) = event.as_trade() else {
+            return;
+        };
         self.total_weights += trade.size().abs();
         self.weighted_sum += trade.price() * trade.size().abs();
     }

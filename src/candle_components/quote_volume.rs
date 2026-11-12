@@ -1,4 +1,4 @@
-use crate::{CandleComponent, CandleComponentUpdate, TakerTrade};
+use crate::{AsTrade, CandleComponent, CandleComponentUpdate, TakerTrade};
 
 /// The traded volume in the quote currency (the notional), e.g. USD of BTCUSD,
 /// whatever the [`TakerTrade::SIZE_UNIT`] of the trades.
@@ -22,9 +22,12 @@ impl CandleComponent for QuoteVolume {
     }
 }
 
-impl<T: TakerTrade> CandleComponentUpdate<T> for QuoteVolume {
+impl<E: AsTrade> CandleComponentUpdate<E> for QuoteVolume {
     #[inline(always)]
-    fn update(&mut self, trade: &T) {
+    fn update(&mut self, event: &E) {
+        let Some(trade) = event.as_trade() else {
+            return;
+        };
         self.volume += trade.quote_size().abs();
     }
 }
