@@ -1,6 +1,7 @@
 mod adaptive;
 mod aggregation_rule_trait;
 mod aligned_time_rule;
+mod clock;
 mod combinators;
 mod cusum_rule;
 mod directional_change_rule;
@@ -16,7 +17,7 @@ mod volatility_rule;
 mod volume_rule;
 
 #[cfg(test)]
-mod test_utils;
+pub(crate) mod test_utils;
 
 pub use adaptive::{Adaptive, ThresholdRule};
 pub use aggregation_rule_trait::AggregationRule;

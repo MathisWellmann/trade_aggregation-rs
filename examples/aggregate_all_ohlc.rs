@@ -24,7 +24,7 @@ fn main() {
         .expect("Could not load trades from file!");
 
     // specify the aggregation rule to be time based
-    let time_rule = TimeRule::new(M1, TimestampResolution::Millisecond);
+    let time_rule = TimeRule::new(M1);
     let mut aggregator = GenericAggregator::<MyCandle, TimeRule, Trade>::new(time_rule, false);
 
     let candles = aggregate_all_trades(&trades, &mut aggregator);

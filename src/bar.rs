@@ -4,6 +4,10 @@
 pub enum BarKind {
     /// The rule triggered on an event, which closed the candle.
     Rule,
+    /// The [deadline](crate::AggregationRule::deadline) of the rule passed, e.g. the end of a period.
+    /// A candle without events is empty, e.g. flat at the previous close
+    /// (see [`Gaps::Flat`](crate::Gaps::Flat)).
+    Deadline,
     /// A snapshot of the unfinished candle, which may still change.
     Provisional,
 }
@@ -66,12 +70,14 @@ impl<C> Bar<C> {
     }
 
     /// When the candle opened: when the previous candle closed, or the first event.
+    /// After a gap without events and without empty candles ([`Gaps::Skip`](crate::Gaps::Skip)),
+    /// this includes the gap.
     pub fn open_ts(&self) -> i64 {
         self.open_ts
     }
 
     /// When the candle closed and became known: the event that triggered the rule,
-    /// or for a provisional bar the time of the snapshot.
+    /// the deadline of the rule, or for a provisional bar the time of the snapshot.
     pub fn close_ts(&self) -> i64 {
         self.close_ts
     }
