@@ -13,12 +13,16 @@ pub struct Trade {
     pub size: f64,
 }
 
-impl TakerTrade for Trade {
+impl Timestamped for Trade {
+    const TIMESTAMP_RESOLUTION: TimestampResolution = TimestampResolution::Millisecond;
+
     #[inline(always)]
     fn timestamp(&self) -> i64 {
         self.timestamp
     }
+}
 
+impl TakerTrade for Trade {
     #[inline(always)]
     fn price(&self) -> f64 {
         self.price
@@ -44,17 +48,20 @@ pub enum By {
     Quote,
 }
 
-/// Trait to enable third party types to be passed into aggregators.
-pub trait TakerTrade {
-    /// The timestamp of a trade,
+/// An event with a timestamp, e.g. a trade or a quote.
+pub trait Timestamped {
+    /// The unit of the integer returned by [`Self::timestamp`].
+    ///
+    /// It is a constant of the type, so that rules on a clock know it before the first event,
+    /// and it has no default, because a wrong unit silently scales every period.
+    const TIMESTAMP_RESOLUTION: TimestampResolution;
+
+    /// The timestamp of the event, in units of [`Self::TIMESTAMP_RESOLUTION`].
     fn timestamp(&self) -> i64;
+}
 
-    /// units for the timestamp integer returned by [`TakerTrade.timestamp()`] method
-    /// A default implementation is included and assumes milliseconds
-    fn timestamp_resolution(&self) -> TimestampResolution {
-        TimestampResolution::Millisecond
-    }
-
+/// Trait to enable third party trade types to be passed into aggregators.
+pub trait TakerTrade: Timestamped {
     /// Fill price of the transaction
     fn price(&self) -> f64;
 
@@ -64,8 +71,8 @@ pub trait TakerTrade {
     fn size(&self) -> f64;
 }
 
-/// The resolution of the "TakerTrade" timestamps
-#[derive(Debug, Clone, Copy)]
+/// The resolution of the [`Timestamped`] timestamps
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TimestampResolution {
     /// The timestamp of the TakerTrade is measured in milliseconds
     Millisecond,

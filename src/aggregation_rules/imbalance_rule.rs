@@ -66,8 +66,8 @@ impl ImbalanceRule {
     }
 }
 
-impl<C, T: TakerTrade> AggregationRule<C, T> for ImbalanceRule {
-    fn should_trigger(&mut self, trade: &T, _candle: &C) -> bool {
+impl<T: TakerTrade> AggregationRule<T> for ImbalanceRule {
+    fn should_trigger(&mut self, trade: &T) -> bool {
         let flow = self.signal.flow(trade);
         let signed = flow.side * flow.magnitude;
         self.expected_imbalance.update(signed);
@@ -116,7 +116,6 @@ mod tests {
     use super::*;
     use crate::{
         aggregation_rules::test_utils::{random_flow, trade, trigger_indices},
-        plot::OhlcCandle,
         By, Trade,
     };
 
@@ -208,11 +207,7 @@ mod tests {
         let mut rule = ImbalanceRule::new(FlowSignal::Ticks, p);
         let flow = random_flow(200_000, 0.5, 3);
         for t in &flow {
-            AggregationRule::<OhlcCandle, Trade>::should_trigger(
-                &mut rule,
-                t,
-                &OhlcCandle::default(),
-            );
+            AggregationRule::<Trade>::should_trigger(&mut rule, t);
             assert!((50.0..=200.0).contains(&rule.expected_ticks()));
         }
     }
@@ -222,7 +217,7 @@ mod tests {
         let mut rule = ImbalanceRule::new(FlowSignal::Ticks, params(4.0, 1.0));
         let trades = sided(&[true; 6]);
         assert!(trigger_indices(&mut rule, &trades[..3]).is_empty());
-        AggregationRule::<OhlcCandle, Trade>::reset(&mut rule);
+        AggregationRule::<Trade>::reset(&mut rule);
         assert!(trigger_indices(&mut rule, &trades[3..]).is_empty());
     }
 

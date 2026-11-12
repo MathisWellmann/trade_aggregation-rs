@@ -1,19 +1,18 @@
-use crate::TakerTrade;
-
-/// Defines under what conditions one aggregation period is finished
-/// Is generic over the type of candle being produced C,
-/// as well as the type of input trade T
-pub trait AggregationRule<C, T: TakerTrade> {
+/// Defines under what conditions one aggregation period is finished.
+/// Is generic over the type of input event `E`, e.g. a [`TakerTrade`](crate::TakerTrade).
+///
+/// A rule does not see the candle: it keeps whatever state it needs itself,
+/// so the same rule works with any candle type.
+pub trait AggregationRule<E> {
     /// The main method defining when the aggregation is done
     ///
     /// # Arguments:
-    /// trade: The most recent taker trade (tick) information
-    /// candle: Some generic Candle, allowing for information driven decision making
+    /// event: The most recent event, e.g. a taker trade (tick)
     ///
     /// # Returns:
     /// if true, the aggregation period is finished and a Candle can be emitted
     /// else the aggregation needs to continue
-    fn should_trigger(&mut self, trade: &T, candle: &C) -> bool;
+    fn should_trigger(&mut self, event: &E) -> bool;
 
     /// Forget what the rule accumulated for the current candle,
     /// because a candle was closed by something other than this rule,

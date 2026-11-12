@@ -1,6 +1,6 @@
 //! Calibrate the threshold of a rule to a target candle duration.
 
-use crate::{AggregationRule, Error, MillisecondPeriod, Result, TakerTrade};
+use crate::{AggregationRule, Error, MillisecondPeriod, Result, Timestamped};
 
 /// A rule whose trigger threshold can be read and changed, so that [`Adaptive`] can calibrate it.
 ///
@@ -126,16 +126,16 @@ fn calibrate(
     (average, threshold)
 }
 
-impl<C, T, R> AggregationRule<C, T> for Adaptive<R>
+impl<E, R> AggregationRule<E> for Adaptive<R>
 where
-    T: TakerTrade,
-    R: AggregationRule<C, T> + ThresholdRule,
+    E: Timestamped,
+    R: AggregationRule<E> + ThresholdRule,
 {
-    fn should_trigger(&mut self, trade: &T, candle: &C) -> bool {
+    fn should_trigger(&mut self, trade: &E) -> bool {
         let start = *self.last_trigger_timestamp.get_or_insert(trade.timestamp());
-        let trigger = self.inner.should_trigger(trade, candle);
+        let trigger = self.inner.should_trigger(trade);
         if trigger {
-            let units_per_ms = trade.timestamp_resolution().units_per_millisecond();
+            let units_per_ms = E::TIMESTAMP_RESOLUTION.units_per_millisecond();
             // Trades with the same timestamp still took some time: count at least one unit.
             let elapsed_units = trade.timestamp().saturating_sub(start).max(1);
             let candle_ms = elapsed_units as f64 / units_per_ms as f64;
@@ -280,7 +280,7 @@ mod tests {
         let mut rule = adaptive_ticks(0.5, 3.0, 3.0);
         let t = trades_at_rate(10, 1, 0);
         assert!(trigger_indices(&mut rule, &t[..2]).is_empty());
-        AggregationRule::<crate::plot::OhlcCandle, Trade>::reset(&mut rule);
+        AggregationRule::<Trade>::reset(&mut rule);
         assert_eq!(trigger_indices(&mut rule, &t[2..]), vec![2, 5]);
     }
 }

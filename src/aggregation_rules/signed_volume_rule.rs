@@ -38,8 +38,8 @@ impl SignedVolumeRule {
     }
 }
 
-impl<C, T: TakerTrade> AggregationRule<C, T> for SignedVolumeRule {
-    fn should_trigger(&mut self, trade: &T, _candle: &C) -> bool {
+impl<T: TakerTrade> AggregationRule<T> for SignedVolumeRule {
+    fn should_trigger(&mut self, trade: &T) -> bool {
         debug_assert!(trade.price() > 0.0, "prices must be positive");
         self.net_volume += match self.by {
             By::Quote => trade.size(),
@@ -76,7 +76,6 @@ mod tests {
     use super::*;
     use crate::{
         aggregation_rules::test_utils::{trade, trigger_indices},
-        plot::OhlcCandle,
         Trade, VolumeRule,
     };
 
@@ -133,7 +132,7 @@ mod tests {
         let mut r = rule(10.0);
         let trades = trades_with_sizes(&[8.0, 8.0]);
         assert!(trigger_indices(&mut r, &trades[..1]).is_empty());
-        AggregationRule::<OhlcCandle, Trade>::reset(&mut r);
+        AggregationRule::<Trade>::reset(&mut r);
         assert!(trigger_indices(&mut r, &trades[1..]).is_empty());
     }
 

@@ -90,8 +90,8 @@ fn next_trend(trend: Trend, price: f64, threshold: f64) -> (Trend, bool) {
     }
 }
 
-impl<C, T: TakerTrade> AggregationRule<C, T> for DirectionalChangeRule {
-    fn should_trigger(&mut self, trade: &T, _candle: &C) -> bool {
+impl<T: TakerTrade> AggregationRule<T> for DirectionalChangeRule {
+    fn should_trigger(&mut self, trade: &T) -> bool {
         let price = trade.price();
         debug_assert!(price > 0.0, "prices must be positive");
         let (trend, confirmed) = next_trend(self.trend, price, self.threshold_fraction);
@@ -123,9 +123,7 @@ mod tests {
     use super::*;
     use crate::{
         aggregation_rules::test_utils::{trades_at_prices, trigger_indices},
-        load_trades_from_csv,
-        plot::OhlcCandle,
-        Trade,
+        load_trades_from_csv, Trade,
     };
 
     fn rule(threshold: f64) -> DirectionalChangeRule {
@@ -177,7 +175,7 @@ mod tests {
             trigger_indices(&mut r, &trades_at_prices(&[100.0, 111.0])),
             vec![1]
         );
-        AggregationRule::<OhlcCandle, Trade>::reset(&mut r);
+        AggregationRule::<Trade>::reset(&mut r);
         assert_eq!(r.trend, Trend::Up { extreme: 111.0 });
         assert_eq!(
             trigger_indices(&mut r, &trades_at_prices(&[105.0, 99.8])),

@@ -1,4 +1,4 @@
-use crate::{AggregationRule, MillisecondPeriod, ModularCandle, TakerTrade, TimestampResolution};
+use crate::{AggregationRule, MillisecondPeriod, TimestampResolution, Timestamped};
 
 /// The classic time based aggregation rule,
 /// creating a new candle every n seconds
@@ -39,12 +39,8 @@ impl TimeRule {
     }
 }
 
-impl<C, T> AggregationRule<C, T> for TimeRule
-where
-    C: ModularCandle<T>,
-    T: TakerTrade,
-{
-    fn should_trigger(&mut self, trade: &T, _candle: &C) -> bool {
+impl<E: Timestamped> AggregationRule<E> for TimeRule {
+    fn should_trigger(&mut self, trade: &E) -> bool {
         if self.reference_timestamp == 0 {
             self.reference_timestamp = trade.timestamp();
         }

@@ -37,8 +37,8 @@ impl VolatilityRule {
     }
 }
 
-impl<C, T: TakerTrade> AggregationRule<C, T> for VolatilityRule {
-    fn should_trigger(&mut self, trade: &T, _candle: &C) -> bool {
+impl<T: TakerTrade> AggregationRule<T> for VolatilityRule {
+    fn should_trigger(&mut self, trade: &T) -> bool {
         let price = trade.price();
         debug_assert!(price > 0.0, "prices must be positive");
         let Some(previous_price) = self.previous_price.replace(price) else {
@@ -78,7 +78,6 @@ mod tests {
     use super::*;
     use crate::{
         aggregation_rules::test_utils::{trades_at_prices, trigger_indices},
-        plot::OhlcCandle,
         CusumRule, Trade,
     };
 
@@ -134,7 +133,7 @@ mod tests {
         let mut r = rule(0.00999);
         let trades = trades_at_prices(&bouncing_prices(10, 0.0025));
         assert!(trigger_indices(&mut r, &trades[..3]).is_empty());
-        AggregationRule::<OhlcCandle, Trade>::reset(&mut r);
+        AggregationRule::<Trade>::reset(&mut r);
         // The return from trade 2 to 3 counts, so the next four moves end on trade 6.
         assert_eq!(trigger_indices(&mut r, &trades[3..]), vec![3]);
     }

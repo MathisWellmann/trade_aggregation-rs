@@ -1,4 +1,4 @@
-use crate::{AggregationRule, Error, ModularCandle, Result, TakerTrade, ThresholdRule};
+use crate::{AggregationRule, Error, Result, TakerTrade, ThresholdRule};
 
 /// Creates candles every n ticks
 #[derive(Debug, Clone)]
@@ -23,12 +23,8 @@ impl TickRule {
     }
 }
 
-impl<C, T> AggregationRule<C, T> for TickRule
-where
-    C: ModularCandle<T>,
-    T: TakerTrade,
-{
-    fn should_trigger(&mut self, _trade: &T, _candle: &C) -> bool {
+impl<T: TakerTrade> AggregationRule<T> for TickRule {
+    fn should_trigger(&mut self, _trade: &T) -> bool {
         if self.init {
             self.tick_counter = 0;
             self.init = false;

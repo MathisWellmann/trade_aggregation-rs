@@ -58,8 +58,8 @@ impl RunRule {
     }
 }
 
-impl<C, T: TakerTrade> AggregationRule<C, T> for RunRule {
-    fn should_trigger(&mut self, trade: &T, _candle: &C) -> bool {
+impl<T: TakerTrade> AggregationRule<T> for RunRule {
+    fn should_trigger(&mut self, trade: &T) -> bool {
         let flow = self.signal.flow(trade);
         let (buy, sell) = if flow.side > 0.0 {
             (flow.magnitude, 0.0)
@@ -118,7 +118,6 @@ mod tests {
     use super::*;
     use crate::{
         aggregation_rules::test_utils::{random_flow, trade, trigger_indices},
-        plot::OhlcCandle,
         Adaptive, By, ImbalanceRule, MillisecondPeriod, Trade,
     };
 
@@ -192,11 +191,7 @@ mod tests {
             .expect("valid parameters");
         let mut rule = RunRule::new(FlowSignal::Ticks, p);
         for t in &random_flow(100_000, 0.5, 9) {
-            AggregationRule::<OhlcCandle, Trade>::should_trigger(
-                &mut rule,
-                t,
-                &OhlcCandle::default(),
-            );
+            AggregationRule::<Trade>::should_trigger(&mut rule, t);
             assert!((50.0..=200.0).contains(&rule.expected_ticks()));
         }
     }
@@ -206,7 +201,7 @@ mod tests {
         let trades: Vec<Trade> = (0..6).map(|ts| trade(ts, 100.0, 1.0)).collect();
         let mut rule = RunRule::new(FlowSignal::Ticks, params(4.0, 1.0));
         assert!(trigger_indices(&mut rule, &trades[..3]).is_empty());
-        AggregationRule::<OhlcCandle, Trade>::reset(&mut rule);
+        AggregationRule::<Trade>::reset(&mut rule);
         assert!(trigger_indices(&mut rule, &trades[3..]).is_empty());
     }
 

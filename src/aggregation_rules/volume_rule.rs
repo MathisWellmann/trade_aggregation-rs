@@ -1,4 +1,4 @@
-use crate::{AggregationRule, By, Error, ModularCandle, Result, TakerTrade, ThresholdRule};
+use crate::{AggregationRule, By, Error, Result, TakerTrade, ThresholdRule};
 
 /// Creates candles every n units of volume traded.
 /// If the last trade needed to complete a bucket is for a size greater than required,
@@ -29,12 +29,8 @@ impl VolumeRule {
     }
 }
 
-impl<C, T> AggregationRule<C, T> for VolumeRule
-where
-    C: ModularCandle<T>,
-    T: TakerTrade,
-{
-    fn should_trigger(&mut self, trade: &T, _candle: &C) -> bool {
+impl<T: TakerTrade> AggregationRule<T> for VolumeRule {
+    fn should_trigger(&mut self, trade: &T) -> bool {
         if self.cum_vol >= self.threshold_vol {
             // If the last trade needed to complete a bucket is for a size greater than required,
             // the excess size is given to the next bucket

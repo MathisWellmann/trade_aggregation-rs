@@ -51,8 +51,8 @@ impl RangeRule {
     }
 }
 
-impl<C, T: TakerTrade> AggregationRule<C, T> for RangeRule {
-    fn should_trigger(&mut self, trade: &T, _candle: &C) -> bool {
+impl<T: TakerTrade> AggregationRule<T> for RangeRule {
+    fn should_trigger(&mut self, trade: &T) -> bool {
         let price = trade.price();
         debug_assert!(price > 0.0, "prices must be positive");
         let Some(extent) = self.extent.as_mut() else {
@@ -137,7 +137,7 @@ mod tests {
     fn reset_opens_a_new_range() {
         let mut rule = RangeRule::new(0.01).expect("valid threshold");
         assert!(trigger_indices(&mut rule, &trades_at_prices(&[100.0, 100.9])).is_empty());
-        AggregationRule::<OhlcCandle, Trade>::reset(&mut rule);
+        AggregationRule::<Trade>::reset(&mut rule);
         // Measured from the open of 100 this would trigger, from 100.9 it does not.
         assert!(trigger_indices(&mut rule, &trades_at_prices(&[100.95, 101.0])).is_empty());
     }
