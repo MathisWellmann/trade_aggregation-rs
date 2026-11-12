@@ -11,6 +11,9 @@ the [CandleComponent](src/candle_components/candle_component_trait.rs) trait.
 The aggregation process is also generic over the type of input events,
 e.g. trades that implement the [TakerTrade](src/types.rs) trait, 
 allowing for greater flexibility for downstream projects.
+An event type states the unit of its timestamps (`Timestamped::TIMESTAMP_RESOLUTION`)
+and a trade type the currency of its sizes (`TakerTrade::SIZE_UNIT`, base or quote),
+so that `By::Base` and `By::Quote` sum volumes and notionals correctly for spot, linear and inverse markets.
 
 See [MathisWellmann/go_trade_aggregation](https://github.com/MathisWellmann/go_trade_aggregation) for a go implementation with less features and performance.
 

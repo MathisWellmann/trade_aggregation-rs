@@ -14,7 +14,7 @@ pub enum FlowSignal {
     /// Every trade counts 1: tick imbalance and tick run bars.
     Ticks,
     /// Every trade counts its size: volume bars with `By::Base`
-    /// and, for sizes in quote currency, dollar bars with `By::Quote`, as for the [`VolumeRule`](crate::VolumeRule).
+    /// and dollar bars with `By::Quote`, as for the [`VolumeRule`](crate::VolumeRule).
     Volume(By),
 }
 
@@ -41,8 +41,7 @@ impl FlowSignal {
         };
         let magnitude = match self {
             Self::Ticks => 1.0,
-            Self::Volume(By::Quote) => size.abs(),
-            Self::Volume(By::Base) => size.abs() / trade.price(),
+            Self::Volume(by) => by.size(trade).abs(),
         };
         debug_assert!(magnitude >= 0.0);
         Flow { side, magnitude }

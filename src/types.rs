@@ -1,14 +1,16 @@
 #[derive(Default, Debug, Clone, Copy, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-/// Defines a taker trade
+/// Defines a taker trade with a millisecond timestamp and a size in the quote currency,
+/// as of an inverse contract such as BitMEX XBTUSD.
+/// For other units, implement [`Timestamped`] and [`TakerTrade`] for your own type.
 pub struct Trade {
-    /// Timestamp, assumed to be in milliseconds
+    /// Timestamp in milliseconds
     pub timestamp: i64,
 
     /// Price of the asset
     pub price: f64,
 
-    /// Size of the trade
+    /// Size of the trade in the quote currency,
     /// negative values indicate a taker Sell order
     pub size: f64,
 }
@@ -23,6 +25,8 @@ impl Timestamped for Trade {
 }
 
 impl TakerTrade for Trade {
+    const SIZE_UNIT: SizeUnit = SizeUnit::Quote;
+
     #[inline(always)]
     fn price(&self) -> f64 {
         self.price
@@ -34,17 +38,36 @@ impl TakerTrade for Trade {
     }
 }
 
-/// Defines how to aggregate trade size
-/// either by Base currency or Quote Currency
-/// assumes trades sizes are denoted in Quote
-/// e.g.: buy 10 contracts of BTC would be trade size of 10
-#[derive(Debug, Clone, Copy)]
+/// The currency in which a rule sums the trade sizes,
+/// converted from the [`TakerTrade::SIZE_UNIT`] of the trades.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum By {
-    /// when aggregating by Base, divide size by price for volume sum
+    /// Sum the sizes in the base currency, e.g. BTC of BTCUSD: [`TakerTrade::base_size`].
     Base,
-    /// when aggregating by Quote, take the raw trade size for volume sum
-    /// as the assumption is that Trade size is denoted in Quote
+    /// Sum the sizes in the quote currency, the notional, e.g. USD of BTCUSD ("dollar bars"):
+    /// [`TakerTrade::quote_size`].
+    Quote,
+}
+
+impl By {
+    /// The size of `trade` in this currency, signed by the side of the taker.
+    #[inline(always)]
+    pub fn size<T: TakerTrade>(self, trade: &T) -> f64 {
+        match self {
+            By::Base => trade.base_size(),
+            By::Quote => trade.quote_size(),
+        }
+    }
+}
+
+/// The currency of [`TakerTrade::size`].
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub enum SizeUnit {
+    /// The size is in the base currency, e.g. BTC of BTCUSDT: spot markets and linear contracts.
+    Base,
+    /// The size is in the quote currency, e.g. USD contracts of an inverse contract such as BitMEX XBTUSD.
     Quote,
 }
 
@@ -62,13 +85,36 @@ pub trait Timestamped {
 
 /// Trait to enable third party trade types to be passed into aggregators.
 pub trait TakerTrade: Timestamped {
+    /// The currency of [`Self::size`].
+    ///
+    /// It has no default, because a wrong unit silently turns volumes into notionals or back.
+    const SIZE_UNIT: SizeUnit;
+
     /// Fill price of the transaction
     fn price(&self) -> f64;
 
-    /// Number of shares or contracts in this trade.
+    /// Number of shares or contracts in this trade, in [`Self::SIZE_UNIT`].
     /// A negative value indicates
     /// that the trade was a sell order, taking liquidity from the bid.
     fn size(&self) -> f64;
+
+    /// The size in the base currency, signed like [`Self::size`].
+    #[inline(always)]
+    fn base_size(&self) -> f64 {
+        match Self::SIZE_UNIT {
+            SizeUnit::Base => self.size(),
+            SizeUnit::Quote => self.size() / self.price(),
+        }
+    }
+
+    /// The size in the quote currency (the notional), signed like [`Self::size`].
+    #[inline(always)]
+    fn quote_size(&self) -> f64 {
+        match Self::SIZE_UNIT {
+            SizeUnit::Base => self.size() * self.price(),
+            SizeUnit::Quote => self.size(),
+        }
+    }
 }
 
 /// The resolution of the [`Timestamped`] timestamps
@@ -164,6 +210,49 @@ mod test {
     fn millisecond_period_from_non_zero_secs_panic() {
         // panics as it cannot be zero
         MillisecondPeriod::from_non_zero_secs(0);
+    }
+
+    /// A spot trade: millisecond timestamp, size in the base currency.
+    struct Spot {
+        price: f64,
+        size: f64,
+    }
+
+    impl Timestamped for Spot {
+        const TIMESTAMP_RESOLUTION: TimestampResolution = TimestampResolution::Millisecond;
+
+        fn timestamp(&self) -> i64 {
+            0
+        }
+    }
+
+    impl TakerTrade for Spot {
+        const SIZE_UNIT: SizeUnit = SizeUnit::Base;
+
+        fn price(&self) -> f64 {
+            self.price
+        }
+
+        fn size(&self) -> f64 {
+            self.size
+        }
+    }
+
+    #[test]
+    fn sizes_convert_between_base_and_quote() {
+        let spot = Spot {
+            price: 50.0,
+            size: -2.0,
+        };
+        assert_eq!(By::Base.size(&spot), -2.0);
+        assert_eq!(By::Quote.size(&spot), -100.0);
+        let inverse = Trade {
+            timestamp: 0,
+            price: 50.0,
+            size: 100.0,
+        };
+        assert_eq!(By::Base.size(&inverse), 2.0);
+        assert_eq!(By::Quote.size(&inverse), 100.0);
     }
 
     #[test]
