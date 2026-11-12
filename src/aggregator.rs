@@ -1,6 +1,6 @@
 use std::marker::PhantomData;
 
-use crate::{AggregationRule, Bar, BarKind, ModularCandle, Timestamped};
+use crate::{AggregationRule, Bar, BarKind, ModularCandle, OutOfOrder, Timestamped};
 
 /// Defines the needed methods for any online `Aggregator`
 pub trait Aggregator<Candle, E> {
@@ -8,7 +8,8 @@ pub trait Aggregator<Candle, E> {
     ///
     /// # Arguments:
     /// `event`: the event, e.g. a trade, to add to the aggregation process.
-    ///     Events must arrive in time order.
+    ///     Events must arrive in time order, else this panics.
+    ///     [`GenericAggregator::try_update`] returns an error for a late event instead.
     /// `out`: receives the candles that the event closed, in order.
     ///     An event can close more than one candle, e.g. after a gap in the data.
     fn update(&mut self, event: &E, out: &mut impl Extend<Bar<Candle>>);
@@ -217,6 +218,45 @@ where
         }
     }
 
+    /// Like [`Self::advance_to`], but an error instead of a panic
+    /// if `watermark` is earlier than [`Self::latest_timestamp`].
+    /// On an error, the aggregator and `out` do not change.
+    ///
+    /// # Errors:
+    /// [`OutOfOrder`] if `watermark` is earlier than the latest event or watermark.
+    pub fn try_advance_to(
+        &mut self,
+        watermark: i64,
+        out: &mut impl Extend<Bar<C>>,
+    ) -> Result<(), OutOfOrder> {
+        self.check_in_order(watermark)?;
+        self.advance_to(watermark, out);
+        Ok(())
+    }
+
+    /// Like [`Aggregator::update`], but an error instead of a panic
+    /// if the event is earlier than [`Self::latest_timestamp`],
+    /// e.g. a live event that came after a later event or watermark.
+    /// On an error, the aggregator and `out` do not change, so the caller can drop the event.
+    ///
+    /// # Errors:
+    /// [`OutOfOrder`] if the event is earlier than the latest event or watermark.
+    pub fn try_update(
+        &mut self,
+        event: &E,
+        out: &mut impl Extend<Bar<C>>,
+    ) -> Result<(), OutOfOrder> {
+        self.check_in_order(event.timestamp())?;
+        self.update(event, out);
+        Ok(())
+    }
+
+    /// The latest time of an event or a watermark, `None` before both.
+    /// A later event or watermark must not be earlier than this.
+    pub fn latest_timestamp(&self) -> Option<i64> {
+        self.now
+    }
+
     /// The rule, e.g. to read the threshold of an [`Adaptive`](crate::Adaptive) rule.
     pub fn rule(&self) -> &R {
         &self.aggregation_rule
@@ -254,12 +294,16 @@ where
     }
 
     /// Time must not run backwards, or candles would close in the past.
+    fn check_in_order(&self, timestamp: i64) -> Result<(), OutOfOrder> {
+        match self.now {
+            Some(latest) if timestamp < latest => Err(OutOfOrder::new(timestamp, latest)),
+            _ => Ok(()),
+        }
+    }
+
     fn assert_in_order(&self, timestamp: i64) {
-        if let Some(now) = self.now {
-            assert!(
-                timestamp >= now,
-                "events must arrive in time order: {timestamp} after {now}"
-            );
+        if let Err(e) = self.check_in_order(timestamp) {
+            panic!("events must arrive in time order: {e}");
         }
     }
 
@@ -723,6 +767,56 @@ mod tests {
         let trades = ten_trades();
         a.update(&trades[1], &mut bars);
         a.update(&trades[0], &mut bars);
+    }
+
+    #[test]
+    fn try_update_rejects_a_late_event_and_changes_nothing() {
+        let mut a = GenericAggregator::<CountingCandle, _, Trade>::new(
+            crate::AlignedTimeRule::new(crate::MillisecondPeriod::from_non_zero(3)),
+            false,
+        );
+        assert_eq!(a.latest_timestamp(), None);
+        let trades = ten_trades();
+        let mut bars = Vec::new();
+        for t in &trades[..4] {
+            a.try_update(t, &mut bars).expect("in time order");
+        }
+        assert_eq!(a.latest_timestamp(), Some(4));
+        // A heartbeat moves the latest time past the next trades.
+        a.try_advance_to(7, &mut bars).expect("in time order");
+        assert_eq!(a.latest_timestamp(), Some(7));
+        let before = (summary(&bars), format!("{a:?}"));
+
+        let late = a
+            .try_update(&trades[5], &mut bars)
+            .expect_err("trade at 6 after 7");
+        assert_eq!((late.timestamp(), late.latest()), (6, 7));
+        let late = a
+            .try_advance_to(5, &mut bars)
+            .expect_err("watermark 5 after 7");
+        assert_eq!((late.timestamp(), late.latest()), (5, 7));
+        assert_eq!((summary(&bars), format!("{a:?}")), before);
+
+        // The latest time itself is in order.
+        a.try_advance_to(7, &mut bars)
+            .expect("equal times are in order");
+        a.try_update(&trades[6], &mut bars).expect("the trade at 7");
+        assert_eq!(a.latest_timestamp(), Some(7));
+    }
+
+    #[test]
+    fn try_update_gives_the_same_bars_as_update_in_time_order() {
+        let trades = gappy_trades(500, 3);
+        let rule = || crate::AlignedTimeRule::new(crate::MillisecondPeriod::from_non_zero(1_000));
+        let mut a = GenericAggregator::<CountingCandle, _, Trade>::new(rule(), false);
+        let mut b = GenericAggregator::<CountingCandle, _, Trade>::new(rule(), false);
+        let (mut expected, mut bars) = (Vec::new(), Vec::new());
+        for t in &trades {
+            a.update(t, &mut expected);
+            b.try_update(t, &mut bars).expect("in time order");
+        }
+        assert!(expected.len() > 10, "the test needs candles");
+        assert_eq!(summary(&bars), summary(&expected));
     }
 
     #[test]
