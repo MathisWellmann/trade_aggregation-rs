@@ -94,7 +94,14 @@ These pre-existing 'CandleComponents' exist out of the box:
 `High`              | Maximum price during the candle
 `Low`               | Minimum price during the candle
 `Close`             | Price at the end of a candle
-`Volume`            | The cumulative trading volume
+`Volume`            | The cumulative trading volume, in the unit of the trade sizes
+`BaseVolume`        | The cumulative trading volume in the base currency
+`QuoteVolume`       | The cumulative trading volume in the quote currency (the notional)
+`VolumeBuys`, `VolumeSells` | The volume of the taker buys and of the taker sells
+`LargestTrade`      | The size of the largest trade in the base currency
+`RealizedVariance`  | The sum of the squared log returns between trades, starting at the previous close
+`BipowerVariation`  | The jump-robust bipower variation of the log returns between trades
+`RealizedQuarticity`| The realized quarticity of the log returns between trades
 `NumTrades`         | The number of trades during the candle
 `AveragePrice`      | The equally weighted average price
 `WeightedPrice`     | The volume weighted price

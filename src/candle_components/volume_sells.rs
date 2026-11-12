@@ -1,6 +1,6 @@
 use crate::{CandleComponent, CandleComponentUpdate, TakerTrade};
 
-/// This 'CandleComponent' keeps track of the cumulative volume of trades.
+/// This 'CandleComponent' keeps track of the cumulative sell volume of trades.
 #[derive(Debug, Default, Clone)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct VolumeSells {
@@ -24,8 +24,31 @@ impl CandleComponent for VolumeSells {
 impl<T: TakerTrade> CandleComponentUpdate<T> for VolumeSells {
     #[inline(always)]
     fn update(&mut self, trade: &T) {
-        if trade.size().is_sign_negative() {
+        if trade.size() < 0.0 {
             self.sell_volume += trade.size().abs()
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::Trade;
+
+    #[test]
+    fn sums_one_side_and_ignores_trades_without_size() {
+        let mut m = VolumeSells::default();
+        for t in &crate::candle_components::tests::TRADES {
+            m.update(t);
+        }
+        assert_eq!(m.value(), 40.0);
+        for size in [0.0, -0.0] {
+            m.update(&Trade {
+                timestamp: 0,
+                price: 1.0,
+                size,
+            });
+        }
+        assert_eq!(m.value(), 40.0);
     }
 }
