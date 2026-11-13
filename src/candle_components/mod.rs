@@ -64,7 +64,8 @@ pub use quote_volume::QuoteVolume;
 pub use quotes::{
     DepthAtClose, EffectiveSpread, ImbalanceAtClose, MaxSpread, MicropriceOffsetAtClose, MidClose,
     MidHigh, MidLow, MidOpen, OrderFlowImbalance, QuoteUpdates, SpreadAtClose, TimeWeightedDepth,
-    TimeWeightedImbalance, TimeWeightedSpread, WapRealizedVariance,
+    TimeWeightedImbalance, TimeWeightedSpread, VolumeAtTouch, VolumeInsideSpread,
+    VolumeThroughTouch, WapRealizedVariance,
 };
 pub use realized::{BipowerVariation, RealizedQuarticity, RealizedVariance};
 pub use return_path::{

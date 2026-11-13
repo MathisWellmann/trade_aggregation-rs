@@ -599,6 +599,200 @@ impl<E: AsQuote> CandleComponentUpdate<E> for MaxSpread {
     }
 }
 
+/// Relative tolerance for comparing a trade price to a quote price, so that equal decimal prices
+/// parsed as `f64` (e.g. `"101.1"` from one feed and `"101.10"` from another) compare as equal
+/// instead of differing in the last bit.
+const PRICE_TOLERANCE: f64 = 1e-9;
+
+/// Whether `price` and `reference` are equal within [`PRICE_TOLERANCE`] of `reference`.
+fn approx_eq(price: f64, reference: f64) -> bool {
+    (price - reference).abs() <= PRICE_TOLERANCE * reference.abs()
+}
+
+/// Where a trade executed against the quote that was prevailing (the last valid quote before it).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum TradeLocation {
+    /// At the touch: a buy at the ask, or a sell at the bid.
+    AtTouch,
+    /// Strictly between the bid and the ask: price improvement or hidden liquidity.
+    Inside,
+    /// Through the touch: a buy above the ask or a sell below the bid, sweeping levels or hitting
+    /// a stale quote.
+    Through,
+}
+
+/// Classify a trade of `price` against the prevailing `bid` and `ask`.
+///
+/// `None` for a buy at or below the bid, or a sell at or above the ask (usually a stale quote),
+/// which belong to none of the three locations. Prices are compared with [`PRICE_TOLERANCE`].
+fn locate_trade(price: f64, bid: f64, ask: f64, is_buy: bool) -> Option<TradeLocation> {
+    let (touch, far) = if is_buy { (ask, bid) } else { (bid, ask) };
+    if approx_eq(price, touch) {
+        return Some(TradeLocation::AtTouch);
+    }
+    let beyond_touch = if is_buy { price > touch } else { price < touch };
+    if beyond_touch {
+        return Some(TradeLocation::Through);
+    }
+    let beyond_far = if is_buy { price > far } else { price < far };
+    if beyond_far && !approx_eq(price, far) {
+        return Some(TradeLocation::Inside);
+    }
+    None
+}
+
+/// Shared state of the trade-location components: the prevailing quote (the last valid quote
+/// before a trade, kept across [`CandleComponent::reset`] like [`EffectiveSpread`]'s mid) and the
+/// running base volume at each [`TradeLocation`].
+#[derive(Debug, Default, Clone)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+struct TradeLocations {
+    bid: Option<f64>,
+    ask: Option<f64>,
+    at_touch: f64,
+    inside: f64,
+    through: f64,
+    denominator: f64,
+}
+
+impl TradeLocations {
+    fn update<E: AsQuote + AsTrade>(&mut self, event: &E) {
+        if let Some(quote) = event.as_quote() {
+            if valid_quote(quote) {
+                self.bid = Some(quote.bid_price());
+                self.ask = Some(quote.ask_price());
+            }
+        }
+        let (Some(trade), Some(bid), Some(ask)) = (event.as_trade(), self.bid, self.ask) else {
+            return;
+        };
+        let size = trade.base_size();
+        if size == 0.0 {
+            return;
+        }
+        let volume = size.abs();
+        self.denominator += volume;
+        match locate_trade(trade.price(), bid, ask, size > 0.0) {
+            Some(TradeLocation::AtTouch) => self.at_touch += volume,
+            Some(TradeLocation::Inside) => self.inside += volume,
+            Some(TradeLocation::Through) => self.through += volume,
+            None => {}
+        }
+    }
+
+    fn reset(&mut self) {
+        self.at_touch = 0.0;
+        self.inside = 0.0;
+        self.through = 0.0;
+        self.denominator = 0.0;
+    }
+
+    /// The share of `numerator` of the base volume of trades that had a prevailing valid quote.
+    fn share(&self, numerator: f64) -> Option<f64> {
+        (self.denominator > 0.0).then(|| numerator / self.denominator)
+    }
+}
+
+/// Share of the base volume of trades at the touch against the prevailing quote (the last valid
+/// quote before each trade): a taker buy that pays the ask, or a taker sell that hits the bid.
+/// The denominator is the base volume of trades that had a prevailing valid quote;
+/// `None` without such a trade.
+///
+/// A trade on the wrong side (a buy at or below the bid, or a sell at or above the ask, usually
+/// from a stale quote) belongs to none of [`VolumeAtTouch`], [`VolumeInsideSpread`] and
+/// [`VolumeThroughTouch`], so the three can sum to less than 1. Prices are compared with a
+/// relative tolerance of 1e-9 of the quote price. Trades of size zero are skipped.
+#[derive(Debug, Default, Clone)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub struct VolumeAtTouch {
+    locations: TradeLocations,
+}
+
+impl CandleComponent for VolumeAtTouch {
+    type Value = Option<f64>;
+
+    fn value(&self) -> Option<f64> {
+        self.locations.share(self.locations.at_touch)
+    }
+
+    fn reset(&mut self) {
+        self.locations.reset();
+    }
+}
+
+impl<E: AsQuote + AsTrade> CandleComponentUpdate<E> for VolumeAtTouch {
+    fn update(&mut self, event: &E) {
+        self.locations.update(event);
+    }
+}
+
+/// Share of the base volume of trades strictly inside the prevailing spread (the last valid quote
+/// before each trade): price improvement or hidden liquidity between the bid and the ask.
+/// The denominator is the base volume of trades that had a prevailing valid quote;
+/// `None` without such a trade.
+///
+/// A trade on the wrong side (a buy at or below the bid, or a sell at or above the ask, usually
+/// from a stale quote) belongs to none of [`VolumeAtTouch`], [`VolumeInsideSpread`] and
+/// [`VolumeThroughTouch`], so the three can sum to less than 1. Prices are compared with a
+/// relative tolerance of 1e-9 of the quote price. Trades of size zero are skipped.
+#[derive(Debug, Default, Clone)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub struct VolumeInsideSpread {
+    locations: TradeLocations,
+}
+
+impl CandleComponent for VolumeInsideSpread {
+    type Value = Option<f64>;
+
+    fn value(&self) -> Option<f64> {
+        self.locations.share(self.locations.inside)
+    }
+
+    fn reset(&mut self) {
+        self.locations.reset();
+    }
+}
+
+impl<E: AsQuote + AsTrade> CandleComponentUpdate<E> for VolumeInsideSpread {
+    fn update(&mut self, event: &E) {
+        self.locations.update(event);
+    }
+}
+
+/// Share of the base volume of trades through the prevailing touch (the last valid quote before
+/// each trade): a buy above the ask or a sell below the bid, which swept several levels of the
+/// book, or traded against a stale quote.
+/// The denominator is the base volume of trades that had a prevailing valid quote;
+/// `None` without such a trade.
+///
+/// A trade on the wrong side (a buy at or below the bid, or a sell at or above the ask, usually
+/// from a stale quote) belongs to none of [`VolumeAtTouch`], [`VolumeInsideSpread`] and
+/// [`VolumeThroughTouch`], so the three can sum to less than 1. Prices are compared with a
+/// relative tolerance of 1e-9 of the quote price. Trades of size zero are skipped.
+#[derive(Debug, Default, Clone)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub struct VolumeThroughTouch {
+    locations: TradeLocations,
+}
+
+impl CandleComponent for VolumeThroughTouch {
+    type Value = Option<f64>;
+
+    fn value(&self) -> Option<f64> {
+        self.locations.share(self.locations.through)
+    }
+
+    fn reset(&mut self) {
+        self.locations.reset();
+    }
+}
+
+impl<E: AsQuote + AsTrade> CandleComponentUpdate<E> for VolumeThroughTouch {
+    fn update(&mut self, event: &E) {
+        self.locations.update(event);
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -847,5 +1041,99 @@ mod tests {
         // A crossed quote is skipped.
         m.update(&quote(4, 102.0, 1.0, 98.0, 1.0));
         assert_eq!(m.value(), Some(0.04));
+    }
+
+    #[test]
+    fn volume_location_shares_classify_trades_against_the_prevailing_quote() {
+        type Event = MarketEvent<Trade, Quote>;
+        let trade = |price: f64, size: f64| {
+            Event::Trade(Trade {
+                timestamp: 1,
+                price,
+                size,
+            })
+        };
+        let (mut at_touch, mut inside, mut through) = (
+            VolumeAtTouch::default(),
+            VolumeInsideSpread::default(),
+            VolumeThroughTouch::default(),
+        );
+        assert_eq!(at_touch.value(), None, "no prevailing quote yet");
+
+        // Prevailing quote: bid 100, ask 102.
+        let q = Event::Quote(quote(0, 100.0, 1.0, 102.0, 1.0));
+        at_touch.update(&q);
+        inside.update(&q);
+        through.update(&q);
+
+        let events = [
+            trade(102.0, 102.0),  // Buy at the ask (base size 1): at touch.
+            trade(101.0, 202.0),  // Buy at 101, inside (base size 2).
+            trade(103.0, 103.0),  // Buy above the ask (base size 1): through.
+            trade(100.0, 100.0),  // Buy at the bid (base size 1): the wrong side, counts nowhere.
+            trade(100.0, -100.0), // Sell at the bid (base size 1): at touch.
+            trade(100.0, 0.0),    // Size zero, skipped entirely.
+        ];
+        for e in &events {
+            at_touch.update(e);
+            inside.update(e);
+            through.update(e);
+        }
+
+        // 1 (buy) + 2 + 1 + 1 (wrong side) + 1 (sell) = 6 base volume had a prevailing quote.
+        assert_eq!(at_touch.value(), Some(2.0 / 6.0));
+        assert_eq!(inside.value(), Some(2.0 / 6.0));
+        assert_eq!(through.value(), Some(1.0 / 6.0));
+        // The wrong-side trade is in none of the three: the shares sum to less than 1.
+        let sum = at_touch.value().expect("trades")
+            + inside.value().expect("trades")
+            + through.value().expect("trades");
+        assert!(sum < 1.0, "{sum}");
+    }
+
+    #[test]
+    fn volume_location_shares_treat_near_equal_decimal_prices_as_touching() {
+        type Event = MarketEvent<Trade, Quote>;
+        let mut at_touch = VolumeAtTouch::default();
+        at_touch.update(&Event::Quote(quote(0, 100.0, 1.0, 102.0, 1.0)));
+        // 102.0 parsed from two different decimal strings can differ in the last bit.
+        let ask = "102.0".parse::<f64>().expect("valid float");
+        let noisy_ask = ask * (1.0 + 1e-12);
+        assert_ne!(ask, noisy_ask, "the float actually differs");
+        at_touch.update(&Event::Trade(Trade {
+            timestamp: 1,
+            price: noisy_ask,
+            size: noisy_ask,
+        }));
+        assert_eq!(
+            at_touch.value(),
+            Some(1.0),
+            "within tolerance of the ask, counted at the touch"
+        );
+    }
+
+    #[test]
+    fn volume_location_shares_ignore_invalid_quotes_and_reset_the_counts_only() {
+        type Event = MarketEvent<Trade, Quote>;
+        let mut at_touch = VolumeAtTouch::default();
+        at_touch.update(&Event::Quote(quote(0, 100.0, 1.0, 102.0, 1.0)));
+        // An invalid (crossed) quote does not replace the prevailing one.
+        at_touch.update(&Event::Quote(quote(1, 102.0, 1.0, 100.0, 1.0)));
+        at_touch.update(&Event::Trade(Trade {
+            timestamp: 2,
+            price: 102.0,
+            size: 102.0,
+        }));
+        assert_eq!(at_touch.value(), Some(1.0));
+
+        // The counts reset, but the prevailing quote is kept, like EffectiveSpread's mid.
+        at_touch.reset();
+        assert_eq!(at_touch.value(), None);
+        at_touch.update(&Event::Trade(Trade {
+            timestamp: 3,
+            price: 102.0,
+            size: 102.0,
+        }));
+        assert_eq!(at_touch.value(), Some(1.0));
     }
 }
