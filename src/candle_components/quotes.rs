@@ -10,7 +10,8 @@
 
 use super::RealizedVariance;
 use crate::{
-    AsQuote, AsTrade, BestQuote, CandleComponent, CandleComponentUpdate, Microprice, TakerTrade,
+    price_source::valid_quote, AsQuote, AsTrade, BestQuote, CandleComponent, CandleComponentUpdate,
+    Microprice, TakerTrade,
 };
 
 /// The mid price when the candle opened: the last mid price before it, or the first one.
@@ -383,6 +384,221 @@ impl<E: AsQuote + AsTrade> CandleComponentUpdate<E> for EffectiveSpread {
     }
 }
 
+/// The relative spread `(ask - bid) / mid` of the last valid quote: the state the market is in
+/// when the candle closes, which is where the next candle starts from, complementing the
+/// time-weighted spread ([`TimeWeightedSpread`]) that describes the candle itself.
+/// `None` while no valid quote has arrived. Invalid quotes (a bid or ask that is not positive and
+/// finite, or a crossed book) are skipped.
+#[derive(Debug, Default, Clone)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub struct SpreadAtClose {
+    last: Option<f64>,
+}
+
+impl CandleComponent for SpreadAtClose {
+    type Value = Option<f64>;
+
+    fn value(&self) -> Option<f64> {
+        self.last
+    }
+
+    fn reset(&mut self) {}
+}
+
+impl<E: AsQuote> CandleComponentUpdate<E> for SpreadAtClose {
+    fn update(&mut self, event: &E) {
+        let Some(quote) = event.as_quote() else {
+            return;
+        };
+        if !valid_quote(quote) {
+            return;
+        }
+        self.last = Some((quote.ask_price() - quote.bid_price()) / quote.mid_price());
+    }
+}
+
+/// The level 1 imbalance `(bid size - ask size) / (bid size + ask size)` of the last valid quote,
+/// in `[-1, 1]`: the queue the next candle starts from, complementing the time-weighted imbalance
+/// ([`TimeWeightedImbalance`]) that describes the candle itself. `0` when both sizes are zero.
+/// `None` while no valid quote has arrived. Invalid quotes are skipped, see [`SpreadAtClose`].
+#[derive(Debug, Default, Clone)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub struct ImbalanceAtClose {
+    last: Option<f64>,
+}
+
+impl CandleComponent for ImbalanceAtClose {
+    type Value = Option<f64>;
+
+    fn value(&self) -> Option<f64> {
+        self.last
+    }
+
+    fn reset(&mut self) {}
+}
+
+impl<E: AsQuote> CandleComponentUpdate<E> for ImbalanceAtClose {
+    fn update(&mut self, event: &E) {
+        let Some(quote) = event.as_quote() else {
+            return;
+        };
+        if !valid_quote(quote) {
+            return;
+        }
+        let sizes = quote.bid_size() + quote.ask_size();
+        let imbalance = if sizes > 0.0 {
+            (quote.bid_size() - quote.ask_size()) / sizes
+        } else {
+            0.0
+        };
+        debug_assert!((-1.0..=1.0).contains(&imbalance));
+        self.last = Some(imbalance);
+    }
+}
+
+/// The offset of the microprice from the mid, `(microprice - mid) / mid`, of the last valid quote.
+/// Stoikov (2018) shows the microprice leans to the side of the book that is likely to be taken
+/// next, so the offset is a short-horizon drift signal for the start of the next candle.
+/// `None` while no valid quote has arrived. Invalid quotes are skipped, see [`SpreadAtClose`].
+#[derive(Debug, Default, Clone)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub struct MicropriceOffsetAtClose {
+    last: Option<f64>,
+}
+
+impl CandleComponent for MicropriceOffsetAtClose {
+    type Value = Option<f64>;
+
+    fn value(&self) -> Option<f64> {
+        self.last
+    }
+
+    fn reset(&mut self) {}
+}
+
+impl<E: AsQuote> CandleComponentUpdate<E> for MicropriceOffsetAtClose {
+    fn update(&mut self, event: &E) {
+        let Some(quote) = event.as_quote() else {
+            return;
+        };
+        if !valid_quote(quote) {
+            return;
+        }
+        let mid = quote.mid_price();
+        self.last = Some((quote.weighted_price() - mid) / mid);
+    }
+}
+
+/// The depth of the last valid quote, `bid size + ask size`, in the unit of the quote sizes:
+/// the liquidity available at the touch when the candle closed. Cont, Kukanov and Stoikov (2014)
+/// show the price impact of order flow is inversely proportional to depth, so it normalises
+/// [`OrderFlowImbalance`] for the start of the next candle.
+/// `None` while no valid quote has arrived. Invalid quotes are skipped, see [`SpreadAtClose`].
+#[derive(Debug, Default, Clone)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub struct DepthAtClose {
+    last: Option<f64>,
+}
+
+impl CandleComponent for DepthAtClose {
+    type Value = Option<f64>;
+
+    fn value(&self) -> Option<f64> {
+        self.last
+    }
+
+    fn reset(&mut self) {}
+}
+
+impl<E: AsQuote> CandleComponentUpdate<E> for DepthAtClose {
+    fn update(&mut self, event: &E) {
+        let Some(quote) = event.as_quote() else {
+            return;
+        };
+        if !valid_quote(quote) {
+            return;
+        }
+        self.last = Some(quote.bid_size() + quote.ask_size());
+    }
+}
+
+/// The depth `bid size + ask size`, in the unit of the quote sizes, averaged over the time of the
+/// candle. The time from the last quote to the close of the candle counts,
+/// see [`CandleComponentUpdate::close_at`]. Cont, Kukanov and Stoikov (2014) show the price impact
+/// of order flow is inversely proportional to depth, so it normalises [`OrderFlowImbalance`].
+/// Invalid quotes are skipped, see [`SpreadAtClose`].
+#[derive(Debug, Default, Clone)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub struct TimeWeightedDepth {
+    average: TimeAverage,
+}
+
+impl CandleComponent for TimeWeightedDepth {
+    type Value = Option<f64>;
+
+    fn value(&self) -> Option<f64> {
+        self.average.value()
+    }
+
+    fn reset(&mut self) {
+        self.average.reset();
+    }
+}
+
+impl<E: AsQuote> CandleComponentUpdate<E> for TimeWeightedDepth {
+    fn update(&mut self, event: &E) {
+        let Some(quote) = event.as_quote() else {
+            return;
+        };
+        if !valid_quote(quote) {
+            return;
+        }
+        self.average
+            .observe(event.timestamp(), quote.bid_size() + quote.ask_size());
+    }
+
+    fn close_at(&mut self, timestamp: i64) {
+        self.average.integrate_to(timestamp);
+    }
+}
+
+/// The largest relative spread `(ask - bid) / mid` of the candle, including the one in effect
+/// when it opened: the widest the market was willing to trade at, a risk measure the average
+/// ([`TimeWeightedSpread`]) does not capture. `None` while no valid quote has arrived.
+/// Invalid quotes are skipped, see [`SpreadAtClose`].
+#[derive(Debug, Default, Clone)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub struct MaxSpread {
+    max: Option<f64>,
+    last: Option<f64>,
+}
+
+impl CandleComponent for MaxSpread {
+    type Value = Option<f64>;
+
+    fn value(&self) -> Option<f64> {
+        self.max
+    }
+
+    fn reset(&mut self) {
+        self.max = self.last;
+    }
+}
+
+impl<E: AsQuote> CandleComponentUpdate<E> for MaxSpread {
+    fn update(&mut self, event: &E) {
+        let Some(quote) = event.as_quote() else {
+            return;
+        };
+        if !valid_quote(quote) {
+            return;
+        }
+        let spread = (quote.ask_price() - quote.bid_price()) / quote.mid_price();
+        self.max = Some(self.max.map_or(spread, |max| max.max(spread)));
+        self.last = Some(spread);
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -541,5 +757,95 @@ mod tests {
         e.update(&trade(98.0, -294.0));
         let expected = (1.0 * 0.02 + 3.0 * 0.04) / 4.0;
         assert!((e.value().expect("trades") - expected).abs() < 1e-15);
+    }
+
+    #[test]
+    fn level1_state_at_close_reads_the_last_valid_quote() {
+        let (mut spread, mut imbalance, mut offset, mut depth) = (
+            SpreadAtClose::default(),
+            ImbalanceAtClose::default(),
+            MicropriceOffsetAtClose::default(),
+            DepthAtClose::default(),
+        );
+        assert_eq!(spread.value(), None);
+        assert_eq!(imbalance.value(), None);
+        assert_eq!(offset.value(), None);
+        assert_eq!(depth.value(), None);
+
+        // Mid 100, three times more size on the bid: the microprice leans to the ask.
+        let q = quote(0, 99.0, 3.0, 101.0, 1.0);
+        spread.update(&q);
+        imbalance.update(&q);
+        offset.update(&q);
+        depth.update(&q);
+        assert_eq!(spread.value(), Some(0.02));
+        assert_eq!(imbalance.value(), Some(0.5));
+        assert_eq!(offset.value(), Some(0.005));
+        assert_eq!(depth.value(), Some(4.0));
+
+        // An invalid (crossed) quote is skipped: the state stays at the last valid quote.
+        let crossed = quote(1, 102.0, 1.0, 100.0, 1.0);
+        spread.update(&crossed);
+        depth.update(&crossed);
+        assert_eq!(spread.value(), Some(0.02));
+        assert_eq!(depth.value(), Some(4.0));
+
+        // The state is kept over a reset: a candle without quote updates still has it.
+        spread.reset();
+        imbalance.reset();
+        offset.reset();
+        depth.reset();
+        assert_eq!(spread.value(), Some(0.02));
+
+        let q = quote(2, 100.0, 2.0, 102.0, 2.0);
+        spread.update(&q);
+        imbalance.update(&q);
+        offset.update(&q);
+        depth.update(&q);
+        assert_eq!(spread.value(), Some(2.0 / 101.0));
+        assert_eq!(imbalance.value(), Some(0.0));
+        assert_eq!(offset.value(), Some(0.0));
+        assert_eq!(depth.value(), Some(4.0));
+    }
+
+    #[test]
+    fn time_weighted_depth_is_weighted_by_time_up_to_the_close() {
+        let mut d = TimeWeightedDepth::default();
+        assert_eq!(d.value(), None);
+        // A depth of 4 for 10 ms, then 6 for 30 ms.
+        d.update(&quote(0, 99.0, 2.0, 101.0, 2.0));
+        d.update(&quote(10, 98.0, 1.0, 102.0, 5.0));
+        close(&mut d, 40);
+        let expected = (4.0 * 10.0 + 6.0 * 30.0) / 40.0;
+        assert!((d.value().expect("quotes") - expected).abs() < 1e-15);
+        // The next candle starts with the depth in effect.
+        d.reset();
+        close(&mut d, 50);
+        assert!((d.value().expect("quotes") - 6.0).abs() < 1e-15);
+        // An invalid quote does not change the depth in effect.
+        d.update(&quote(60, 0.0, 100.0, 101.0, 1.0));
+        close(&mut d, 70);
+        assert!((d.value().expect("quotes") - 6.0).abs() < 1e-15);
+    }
+
+    #[test]
+    fn max_spread_keeps_the_widest_spread_including_at_open() {
+        let mut m = MaxSpread::default();
+        assert_eq!(m.value(), None);
+        m.update(&mid(0, 100.0)); // Spread 0.02.
+        m.update(&quote(1, 98.0, 1.0, 102.0, 1.0)); // Spread 0.04.
+        m.update(&quote(2, 99.5, 1.0, 100.5, 1.0)); // Spread 0.01.
+        assert_eq!(m.value(), Some(0.04));
+        m.reset();
+        assert_eq!(
+            m.value(),
+            Some(0.01),
+            "a candle without updates opens at the spread in effect, not the previous max"
+        );
+        m.update(&quote(3, 98.0, 1.0, 102.0, 1.0)); // Spread 0.04 again, wider than the opening 0.01.
+        assert_eq!(m.value(), Some(0.04));
+        // A crossed quote is skipped.
+        m.update(&quote(4, 102.0, 1.0, 98.0, 1.0));
+        assert_eq!(m.value(), Some(0.04));
     }
 }
