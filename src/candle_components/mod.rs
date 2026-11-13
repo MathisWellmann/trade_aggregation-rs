@@ -21,6 +21,7 @@ mod open_timestamp;
 mod quote_volume;
 mod quotes;
 mod realized;
+mod returns;
 mod std_dev_prices;
 mod std_dev_sizes;
 mod time_velocity;
@@ -53,6 +54,11 @@ pub use quotes::{
     TimeWeightedImbalance, TimeWeightedSpread, WapRealizedVariance,
 };
 pub use realized::{BipowerVariation, RealizedQuarticity, RealizedVariance};
+pub use returns::{
+    realized_kurtosis, realized_skewness, DownTicks, MaxAbsReturn, NegativeSemivariance,
+    PositiveSemivariance, RealizedCubic, RealizedQuartic, ReturnCount, TotalVariation,
+    UnchangedTicks, UpTicks,
+};
 pub use std_dev_prices::StdDevPrices;
 pub use std_dev_sizes::StdDevSizes;
 pub use time_velocity::TimeVelocity;
