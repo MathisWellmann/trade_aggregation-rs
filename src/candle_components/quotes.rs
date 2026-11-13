@@ -8,7 +8,10 @@
 //! the components keep it over a reset, so a candle without quote updates
 //! still has the spread and the mid price of the market.
 
-use crate::{AsQuote, AsTrade, BestQuote, CandleComponent, CandleComponentUpdate, TakerTrade};
+use super::RealizedVariance;
+use crate::{
+    AsQuote, AsTrade, BestQuote, CandleComponent, CandleComponentUpdate, Microprice, TakerTrade,
+};
 
 /// The mid price when the candle opened: the last mid price before it, or the first one.
 #[derive(Debug, Default, Clone)]
@@ -155,42 +158,10 @@ impl<E: AsQuote> CandleComponentUpdate<E> for QuoteUpdates {
     }
 }
 
-/// The realized variance of the weighted average price (WAP):
+/// The realized variance of the weighted average price (WAP), the [`Microprice`]:
 /// the sum of the squared log returns between consecutive quotes,
 /// starting at the last quote before the candle.
-#[derive(Debug, Default, Clone)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-pub struct WapRealizedVariance {
-    sum: f64,
-    last: Option<f64>,
-}
-
-impl CandleComponent for WapRealizedVariance {
-    type Value = f64;
-
-    fn value(&self) -> f64 {
-        self.sum
-    }
-
-    fn reset(&mut self) {
-        self.sum = 0.0;
-    }
-}
-
-impl<E: AsQuote> CandleComponentUpdate<E> for WapRealizedVariance {
-    fn update(&mut self, event: &E) {
-        let Some(quote) = event.as_quote() else {
-            return;
-        };
-        let wap = quote.weighted_price();
-        debug_assert!(wap > 0.0, "prices must be positive");
-        if let Some(last) = self.last {
-            let r = (wap / last).ln();
-            self.sum += r * r;
-        }
-        self.last = Some(wap);
-    }
-}
+pub type WapRealizedVariance = RealizedVariance<Microprice>;
 
 /// The average of a value that changes at quote updates, weighted by the time each value was in effect.
 #[derive(Debug, Default, Clone)]
