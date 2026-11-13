@@ -38,7 +38,7 @@ pub use price_change_rule::PriceChangeRule;
 pub use range_rule::RangeRule;
 pub use relative_price_rule::RelativePriceRule;
 pub use run_rule::RunRule;
-pub use signal::{LogReturn, Signal, Standardized};
+pub use signal::{LogInterArrival, LogReturn, QuoteOfi, Signal, SignedVolume, Standardized};
 pub use signed_volume_rule::SignedVolumeRule;
 pub use tick_rule::TickRule;
 pub use time_rule::*;
