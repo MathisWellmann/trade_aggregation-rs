@@ -1,6 +1,7 @@
 //! This module contains a bunch of ready to use 'CandleComponents'
 //! that can easily be combined to create a 'ModularCandle' using the 'Candle' macro.
 
+mod approx_median_price;
 mod average_price;
 mod base_volume;
 mod candle_component_trait;
@@ -38,6 +39,7 @@ mod volume_buys;
 mod volume_sells;
 mod weighted_price;
 
+pub use approx_median_price::ApproxMedianPrice;
 pub use average_price::AveragePrice;
 pub use base_volume::BaseVolume;
 pub use candle_component_trait::{CandleComponent, CandleComponentUpdate};
