@@ -13,6 +13,7 @@ mod run_rule;
 mod signed_volume_rule;
 mod tick_rule;
 mod time_rule;
+mod variance_rule;
 mod volatility_rule;
 mod volume_rule;
 
@@ -33,5 +34,6 @@ pub use run_rule::RunRule;
 pub use signed_volume_rule::SignedVolumeRule;
 pub use tick_rule::TickRule;
 pub use time_rule::*;
+pub use variance_rule::VarianceRule;
 pub use volatility_rule::VolatilityRule;
 pub use volume_rule::VolumeRule;
