@@ -1,6 +1,12 @@
 //! Helpers for the tests of the aggregation rules.
 
-use crate::{AggregationRule, SizeUnit, TakerTrade, TimestampResolution, Timestamped, Trade};
+use crate::{
+    AggregationRule, MarketEvent, Quote, SizeUnit, TakerTrade, TimestampResolution, Timestamped,
+    Trade,
+};
+
+/// A stream of trades and quotes, for the rules that follow the mid price or the microprice.
+pub(crate) type TradeOrQuote = MarketEvent<Trade, Quote>;
 
 /// A trade with a millisecond timestamp.
 pub(crate) fn trade(timestamp: i64, price: f64, size: f64) -> Trade {
@@ -20,16 +26,29 @@ pub(crate) fn trades_at_prices(prices: &[f64]) -> Vec<Trade> {
         .collect()
 }
 
-/// The indices of the trades on which `rule` triggers.
-pub(crate) fn trigger_indices<R: AggregationRule<Trade>>(
-    rule: &mut R,
-    trades: &[Trade],
-) -> Vec<usize> {
-    trades
+/// The indices of the events (e.g. trades) on which `rule` triggers.
+pub(crate) fn trigger_indices<E, R: AggregationRule<E>>(rule: &mut R, events: &[E]) -> Vec<usize> {
+    events
         .iter()
         .enumerate()
         .filter_map(|(i, t)| rule.should_trigger(t).then_some(i))
         .collect()
+}
+
+/// A trade of one unit at `price` in a stream of trades and quotes.
+pub(crate) fn trade_event(price: f64) -> TradeOrQuote {
+    MarketEvent::Trade(trade(0, price, 1.0))
+}
+
+/// A quote in a stream of trades and quotes.
+pub(crate) fn quote_event(bid: f64, bid_size: f64, ask: f64, ask_size: f64) -> TradeOrQuote {
+    MarketEvent::Quote(Quote {
+        timestamp: 0,
+        bid_price: bid,
+        bid_size,
+        ask_price: ask,
+        ask_size,
+    })
 }
 
 /// `n` trades of size 1, one millisecond apart at a price of 100,

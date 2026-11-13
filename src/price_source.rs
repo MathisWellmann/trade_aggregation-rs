@@ -104,6 +104,19 @@ pub(crate) fn valid_quote<Q: BestQuote>(quote: &Q) -> bool {
     bid.is_finite() && ask.is_finite() && bid > 0.0 && ask > 0.0 && bid <= ask
 }
 
+/// The price of `event` from `source`, `None` if the event has no such price.
+///
+/// # Panics:
+/// If the price is not positive and finite: relative moves and log returns of such a price
+/// are meaningless, and a quote source never returns one, so it is a bad trade in the input.
+#[inline(always)]
+pub(crate) fn checked_price<E, P: PriceSource<E>>(source: &P, event: &E) -> Option<f64> {
+    let price = source.price(event)?;
+    assert!(price.is_finite(), "prices must be finite, got {price}");
+    assert!(price > 0.0, "prices must be positive, got {price}");
+    Some(price)
+}
+
 /// A price of a [`PriceSource`] and the log return from the previous one.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub(crate) struct PriceStep {
@@ -135,11 +148,7 @@ impl<P> LogReturns<P> {
     where
         P: PriceSource<E>,
     {
-        let price = self.source.price(event)?;
-        assert!(
-            price.is_finite() && price > 0.0,
-            "prices must be positive and finite, got {price}"
-        );
+        let price = checked_price(&self.source, event)?;
         let log_return = self.last.replace(price).map(|last| (price / last).ln());
         if let Some(r) = log_return {
             debug_assert!(r.is_finite(), "the log return of positive prices is finite");

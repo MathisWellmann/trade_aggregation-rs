@@ -1,12 +1,15 @@
-use crate::{AggregationRule, AsTrade, Error, Result, TakerTrade, ThresholdRule};
+use crate::{
+    price_source::checked_price, AggregationRule, Error, PriceSource, Result, ThresholdRule,
+    TradePrice,
+};
 
 /// The state of the price path, in the terms of the directional change framework.
 #[derive(Debug, Clone, Copy, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 enum Trend {
-    /// No trade seen yet.
+    /// No price seen yet.
     Start,
-    /// No directional change confirmed yet; the extremes since the first trade.
+    /// No directional change confirmed yet; the extremes since the first price.
     Unknown { high: f64, low: f64 },
     /// The last confirmed directional change was upwards; the highest price since.
     Up { extreme: f64 },
@@ -20,22 +23,32 @@ enum Trend {
 /// In an uptrend the rule tracks the highest price. A directional change is confirmed when the
 /// price falls `threshold_fraction` below that extreme; then the trend is down and the rule
 /// tracks the lowest price, until the price rises `threshold_fraction` above it.
-/// Before the first confirmation the rule watches both directions from the first trade.
+/// Before the first confirmation the rule watches both directions from the first price.
 ///
 /// The extreme of a trend is only known in hindsight, so candles split at the confirmations:
 /// each candle holds the overshoot of one trend (the move beyond the confirmation, on average
 /// about `threshold_fraction` long according to the scaling laws) and the reversal into the next.
 /// The state follows the price path rather than the candle, so [`reset`](AggregationRule::reset)
 /// keeps it.
+///
+/// The prices are those of the trades by default. Trades alternate between the bid and the ask
+/// ("bid-ask bounce", Roll 1984), so a threshold near the spread confirms a change on every bounce.
+/// Follow the mid price or the microprice of the quotes instead with
+/// [`Self::with_price_source`] to confirm the reversals of the market only.
+///
+/// To calibrate the threshold with [`Adaptive`](crate::Adaptive), use
+/// [`Scaling::Diffusive`](crate::Scaling::Diffusive): a random walk takes a time proportional to
+/// `threshold_fraction^2` to reverse by `threshold_fraction`.
 #[derive(Debug, Clone)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-pub struct DirectionalChangeRule {
+pub struct DirectionalChangeRule<P = TradePrice> {
     threshold_fraction: f64,
+    source: P,
     trend: Trend,
 }
 
 impl DirectionalChangeRule {
-    /// Create a new instance.
+    /// Create a new instance that follows the trade prices.
     ///
     /// # Arguments:
     /// `threshold_fraction`: The reversal from the extreme that confirms a directional change,
@@ -46,10 +59,24 @@ impl DirectionalChangeRule {
     pub fn new(threshold_fraction: f64) -> Result<Self> {
         let mut rule = Self {
             threshold_fraction: 0.5,
+            source: TradePrice,
             trend: Trend::Start,
         };
         rule.set_threshold(threshold_fraction)?;
         Ok(rule)
+    }
+}
+
+impl<P> DirectionalChangeRule<P> {
+    /// Follow the prices of `source` instead, e.g. [`MidPrice`](crate::MidPrice)
+    /// or [`Microprice`](crate::Microprice), with the same threshold.
+    /// The rule starts over: the first price of `source` is the start of the path.
+    pub fn with_price_source<Q>(self, source: Q) -> DirectionalChangeRule<Q> {
+        DirectionalChangeRule {
+            threshold_fraction: self.threshold_fraction,
+            source,
+            trend: Trend::Start,
+        }
     }
 }
 
@@ -92,23 +119,22 @@ fn next_trend(trend: Trend, price: f64, threshold: f64) -> (Trend, bool) {
     }
 }
 
-impl<E: AsTrade> AggregationRule<E> for DirectionalChangeRule {
+impl<E, P: PriceSource<E>> AggregationRule<E> for DirectionalChangeRule<P> {
     fn should_trigger(&mut self, event: &E) -> bool {
-        let Some(trade) = event.as_trade() else {
+        let Some(price) = checked_price(&self.source, event) else {
             return false;
         };
-        let price = trade.price();
-        debug_assert!(price > 0.0, "prices must be positive");
         let (trend, confirmed) = next_trend(self.trend, price, self.threshold_fraction);
         if confirmed {
             debug_assert!(matches!(trend, Trend::Up { .. } | Trend::Down { .. }));
         }
+        debug_assert!(trend != Trend::Start, "a price starts the path");
         self.trend = trend;
         confirmed
     }
 }
 
-impl ThresholdRule for DirectionalChangeRule {
+impl<P> ThresholdRule for DirectionalChangeRule<P> {
     fn threshold(&self) -> f64 {
         self.threshold_fraction
     }
@@ -127,8 +153,10 @@ impl ThresholdRule for DirectionalChangeRule {
 mod tests {
     use super::*;
     use crate::{
-        aggregation_rules::test_utils::{trades_at_prices, trigger_indices},
-        load_trades_from_csv, Trade,
+        aggregation_rules::test_utils::{
+            quote_event, trade_event, trades_at_prices, trigger_indices,
+        },
+        load_trades_from_csv, MidPrice, Trade,
     };
 
     fn rule(threshold: f64) -> DirectionalChangeRule {
@@ -208,5 +236,27 @@ mod tests {
         for pair in counts.windows(2) {
             assert!(pair[0] > pair[1], "counts {counts:?}");
         }
+    }
+
+    #[test]
+    fn the_mid_price_ignores_the_bid_ask_bounce() {
+        let events = [
+            quote_event(99.0, 1.0, 101.0, 1.0),
+            trade_event(99.0),
+            trade_event(101.0),
+            quote_event(99.0, 1.0, 101.0, 1.0),
+            trade_event(99.0),
+            trade_event(101.0),
+            quote_event(101.0, 1.0, 103.0, 1.0),
+            quote_event(99.0, 1.0, 101.0, 1.0),
+        ];
+        // Trades: 99 starts; 101 is 2.02% above the low of 99 (up);
+        // 99 is 1.98% below the high of 101 (down); 101 is 2.02% above the low of 99 (up).
+        assert_eq!(trigger_indices(&mut rule(0.015), &events), vec![2, 4, 5]);
+        // Mid: 100 starts; 102 is 2% above it (up); 100 is 1.96% below the high of 102 (down).
+        let mut mid = rule(0.015).with_price_source(MidPrice);
+        assert_eq!(trigger_indices(&mut mid, &events), vec![6, 7]);
+        assert_eq!(mid.threshold(), 0.015);
+        assert_eq!(mid.trend, Trend::Down { extreme: 100.0 });
     }
 }
