@@ -2,7 +2,8 @@ use crate::{
     welford_online::WelfordOnline, AsTrade, CandleComponent, CandleComponentUpdate, TakerTrade,
 };
 
-/// This 'CandleComponent' keeps track of the standard deviation in the trade sizes
+/// This 'CandleComponent' keeps track of the standard deviation in the trade sizes.
+/// `None` with fewer than 2 trades, instead of an arbitrary fallback for an undefined spread.
 #[derive(Debug, Clone)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct StdDevSizes {
@@ -17,10 +18,10 @@ impl Default for StdDevSizes {
     }
 }
 impl CandleComponent for StdDevSizes {
-    type Value = f64;
+    type Value = Option<f64>;
 
     #[inline(always)]
-    fn value(&self) -> f64 {
+    fn value(&self) -> Option<f64> {
         self.welford.std_dev()
     }
 
@@ -37,5 +38,42 @@ impl<E: AsTrade> CandleComponentUpdate<E> for StdDevSizes {
             return;
         };
         self.welford.add(trade.size());
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn an_empty_candle_has_no_std_dev() {
+        let m = StdDevSizes::default();
+        assert_eq!(m.value(), None);
+    }
+
+    #[test]
+    fn a_single_trade_has_no_spread_to_measure() {
+        let mut m = StdDevSizes::default();
+        m.update(&crate::Trade {
+            timestamp: 0,
+            price: 1.0,
+            size: 10.0,
+        });
+        assert_eq!(m.value(), None);
+    }
+
+    #[test]
+    fn two_trades_have_a_defined_std_dev() {
+        let mut m = StdDevSizes::default();
+        for size in [10.0, -20.0] {
+            m.update(&crate::Trade {
+                timestamp: 0,
+                price: 1.0,
+                size,
+            });
+        }
+        assert!(m.value().expect("2 trades") > 0.0);
+        m.reset();
+        assert_eq!(m.value(), None);
     }
 }

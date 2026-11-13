@@ -1,6 +1,7 @@
 use crate::{AsTrade, CandleComponent, CandleComponentUpdate, TakerTrade};
 
-/// This 'CandleComponent' keeps track of the arithmetic mean price
+/// This 'CandleComponent' keeps track of the arithmetic mean price.
+/// `None` for a candle without trades, instead of dividing 0 by 0.
 #[derive(Debug, Default, Clone)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct AveragePrice {
@@ -9,11 +10,11 @@ pub struct AveragePrice {
 }
 
 impl CandleComponent for AveragePrice {
-    type Value = f64;
+    type Value = Option<f64>;
 
     #[inline(always)]
-    fn value(&self) -> f64 {
-        self.price_sum / self.num_trades
+    fn value(&self) -> Option<f64> {
+        (self.num_trades > 0.0).then(|| self.price_sum / self.num_trades)
     }
 
     #[inline(always)]
@@ -44,6 +45,35 @@ mod tests {
         for t in &crate::candle_components::tests::TRADES {
             m.update(t);
         }
-        assert_eq!(m.value(), 102.0);
+        assert_eq!(m.value(), Some(102.0));
+    }
+
+    #[test]
+    fn an_empty_candle_has_no_average() {
+        let m = AveragePrice::default();
+        assert_eq!(m.value(), None);
+    }
+
+    #[test]
+    fn a_single_trade_is_its_own_average() {
+        let mut m = AveragePrice::default();
+        m.update(&crate::Trade {
+            timestamp: 0,
+            price: 7.0,
+            size: 1.0,
+        });
+        assert_eq!(m.value(), Some(7.0));
+    }
+
+    #[test]
+    fn reset_forgets_the_trades() {
+        let mut m = AveragePrice::default();
+        m.update(&crate::Trade {
+            timestamp: 0,
+            price: 7.0,
+            size: 1.0,
+        });
+        m.reset();
+        assert_eq!(m.value(), None);
     }
 }

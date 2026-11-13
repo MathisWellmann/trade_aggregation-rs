@@ -2,7 +2,12 @@ use crate::{CandleComponent, CandleComponentUpdate, Timestamped};
 
 /// Measures the velocity of candle creation based on the formula:
 /// 1.0 / t  , where t is measured in seconds and at least one second
-/// The higher the velocity the faster the candle has been created
+/// The higher the velocity the faster the candle has been created.
+///
+/// A defined fallback (`1.0`, the cap) is returned for a candle without events instead of
+/// `Option<f64>`: there is no 0/0 to divide (elapsed time is clamped to 1 second first),
+/// and a slow, empty candle should read as low velocity, like a candle that took a full
+/// second, rather than as a missing value that a downstream model must special-case.
 #[derive(Debug, Clone)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct TimeVelocity {
