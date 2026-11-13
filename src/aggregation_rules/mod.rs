@@ -1,3 +1,4 @@
+mod activity_burst_rule;
 mod adaptive;
 mod aggregation_rule_trait;
 mod aligned_time_rule;
@@ -25,6 +26,7 @@ mod volume_rule;
 #[cfg(test)]
 pub(crate) mod test_utils;
 
+pub use activity_burst_rule::ActivityBurstRule;
 pub use adaptive::{Adaptive, Scaling, ThresholdRule};
 pub use aggregation_rule_trait::AggregationRule;
 pub use aligned_time_rule::*;
