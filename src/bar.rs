@@ -8,6 +8,10 @@ pub enum BarKind {
     /// A candle without events is empty, e.g. flat at the previous close
     /// (see [`Gaps::Flat`](crate::Gaps::Flat)).
     Deadline,
+    /// [`GenericAggregator::force_close`](crate::GenericAggregator::force_close) closed the candle
+    /// at a time of the caller's choosing, whatever the rule says, e.g. a market clock that
+    /// samples every symbol of a cross-section at the same instant.
+    Forced,
     /// A snapshot of the unfinished candle, which may still change.
     Provisional,
 }

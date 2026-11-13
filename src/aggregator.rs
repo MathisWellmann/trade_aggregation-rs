@@ -234,6 +234,69 @@ where
         Ok(())
     }
 
+    /// Close the current candle at `timestamp`, whatever the rule says, e.g. for a market clock:
+    /// a coordinator runs one rule on a leader symbol, or on the combined notional of a market,
+    /// and force-closes the aggregators of every symbol in the cross-section at the same instant.
+    /// Candles that close on their own rule close asynchronously per symbol and cannot be joined
+    /// row by row without lookahead; forced candles give one row per symbol per clock tick instead.
+    ///
+    /// First closes every candle whose [deadline](AggregationRule::deadline) passed up to
+    /// `timestamp`, exactly as [`Self::advance_to`]. Then, if a candle is open, closes it at
+    /// `timestamp` with [`BarKind::Forced`] and [resets](AggregationRule::reset) the rule, so its
+    /// per-candle accumulators (e.g. a pending trigger of an [`AllRule`](crate::AllRule)) restart
+    /// for the next candle, which opens at `timestamp`.
+    ///
+    /// An empty candle (no event since it opened) follows [`Self::with_gaps`], like a deadline:
+    /// [`Gaps::Skip`] emits nothing, and only moves the open of the next candle to `timestamp`;
+    /// [`Gaps::Flat`] emits the empty candle. Unlike `advance_to`, this never calls
+    /// [`AggregationRule::skip_to`]: a forced close is a single instant chosen by the caller,
+    /// not a loop over possibly many periods, so [`Gaps::Flat`]'s `max_candles` cap does not apply
+    /// here.
+    ///
+    /// Calling this before the first event does nothing: there is no candle to force-close.
+    /// Neither does a call on an empty candle that opened at `timestamp`, e.g. because a deadline
+    /// or another forced close closed the previous candle at this very time: that candle covers
+    /// no time, so a second row for the same instant would only duplicate it.
+    ///
+    /// # Panics:
+    /// If `timestamp` is earlier than an event or watermark seen before.
+    pub fn force_close(&mut self, timestamp: i64, out: &mut impl Extend<Bar<C>>) {
+        self.advance_to(timestamp, out);
+        let Some(open_ts) = self.open_ts else {
+            // No candle before the first event.
+            return;
+        };
+        assert!(open_ts <= timestamp, "advance_to checked the time order");
+        if self.num_events == 0 && open_ts == timestamp {
+            return;
+        }
+        if self.num_events == 0 && self.gaps == Gaps::Skip {
+            self.open_ts = Some(timestamp);
+        } else {
+            if self.num_events == 0 {
+                self.empty_candles += 1;
+            }
+            out.extend([self.close(timestamp, BarKind::Forced)]);
+        }
+        self.aggregation_rule.reset();
+    }
+
+    /// Like [`Self::force_close`], but an error instead of a panic
+    /// if `timestamp` is earlier than [`Self::latest_timestamp`].
+    /// On an error, the aggregator and `out` do not change.
+    ///
+    /// # Errors:
+    /// [`OutOfOrder`] if `timestamp` is earlier than the latest event or watermark.
+    pub fn try_force_close(
+        &mut self,
+        timestamp: i64,
+        out: &mut impl Extend<Bar<C>>,
+    ) -> Result<(), OutOfOrder> {
+        self.check_in_order(timestamp)?;
+        self.force_close(timestamp, out);
+        Ok(())
+    }
+
     /// Like [`Aggregator::update`], but an error instead of a panic
     /// if the event is earlier than [`Self::latest_timestamp`],
     /// e.g. a live event that came after a later event or watermark.
@@ -828,6 +891,163 @@ mod tests {
     }
 
     #[test]
+    fn force_close_closes_the_open_candle_and_resets_the_rule() {
+        let mut a =
+            GenericAggregator::<CountingCandle, TickRule, Trade>::new(TickRule::new(3), false);
+        let mut bars = Vec::new();
+        let trades = ten_trades();
+        for t in &trades[..2] {
+            a.update(t, &mut bars);
+        }
+        assert!(bars.is_empty(), "2 trades do not close a 3-tick candle");
+
+        a.force_close(2, &mut bars);
+        assert_eq!(bars.len(), 1);
+        assert_eq!(bars[0].kind(), BarKind::Forced);
+        assert_eq!((bars[0].open_ts(), bars[0].close_ts()), (1, 2));
+        assert_eq!(bars[0].num_events(), 2);
+        assert_eq!(a.next_seq(), 1);
+
+        // The rule restarted: it takes 3 trades to close the next candle, not 1.
+        bars.clear();
+        for t in &trades[2..4] {
+            a.update(t, &mut bars);
+        }
+        assert!(
+            bars.is_empty(),
+            "the tick rule restarted after the forced close"
+        );
+        a.update(&trades[4], &mut bars);
+        assert_eq!(bars.len(), 1);
+        assert_eq!(bars[0].kind(), BarKind::Rule);
+        assert_eq!(
+            (bars[0].open_ts(), bars[0].close_ts()),
+            (2, 5),
+            "the next candle opened where the forced one closed"
+        );
+    }
+
+    #[test]
+    fn force_close_of_an_empty_candle_with_gaps_skip_emits_nothing() {
+        let mut a =
+            GenericAggregator::<CountingCandle, TickRule, Trade>::new(TickRule::new(3), false);
+        let mut bars = Vec::new();
+        a.update(&ten_trades()[0], &mut bars);
+        bars.clear();
+        a.force_close(5, &mut bars);
+        assert_eq!(bars.len(), 1, "the first forced close holds the one event");
+        bars.clear();
+
+        // No event arrived since: this forced close is empty and Skip emits nothing for it,
+        // but the next candle still opens where this one would have closed.
+        a.force_close(9, &mut bars);
+        assert!(bars.is_empty());
+        assert_eq!(
+            a.next_seq(),
+            1,
+            "no candle was numbered for the empty period"
+        );
+        let p = a.provisional(9).expect("a candle is open");
+        assert_eq!(p.open_ts(), 9);
+    }
+
+    #[test]
+    fn force_close_of_an_empty_candle_with_gaps_flat_emits_it() {
+        let mut a =
+            GenericAggregator::<CountingCandle, TickRule, Trade>::new(TickRule::new(3), false)
+                .with_gaps(Gaps::Flat { max_candles: 10 });
+        let mut bars = Vec::new();
+        a.update(&ten_trades()[0], &mut bars);
+        bars.clear();
+        a.force_close(5, &mut bars);
+        bars.clear();
+
+        a.force_close(9, &mut bars);
+        assert_eq!(bars.len(), 1);
+        assert_eq!(bars[0].kind(), BarKind::Forced);
+        assert_eq!(bars[0].num_events(), 0);
+        assert_eq!((bars[0].open_ts(), bars[0].close_ts()), (5, 9));
+        assert_eq!(a.next_seq(), 2);
+    }
+
+    #[test]
+    fn force_close_before_the_first_event_does_nothing() {
+        let mut a =
+            GenericAggregator::<CountingCandle, TickRule, Trade>::new(TickRule::new(3), false);
+        let mut bars = Vec::new();
+        a.force_close(5, &mut bars);
+        assert!(bars.is_empty());
+        assert_eq!(a.next_seq(), 0);
+        assert_eq!(
+            a.latest_timestamp(),
+            Some(5),
+            "advance_to still records the watermark"
+        );
+        assert!(a.provisional(5).is_none(), "no candle opened");
+    }
+
+    #[test]
+    fn force_close_exactly_at_a_deadline_closes_only_the_deadline_candle() {
+        let mut a = GenericAggregator::<CountingCandle, _, Trade>::new(
+            crate::AlignedTimeRule::new(crate::MillisecondPeriod::from_non_zero(10)),
+            false,
+        )
+        .with_gaps(Gaps::Flat { max_candles: 10 });
+        let mut bars = Vec::new();
+        a.update(&ten_trades()[0], &mut bars);
+        bars.clear();
+
+        // The deadline of the time rule is exactly 10: the market clock tick there
+        // closes the period candle, and the new, empty candle covers no time yet,
+        // so the forced close adds no second row for the same instant.
+        a.force_close(10, &mut bars);
+        assert_eq!(bars.len(), 1, "only the deadline close");
+        assert_eq!(bars[0].kind(), BarKind::Deadline);
+        assert_eq!((bars[0].open_ts(), bars[0].close_ts()), (1, 10));
+
+        // A second tick at the same instant is a no-op as well.
+        a.force_close(10, &mut bars);
+        assert_eq!(bars.len(), 1);
+
+        // The next tick closes the empty candle that has covered time since.
+        a.force_close(15, &mut bars);
+        assert_eq!(bars.len(), 2);
+        assert_eq!(bars[1].kind(), BarKind::Forced);
+        assert_eq!((bars[1].open_ts(), bars[1].close_ts()), (10, 15));
+        assert_eq!(bars[1].num_events(), 0);
+    }
+
+    #[test]
+    fn try_force_close_rejects_a_late_timestamp_and_changes_nothing() {
+        let mut a =
+            GenericAggregator::<CountingCandle, TickRule, Trade>::new(TickRule::new(3), false);
+        let mut bars = Vec::new();
+        for t in &ten_trades()[..2] {
+            a.update(t, &mut bars);
+        }
+        a.force_close(5, &mut bars);
+        bars.clear();
+        let before = (summary(&bars), format!("{a:?}"));
+
+        let err = a
+            .try_force_close(3, &mut bars)
+            .expect_err("3 is before the latest time 5");
+        assert_eq!((err.timestamp(), err.latest()), (3, 5));
+        assert_eq!((summary(&bars), format!("{a:?}")), before);
+    }
+
+    #[test]
+    #[should_panic(expected = "time order")]
+    fn force_close_panics_on_a_late_timestamp() {
+        let mut a =
+            GenericAggregator::<CountingCandle, TickRule, Trade>::new(TickRule::new(3), false);
+        let mut bars = Vec::new();
+        a.update(&ten_trades()[0], &mut bars);
+        a.force_close(5, &mut bars);
+        a.force_close(3, &mut bars);
+    }
+
+    #[test]
     #[should_panic(expected = "time order")]
     fn a_provisional_bar_cannot_be_in_the_past() {
         let mut a =
@@ -999,6 +1219,55 @@ mod tests {
             &trades,
         );
         assert_restarts_do_not_change_the_bars::<SavedCandle, _, _>(anchored_delta_rule(), &trades);
+    }
+
+    /// Aggregate `trades`, force-closing every `clock_every`th trade at its own timestamp
+    /// (a stand-in for a market clock driven by another series), and saving and restoring
+    /// the aggregator before each trade for which `restore` is true.
+    #[cfg(feature = "serde")]
+    fn run_with_market_clock_and_restarts<R>(
+        rule: R,
+        trades: &[Trade],
+        clock_every: usize,
+        restore: impl Fn(usize) -> bool,
+    ) -> Vec<Bar<SavedCandle>>
+    where
+        R: AggregationRule<Trade> + serde::Serialize + serde::de::DeserializeOwned,
+    {
+        let mut a = GenericAggregator::<SavedCandle, R, Trade>::new(rule, false)
+            .with_gaps(Gaps::Flat { max_candles: 3 });
+        let mut bars = Vec::new();
+        for (i, t) in trades.iter().enumerate() {
+            if restore(i) {
+                a = bincode_round_trip(&a);
+            }
+            a.update(t, &mut bars);
+            if i % clock_every == clock_every - 1 {
+                a.force_close(t.timestamp, &mut bars);
+            }
+        }
+        bars
+    }
+
+    #[cfg(feature = "serde")]
+    #[test]
+    fn a_restored_aggregator_continues_a_market_clock_force_close() {
+        use crate::{AlignedTimeRule, MillisecondPeriod};
+        let trades = gappy_trades(3_000, 17);
+        let rule = || AlignedTimeRule::new(MillisecondPeriod::from_non_zero(500));
+        let uninterrupted = run_with_market_clock_and_restarts(rule(), &trades, 7, |_| false);
+        assert!(uninterrupted.len() > 10, "the test needs candles");
+        let as_bytes = |bars: &[Bar<SavedCandle>]| {
+            bincode::serde::encode_to_vec(bars, bincode::config::standard()).expect("bars")
+        };
+        for step in [1, 7, 101] {
+            let restarted =
+                run_with_market_clock_and_restarts(rule(), &trades, 7, |i| i % step == 0);
+            assert!(
+                as_bytes(&uninterrupted) == as_bytes(&restarted),
+                "every {step}"
+            );
+        }
     }
 
     #[cfg(feature = "serde")]
