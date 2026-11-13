@@ -65,6 +65,8 @@ pub use order_flow::{
     SellVwap,
 };
 pub use quote_volume::QuoteVolume;
+// The order flow imbalance signal and rule use the same increment as the component.
+pub(crate) use quotes::order_flow;
 pub use quotes::{
     DepthAtClose, EffectiveSpread, ImbalanceAtClose, MaxSpread, MicropriceOffsetAtClose, MidClose,
     MidHigh, MidLow, MidOpen, OrderFlowImbalance, QuoteUpdates, SpreadAtClose, TimeWeightedDepth,

@@ -1,7 +1,11 @@
 //! The values that a [`CusumRule`](crate::CusumRule) accumulates, read from each event,
 //! and their standardization to units of standard deviations.
 
-use crate::{price_source::LogReturns, Error, PriceSource, Result, TradePrice};
+use crate::{
+    candle_components::order_flow,
+    price_source::{valid_quote, LogReturns},
+    AsQuote, AsTrade, BestQuote, By, Error, PriceSource, Result, TakerTrade, TradePrice,
+};
 
 /// A value read from each event of a stream, e.g. the log return of a price,
 /// that a rule such as the [`CusumRule`](crate::CusumRule) accumulates.
@@ -111,6 +115,134 @@ impl<E, S: Signal<E>> Signal<E> for Standardized<S> {
     }
 }
 
+/// The signed size of each trade in the currency of `by`: positive for a taker buy,
+/// negative for a taker sell, as summed by the [`SignedVolumeRule`](crate::SignedVolumeRule).
+///
+/// Its scale is that of the trade sizes of the symbol, and its mean is rarely zero because one
+/// side is usually more active, so wrap it in a [`Standardized`] signal for a
+/// [`CusumRule`](crate::CusumRule). Trade sizes are heavy tailed:
+/// a single large trade can then fire the filter on its own.
+#[derive(Debug, Clone, Copy)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub struct SignedVolume {
+    by: By,
+}
+
+impl SignedVolume {
+    /// The signed size of each trade in the currency `by`, as for the [`VolumeRule`](crate::VolumeRule).
+    pub fn new(by: By) -> Self {
+        Self { by }
+    }
+}
+
+impl<E: AsTrade> Signal<E> for SignedVolume {
+    #[inline(always)]
+    fn observe(&mut self, event: &E) -> Option<f64> {
+        let trade = event.as_trade()?;
+        debug_assert!(trade.price() > 0.0, "prices must be positive");
+        let size = self.by.size(trade);
+        debug_assert!(size.is_finite(), "sizes must be finite");
+        Some(size)
+    }
+}
+
+/// The order flow imbalance increment of each quote update (Cont, Kukanov and Stoikov 2014):
+/// `1{bid >= bid'} bid_size - 1{bid <= bid'} bid_size' - 1{ask <= ask'} ask_size + 1{ask >= ask'} ask_size'`,
+/// where the primed values are those of the previous quote, in the unit of the quote sizes.
+///
+/// It is the size added to the bid minus the size added to the ask: positive when buyers
+/// join the bid or sellers leave the ask. Its sum over an interval, the
+/// [`OrderFlowImbalance`](crate::candle_components::OrderFlowImbalance), explains much of the
+/// change of the mid price over that interval, with a slope inversely proportional to the depth.
+///
+/// The first quote has no increment. A quote with an invalid bid or ask
+/// (see [`MidPrice`](crate::MidPrice)) or with a negative or non-finite size gives `None`
+/// and is skipped: the next increment is measured from the last valid quote.
+#[derive(Debug, Default, Clone)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub struct QuoteOfi {
+    /// The bid price, bid size, ask price and ask size of the last valid quote.
+    previous: Option<[f64; 4]>,
+}
+
+impl QuoteOfi {
+    /// Start without a previous quote.
+    pub fn new() -> Self {
+        Self::default()
+    }
+}
+
+impl<E: AsQuote> Signal<E> for QuoteOfi {
+    fn observe(&mut self, event: &E) -> Option<f64> {
+        let current = quote_levels(event.as_quote()?)?;
+        let previous = self.previous.replace(current)?;
+        let increment = order_flow(current, previous);
+        debug_assert!(increment.is_finite());
+        Some(increment)
+    }
+}
+
+/// The bid price, bid size, ask price and ask size of `quote`,
+/// `None` if its prices are invalid or a size is negative or not finite.
+fn quote_levels<Q: BestQuote>(quote: &Q) -> Option<[f64; 4]> {
+    let (bid_size, ask_size) = (quote.bid_size(), quote.ask_size());
+    let valid_size = |size: f64| size.is_finite() && size >= 0.0;
+    if !valid_quote(quote) || !valid_size(bid_size) || !valid_size(ask_size) {
+        return None;
+    }
+    let levels = [quote.bid_price(), bid_size, quote.ask_price(), ask_size];
+    debug_assert!(levels.iter().all(|level| level.is_finite()));
+    Some(levels)
+}
+
+/// The natural log of the time between consecutive trades, in milliseconds
+/// whatever the [`TIMESTAMP_RESOLUTION`](crate::Timestamped::TIMESTAMP_RESOLUTION) of the events.
+///
+/// Durations between trades are clustered and heavy tailed (Engle and Russell 1998);
+/// their log is closer to normal and turns a change of the trading rate into a shift:
+/// trading ten times faster lowers the value by `ln 10`, whatever the usual rate of the symbol.
+/// A [`CusumRule`](crate::CusumRule) on the [`Standardized`] signal thus closes a candle when the
+/// trading rate has changed, its down sum firing on an acceleration and its up sum on a slowdown.
+///
+/// A trade with the same timestamp as the previous trade gives `None`: such trades are
+/// usually the fills of one taker order against several resting orders, so they arrive together,
+/// and the log of zero is not finite. The next trade with a later timestamp measures from them.
+/// Adding one timestamp unit instead would make the value depend on the resolution of the feed:
+/// `ln(1 ms) = 0` but `ln(1 ns) = -13.8`. Within the resolution of a feed, arrivals still merge,
+/// e.g. two orders in the same millisecond of a millisecond feed.
+#[derive(Debug, Default, Clone)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub struct LogInterArrival {
+    last_timestamp: Option<i64>,
+}
+
+impl LogInterArrival {
+    /// Start without a previous trade.
+    pub fn new() -> Self {
+        Self::default()
+    }
+}
+
+impl<E: AsTrade> Signal<E> for LogInterArrival {
+    fn observe(&mut self, event: &E) -> Option<f64> {
+        event.as_trade()?;
+        let timestamp = event.timestamp();
+        let last = self.last_timestamp.replace(timestamp)?;
+        let elapsed = timestamp.saturating_sub(last);
+        assert!(
+            elapsed >= 0,
+            "trades in time order: {timestamp} after {last}"
+        );
+        if elapsed == 0 {
+            return None;
+        }
+        let units_per_ms = E::TIMESTAMP_RESOLUTION.units_per_millisecond();
+        let value = (elapsed as f64 / units_per_ms as f64).ln();
+        debug_assert!(value.is_finite());
+        Some(value)
+    }
+}
+
 /// An exponentially weighted moving mean and variance whose weight is at least `1 / n`
 /// for the `n`-th value, so that it starts as the plain mean and population variance.
 #[derive(Debug, Clone)]
@@ -162,7 +294,12 @@ impl EwStats {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{MarketEvent, MidPrice, Quote, Trade};
+    use crate::{
+        aggregation_rules::test_utils::{
+            random_flow, trade, trigger_indices, MicroTrade, NanoTrade,
+        },
+        CusumRule, MarketEvent, MidPrice, Quote, Trade,
+    };
 
     /// A signal whose events are its values.
     #[derive(Debug, Clone)]
@@ -291,5 +428,165 @@ mod tests {
             assert_eq!(s.observe(&trade), None);
         }
         assert_eq!(s.stats.count, 0, "events without a value do not count");
+    }
+
+    type Event = MarketEvent<Trade, Quote>;
+
+    fn quote(bid: f64, bid_size: f64, ask: f64, ask_size: f64) -> Event {
+        Event::Quote(Quote {
+            timestamp: 0,
+            bid_price: bid,
+            bid_size,
+            ask_price: ask,
+            ask_size,
+        })
+    }
+
+    fn trades_at(timestamps: &[i64], sizes: impl Fn(usize) -> f64) -> Vec<Trade> {
+        timestamps
+            .iter()
+            .enumerate()
+            .map(|(i, ts)| trade(*ts, 100.0, sizes(i)))
+            .collect()
+    }
+
+    #[test]
+    fn signed_volume_in_base_and_quote() {
+        let buy = Event::Trade(trade(0, 50.0, 100.0));
+        let sell = Event::Trade(trade(0, 50.0, -100.0));
+        let mut quote_volume = SignedVolume::new(By::Quote);
+        let mut base_volume = SignedVolume::new(By::Base);
+        assert_eq!(quote_volume.observe(&buy), Some(100.0));
+        assert_eq!(quote_volume.observe(&sell), Some(-100.0));
+        assert_eq!(base_volume.observe(&sell), Some(-2.0));
+        assert_eq!(base_volume.observe(&quote(99.0, 1.0, 101.0, 1.0)), None);
+        assert_eq!(base_volume.observe(&trade(0, 50.0, 0.0)), Some(0.0));
+    }
+
+    /// The indices of the trades on which a CUSUM filter on `signal` fires.
+    fn cusum_fires<S: Signal<Trade>>(signal: S, threshold: f64, trades: &[Trade]) -> Vec<usize> {
+        let rule = CusumRule::new(threshold).expect("valid threshold");
+        trigger_indices(&mut rule.with_signal(signal), trades)
+    }
+
+    fn standardized_volume() -> Standardized<SignedVolume> {
+        Standardized::new(SignedVolume::new(By::Quote), 0.01, 100).expect("valid parameters")
+    }
+
+    #[test]
+    fn a_cusum_on_signed_volume_with_a_bias_fires_regularly() {
+        // Two buys and a sell, repeated: a buy bias of 1/3 per trade.
+        let timestamps: Vec<i64> = (0..30).collect();
+        let trades = trades_at(&timestamps, |i| if i % 3 == 2 { -1.0 } else { 1.0 });
+        // The up sum: 1, 2, 1, 2, 3 (fires), then 0, 1, 2, 1, 2, 3 (fires), ...
+        let fired = cusum_fires(SignedVolume::new(By::Quote), 3.0, &trades);
+        assert_eq!(fired, vec![4, 10, 16, 22, 28]);
+    }
+
+    #[test]
+    fn a_cusum_on_standardized_signed_volume_ignores_a_steady_bias() {
+        let fair = random_flow(10_000, 0.5, 7);
+        let biased = random_flow(10_000, 0.7, 7);
+        let raw_fair = cusum_fires(SignedVolume::new(By::Quote), 10.0, &fair).len();
+        let raw_biased = cusum_fires(SignedVolume::new(By::Quote), 10.0, &biased).len();
+        assert!(raw_biased > 2 * raw_fair, "{raw_biased} vs {raw_fair}");
+        // Without the mean, both flows are sequences of unit variance and fire about as often.
+        let sd_fair = cusum_fires(standardized_volume(), 10.0, &fair).len();
+        let sd_biased = cusum_fires(standardized_volume(), 10.0, &biased).len();
+        assert!(sd_fair > 100);
+        let ratio = sd_biased as f64 / sd_fair as f64;
+        assert!((ratio - 1.0).abs() < 0.2, "{sd_biased} vs {sd_fair}");
+        // A change of the flow still fires: ten sells, each about 1.5 standard deviations.
+        let mut turned = biased;
+        turned.extend((10_000..10_010).map(|ts| trade(ts, 100.0, -1.0)));
+        let fired = cusum_fires(standardized_volume(), 4.0, &turned);
+        assert!(fired.iter().filter(|i| **i >= 10_000).count() >= 2);
+    }
+
+    #[test]
+    fn quote_ofi_follows_the_queues() {
+        let mut ofi = QuoteOfi::new();
+        assert_eq!(ofi.observe(&Event::Trade(trade(0, 100.0, 1.0))), None);
+        assert_eq!(ofi.observe(&quote(100.0, 2.0, 101.0, 3.0)), None, "first");
+        // Same prices: the bid queue grows by 3 and the ask queue shrinks by 2.
+        assert_eq!(ofi.observe(&quote(100.0, 5.0, 101.0, 1.0)), Some(5.0));
+        // A higher bid adds its whole size, the unchanged ask queue adds nothing.
+        assert_eq!(ofi.observe(&quote(100.5, 1.0, 101.0, 1.0)), Some(1.0));
+        // Invalid quotes are skipped.
+        assert_eq!(ofi.observe(&quote(0.0, 1.0, 101.0, 1.0)), None);
+        assert_eq!(ofi.observe(&quote(100.5, -1.0, 101.0, 1.0)), None);
+        assert_eq!(ofi.observe(&quote(100.5, f64::NAN, 101.0, 1.0)), None);
+        // A lower ask subtracts its whole size, measured from the last valid quote.
+        assert_eq!(ofi.observe(&quote(100.5, 1.0, 100.8, 4.0)), Some(-4.0));
+    }
+
+    #[test]
+    fn log_inter_arrival_in_milliseconds() {
+        let mut ms = LogInterArrival::new();
+        let values: Vec<Option<f64>> = [0, 10, 10, 1_010]
+            .iter()
+            .map(|ts| ms.observe(&trade(*ts, 100.0, 1.0)))
+            .collect();
+        let expected = vec![None, Some(10_f64.ln()), None, Some(1_000_f64.ln())];
+        assert_eq!(values, expected, "a trade at the same time is skipped");
+        let mut us = LogInterArrival::new();
+        assert_eq!(us.observe(&MicroTrade(trade(0, 100.0, 1.0))), None);
+        assert_eq!(
+            us.observe(&MicroTrade(trade(10_000, 100.0, 1.0))),
+            Some(10_f64.ln())
+        );
+        let mut ns = LogInterArrival::new();
+        assert_eq!(ns.observe(&NanoTrade(trade(0, 100.0, 1.0))), None);
+        assert_eq!(
+            ns.observe(&NanoTrade(trade(10_000_000, 100.0, 1.0))),
+            Some(10_f64.ln())
+        );
+        assert_eq!(
+            ns.observe(&NanoTrade(trade(10_000_001, 100.0, 1.0))),
+            Some(1e-6_f64.ln())
+        );
+    }
+
+    #[test]
+    fn log_inter_arrival_ignores_quotes() {
+        let mut s = LogInterArrival::new();
+        let late_quote = Event::Quote(Quote {
+            timestamp: 5,
+            ..Quote::default()
+        });
+        assert_eq!(s.observe(&Event::Trade(trade(0, 100.0, 1.0))), None);
+        assert_eq!(s.observe(&late_quote), None);
+        assert_eq!(
+            s.observe(&Event::Trade(trade(20, 100.0, 1.0))),
+            Some(20_f64.ln())
+        );
+    }
+
+    #[test]
+    #[should_panic(expected = "time order")]
+    fn log_inter_arrival_rejects_trades_out_of_order() {
+        let mut s = LogInterArrival::new();
+        let _ = s.observe(&trade(10, 100.0, 1.0));
+        let _ = s.observe(&trade(5, 100.0, 1.0));
+    }
+
+    #[test]
+    fn a_cusum_on_standardized_inter_arrivals_fires_when_trading_speeds_up() {
+        // 100 trades 0.8 or 1.25 seconds apart, then trades 10 ms apart.
+        let mut timestamps = vec![0_i64];
+        for i in 1..120 {
+            let gap = match i {
+                100.. => 10,
+                _ if i % 2 == 0 => 800,
+                _ => 1_250,
+            };
+            timestamps.push(timestamps[i - 1] + gap);
+        }
+        let trades = trades_at(&timestamps, |_| 1.0);
+        let signal = Standardized::new(LogInterArrival::new(), 0.05, 20).expect("valid");
+        let mut rule = CusumRule::new(3.0)
+            .expect("valid threshold")
+            .with_signal(signal);
+        assert_eq!(trigger_indices(&mut rule, &trades).first(), Some(&100));
     }
 }

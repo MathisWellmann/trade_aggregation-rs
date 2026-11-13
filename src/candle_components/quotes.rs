@@ -298,7 +298,7 @@ pub struct OrderFlowImbalance {
 }
 
 /// The contribution of one quote update to the order flow imbalance.
-fn order_flow([bid, bid_size, ask, ask_size]: [f64; 4], previous: [f64; 4]) -> f64 {
+pub(crate) fn order_flow([bid, bid_size, ask, ask_size]: [f64; 4], previous: [f64; 4]) -> f64 {
     let [previous_bid, previous_bid_size, previous_ask, previous_ask_size] = previous;
     let mut flow = 0.0;
     if bid >= previous_bid {
