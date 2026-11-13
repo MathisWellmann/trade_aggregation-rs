@@ -1,6 +1,10 @@
 use crate::{AsTrade, CandleComponent, CandleComponentUpdate, TakerTrade};
 
 /// The size of the largest trade in the base currency, 0 for a candle without trades.
+///
+/// This is in raw base-currency units, so it is not comparable across symbols with
+/// different typical trade sizes. Consider `LargestTradeShare` or `SizeHerfindahl` for
+/// scale-free alternatives, where available.
 #[derive(Debug, Default, Clone)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct LargestTrade {
