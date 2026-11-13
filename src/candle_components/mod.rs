@@ -28,6 +28,7 @@ mod std_dev_prices;
 mod std_dev_sizes;
 mod time_velocity;
 mod trade_signs;
+mod trade_sizes;
 mod trades;
 mod two_scale;
 mod volume;
@@ -75,6 +76,9 @@ pub use std_dev_prices::StdDevPrices;
 pub use std_dev_sizes::StdDevSizes;
 pub use time_velocity::TimeVelocity;
 pub use trade_signs::{ConditionalSignEntropy, LongestRun, SignAutocorrelation, SignSwitches};
+pub use trade_sizes::{
+    LargeTradeFlow, LargestTradeShare, MediumTradeFlow, SizeHerfindahl, SmallTradeFlow,
+};
 pub use trades::Trades;
 pub use two_scale::TwoScaleRealizedVariance;
 pub use volume::Volume;
