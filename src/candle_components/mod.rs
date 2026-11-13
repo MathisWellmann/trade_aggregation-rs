@@ -21,6 +21,7 @@ mod open_timestamp;
 mod quote_volume;
 mod quotes;
 mod realized;
+mod return_path;
 mod returns;
 mod std_dev_prices;
 mod std_dev_sizes;
@@ -54,6 +55,7 @@ pub use quotes::{
     TimeWeightedImbalance, TimeWeightedSpread, WapRealizedVariance,
 };
 pub use realized::{BipowerVariation, RealizedQuarticity, RealizedVariance};
+pub use return_path::{roll_spread, EfficiencyRatio, ReturnAutocovariance};
 pub use returns::{
     realized_kurtosis, realized_skewness, DownTicks, MaxAbsReturn, NegativeSemivariance,
     PositiveSemivariance, RealizedCubic, RealizedQuartic, ReturnCount, TotalVariation,
