@@ -1,6 +1,7 @@
 use crate::{AsTrade, CandleComponent, CandleComponentUpdate, TakerTrade};
 
-/// This 'CandleComponent' keeps track of the ratio of buys vs total trades
+/// This 'CandleComponent' keeps track of the ratio of buys vs total trades.
+/// `None` for a candle without trades, instead of dividing 0 by 0.
 #[derive(Debug, Default, Clone)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct DirectionalTradeRatio {
@@ -9,11 +10,11 @@ pub struct DirectionalTradeRatio {
 }
 
 impl CandleComponent for DirectionalTradeRatio {
-    type Value = f64;
+    type Value = Option<f64>;
 
     #[inline(always)]
-    fn value(&self) -> f64 {
-        self.num_buys as f64 / self.num_trades as f64
+    fn value(&self) -> Option<f64> {
+        (self.num_trades > 0).then(|| self.num_buys as f64 / self.num_trades as f64)
     }
 
     #[inline(always)]
@@ -46,6 +47,23 @@ mod tests {
         for t in &crate::candle_components::tests::TRADES {
             m.update(t);
         }
-        assert_eq!(m.value(), 0.7);
+        assert_eq!(m.value(), Some(0.7));
+    }
+
+    #[test]
+    fn an_empty_candle_has_no_ratio() {
+        let m = DirectionalTradeRatio::default();
+        assert_eq!(m.value(), None);
+    }
+
+    #[test]
+    fn a_single_trade_is_fully_one_sided() {
+        let mut m = DirectionalTradeRatio::default();
+        m.update(&crate::Trade {
+            timestamp: 0,
+            price: 1.0,
+            size: 1.0,
+        });
+        assert_eq!(m.value(), Some(1.0));
     }
 }

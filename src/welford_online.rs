@@ -16,18 +16,15 @@ impl WelfordOnline {
         }
     }
 
-    // variance returns the variance
-    pub fn variance(&self) -> f64 {
-        if self.count > 1 {
-            return self.s / (self.count as f64 - 1.0);
-        }
-
-        0.0
+    /// The sample variance. `None` with fewer than 2 observations: a single observation
+    /// has no spread to measure, and dividing by `count - 1` would divide by 0.
+    pub fn variance(&self) -> Option<f64> {
+        (self.count > 1).then(|| self.s / (self.count as f64 - 1.0))
     }
 
-    // std_dev returns the standard deviation
-    pub fn std_dev(&self) -> f64 {
-        self.variance().sqrt()
+    /// The sample standard deviation. `None` with fewer than 2 observations.
+    pub fn std_dev(&self) -> Option<f64> {
+        self.variance().map(f64::sqrt)
     }
 
     // reset to defaults
@@ -61,6 +58,17 @@ mod tests {
         for v in &VALS {
             welford.add(*v);
         }
-        assert_eq!(round(welford.std_dev(), 4), 0.5774);
+        assert_eq!(round(welford.std_dev().expect("4 observations"), 4), 0.5774);
+    }
+
+    #[test]
+    fn fewer_than_two_observations_have_no_variance() {
+        let mut welford = WelfordOnline::new();
+        assert_eq!(welford.variance(), None);
+        assert_eq!(welford.std_dev(), None);
+        welford.add(1.0);
+        assert_eq!(welford.variance(), None, "a single value has no spread");
+        welford.add(2.0);
+        assert!(welford.variance().is_some());
     }
 }
