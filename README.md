@@ -32,12 +32,70 @@ The pre-existing rules in this crate include:
 `RelativePriceRule` | Create candles with every n basis points price movement (Renko)
 `RangeRule`         | Create range bars: close a candle when its (high - low) / open reaches n basis points
 `DirectionalChangeRule` | Close a candle at every directional change: a reversal of n basis points from the last extreme ("intrinsic time")
-`CusumRule`         | Close a candle when a symmetric CUSUM filter on log returns reaches n basis points (a drift in one direction)
+`IntrinsicEventRule` | Close a candle at every directional change and at every overshoot of n basis points beyond the last event (the full intrinsic time of Glattfelder, Dupuis and Olsen)
+`CusumRule`         | Close a candle when a symmetric CUSUM filter on a signal, the log returns by default, reaches a threshold (a drift in one direction)
 `VolatilityRule`    | Create volatility bars: close a candle when the sum of absolute log returns reaches n basis points
+`VarianceRule`      | Close a candle when the sum of squared log returns reaches a threshold: a clock of the quadratic variation ("business time"), so the returns of the candles are close to Gaussian
+`JumpRule`          | Close a candle at a return larger than k jump-robust local standard deviations (Lee and Mykland), e.g. combined with another rule so a jump starts a new candle
+`PriceChangeRule`   | Close a candle every n changes of the price, e.g. of the mid price ("mid-change bars")
 `SignedVolumeRule`  | Create order flow ("delta") bars: close a candle when the net taker volume, buys minus sells, reaches n units
+`OfiRule`           | Create quote delta bars: close a candle when the order flow imbalance of the quotes (Cont, Kukanov and Stoikov), raw or divided by the depth, reaches a threshold
 `ImbalanceRule`     | Create tick, volume or dollar imbalance bars (López de Prado): close a candle when the net order flow exceeds the expected bar length times the expected imbalance per trade
 `RunRule`           | Create tick, volume or dollar run bars (López de Prado): close a candle when one side's flow exceeds the expected bar length times the expected flow of that side
+`ActivityBurstRule` | Close a candle where the trade arrival regime changes: when a fast intensity of the trades rises above, or falls back towards, a slow one
+`SurprisalRule`     | Experimental information bars: close a candle after a given number of bits of surprise in the trade sides, under an online model of the order flow
 
+### Price sources
+Trade prices alternate between the bid and the ask ("bid-ask bounce"),
+so sums of absolute or squared trade returns grow with the number of trades even when the market does not move.
+The price driven rules (`RelativePriceRule`, `RangeRule`, `DirectionalChangeRule`, `IntrinsicEventRule`, `VolatilityRule`,
+`VarianceRule`, `JumpRule`, `PriceChangeRule`, and `CusumRule` through `LogReturn`)
+and the return components follow a `PriceSource` of your choice:
+`TradePrice` (the default), `MidPrice` or `Microprice` (the bid and the ask weighted by the size on the other side,
+the first order of the micro-price of Stoikov) of the quotes of a `MarketEvent` stream.
+Choose it at compile time with `with_price_source` on a rule or the type parameter of a component, e.g. `RealizedVariance<MidPrice>`,
+or at runtime with `PriceKind`. A quote with a non-positive or crossed bid and ask has no price.
+
+`CusumRule` filters any `Signal`: `LogReturn` of a price source, `SignedVolume`, `QuoteOfi` or `LogInterArrival`.
+`Standardized` turns a signal into z-scores with an exponentially weighted mean and variance from before each value,
+so that `CusumRule::new(3.0)?.with_signal(Standardized::new(LogReturn::new(MidPrice), alpha, warmup)?)`
+fires at a drift of three standard deviations, and one parameter fits every symbol.
+
+```rust
+use trade_aggregation::{
+    candle_components::{RealizedVariance, TotalVariation},
+    *,
+};
+
+#[derive(Debug, Default, Clone, Candle)]
+struct MyCandle {
+    rv_trades: RealizedVariance,
+    rv_mid: RealizedVariance<MidPrice>,
+    path_microprice: TotalVariation<Microprice>,
+}
+
+# fn main() -> trade_aggregation::Result<()> {
+// Volatility bars on the mid price, which does not bounce between the bid and the ask.
+let rule = VolatilityRule::new(0.01)?.with_price_source(MidPrice);
+let mut aggregator = GenericAggregator::<MyCandle, _, MarketEvent<Trade, Quote>>::new(rule, false);
+let mut closed = Vec::new();
+let quote = Quote { timestamp: 0, bid_price: 99.0, bid_size: 1.0, ask_price: 101.0, ask_size: 1.0 };
+aggregator.update(&MarketEvent::Quote(quote), &mut closed);
+for (timestamp, price) in [(1, 101.0), (2, 99.0), (3, 101.0)] {
+    let trade = Trade { timestamp, price, size: 1.0 };
+    aggregator.update(&MarketEvent::Trade(trade), &mut closed);
+}
+// The trades bounce, the mid price does not move.
+assert!(aggregator.unfinished_candle().rv_trades() > 0.0);
+assert_eq!(aggregator.unfinished_candle().rv_mid(), 0.0);
+
+// A CUSUM filter at a drift of three standard deviations of the microprice returns.
+let _cusum = CusumRule::new(3.0)?.with_signal(Standardized::new(LogReturn::new(Microprice), 0.01, 100)?);
+# Ok(())
+# }
+```
+
+### Combinators
 Rules can be combined:
 'Combinator'          | Description
 ----------------------|-------------
@@ -45,6 +103,10 @@ Rules can be combined:
 `AllRule<A, B>`       | Close the candle once both rules have triggered since it opened
 `MinDuration<R>`      | Keep every candle open for at least a given period, so bursts do not create a flood of tiny candles
 `MaxDuration<R>`      | Close a candle a given period after it opened, so quiet markets still produce candles
+
+`AnyRule::last_trigger` and `AllRule::last_trigger` tell which inner rule closed the last candle (`Fired::First`, `Second` or `Both`):
+which criterion closed a hybrid bar is a feature itself, and the share of candles closed by a timeout shows a badly calibrated threshold.
+`first()`, `second()` and `inner()` give access to the inner rules, e.g. to the last event of an `IntrinsicEventRule`.
 
 `Adaptive<R>` recalibrates the threshold of a rule (any rule that implements `ThresholdRule`) after each of its candles,
 so that candles last a target duration on average whatever the activity of the market.
@@ -76,6 +138,9 @@ and stamps the candle with that time:
   The candles are the same whether or when heartbeats come, so a live stream and a replay of it produce the same candles.
 - `with_gaps(Gaps::Flat { max_candles })` emits an empty candle (flat at the previous close) for each period without events,
   up to `max_candles` in a row; `Gaps::Skip` (the default) emits nothing.
+- `force_close(timestamp, &mut out)` closes the current candle whatever the rule says, as `BarKind::Forced`.
+  It is for a market clock: a coordinator runs one rule on a leader symbol or on the notional of the whole market,
+  and force-closes the aggregators of all symbols at the same time, so a cross-sectional model gets one row per symbol per tick.
 
 Each closed candle comes in a `Bar`, with a sequence number, the open and close time, the number of events and why it closed.
 `provisional(now)` returns the unfinished candle the same way, e.g. for features over a window that ends now.
@@ -94,36 +159,76 @@ and time rules every event. A plain trade type keeps working without a wrapper.
 Both types must have the same timestamp resolution, which is checked at compile time.
 
 ### `CandleComponent`:
-These pre-existing 'CandleComponents' exist out of the box:
+These pre-existing 'CandleComponents' exist out of the box.
+A value that is not defined for a candle, e.g. a ratio of an empty candle, is `None`, never `NaN`.
+Statistics that are sums ("additive") add up exactly over consecutive candles,
+so a model can compute them over any window of candles without aggregating again.
+
+Prices and volumes:
 'CandleComponent'   | Description
 --------------------| ---
-`Open`              | Price at the beginning of a candle
-`High`              | Maximum price during the candle
-`Low`               | Minimum price during the candle
-`Close`             | Price at the end of a candle
+`Open`, `High`, `Low`, `Close` | The trade prices at the beginning, the extremes and the end of a candle
 `Volume`            | The cumulative trading volume, in the unit of the trade sizes
 `BaseVolume`        | The cumulative trading volume in the base currency
 `QuoteVolume`       | The cumulative trading volume in the quote currency (the notional)
 `VolumeBuys`, `VolumeSells` | The volume of the taker buys and of the taker sells
-`LargestTrade`      | The size of the largest trade in the base currency
-`RealizedVariance`  | The sum of the squared log returns between trades, starting at the previous close
-`BipowerVariation`  | The jump-robust bipower variation of the log returns between trades
-`RealizedQuarticity`| The realized quarticity of the log returns between trades
-`MidOpen`, `MidHigh`, `MidLow`, `MidClose` | The mid price path of the quotes, starting at the mid in effect
-`QuoteUpdates`      | The number of quote updates
-`WapRealizedVariance` | The realized variance of the weighted average price (WAP) of the quotes
-`TimeWeightedSpread` | The relative bid-ask spread, averaged over the time of the candle
-`TimeWeightedImbalance` | The level 1 size imbalance, averaged over the time of the candle
-`OrderFlowImbalance` | The order flow imbalance of the quote updates (Cont, Kukanov and Stoikov)
-`EffectiveSpread`   | The size-weighted effective spread of the trades against the mid price
 `NumTrades`         | The number of trades during the candle
 `AveragePrice`      | The equally weighted average price
 `WeightedPrice`     | The volume weighted price
-`StdDevPrices`      | Keeps track of the standard deviation of prices
-`StdDevSizes`       | Keeps track of the standard deviation of sizes
+`MedianPrice`       | The exact median trade price (streaming, with two heaps)
+`ApproxMedianPrice` | The median trade price in constant memory (the P² algorithm of Jain and Chlamtac)
+`StdDevPrices`, `StdDevSizes` | The standard deviation of the prices and of the sizes, in raw units
+`RelativeStdDevPrices`, `RelativeStdDevSizes` | The standard deviation divided by the mean, comparable across symbols
 `TimeVelocity`      | Essentially how fast the candle was created time wise
-`Entropy`           | Binary Shannon entropy using the trade side as inputs
 `Trades`            | Just returns the observed trades during that candle
+
+Return path, for any price source (`<P = TradePrice>`); each return starts at the last price of the previous candle:
+'CandleComponent'   | Description
+--------------------| ---
+`RealizedVariance`  | The sum of the squared log returns
+`BipowerVariation`  | The jump-robust bipower variation of the log returns
+`RealizedQuarticity`, `RealizedQuartic` | The realized quarticity and the raw sum of the fourth powers of the log returns
+`PositiveSemivariance`, `NegativeSemivariance` | The squared log returns of the up and of the down moves (Barndorff-Nielsen, Kinnebrock and Shephard; Patton and Sheppard)
+`RealizedCubic`     | The sum of the cubed log returns; `realized_skewness` and `realized_kurtosis` turn the sums into moments
+`ReturnCount`, `UpTicks`, `DownTicks`, `UnchangedTicks` | The number of returns, and of the positive, negative and zero ones
+`TotalVariation`    | The sum of the absolute log returns (the "coastline")
+`MaxAbsReturn`      | The largest absolute log return, which indicates a jump
+`EfficiencyRatio`   | The net move divided by the path length, from 0 (chop) to 1 (a straight trend)
+`ReturnAutocovariance` | The sum of the products of neighbouring returns; `roll_spread` turns it into the spread estimate of Roll
+`MaxDrawdown`, `MaxRunup` | The largest fall from a running peak and rise from a running trough of the log price
+`TimeOfHigh`, `TimeOfLow` | When in the candle the high and the low happened, as a fraction of its duration
+`TwoScaleRealizedVariance` | The realized variance that is robust to microstructure noise (Zhang, Mykland and Aït-Sahalia)
+`WapRealizedVariance` | `RealizedVariance<Microprice>`
+
+Order flow and trades:
+'CandleComponent'   | Description
+--------------------| ---
+`KyleLambda`, `KyleLambdaStats` | The price impact per signed notional (Kyle), and its additive regression sums
+`BuyVwap`, `SellVwap` | The volume weighted price of the taker buys and of the taker sells
+`NetFlow`, `NetFlowHigh`, `NetFlowLow` | The net taker volume and its highest and lowest running value in the candle
+`DirectionalTradeRatio`, `DirectionalVolumeRatio` | The share of buys in the trades and in the volume
+`Entropy`           | Binary Shannon entropy using the trade side as inputs
+`ConditionalSignEntropy` | The entropy of a trade side given the previous side
+`SignSwitches`, `LongestRun`, `SignAutocorrelation` | The persistence of the trade sides (Lillo and Farmer)
+`LargestTrade`      | The size of the largest trade in the base currency
+`LargestTradeShare`, `SizeHerfindahl` | The share of the largest trade in the volume, and the concentration of the trade sizes
+`SmallTradeFlow`, `MediumTradeFlow`, `LargeTradeFlow` | The net volume of small, medium and large trades, relative to the recent average size
+`TakerOrders`, `Sweeps`, `MaxSweepDepth` | The taker orders (fills with the same time and side), how many swept several prices, and how far
+`MaxGap`, `InterArrivalCv` | The longest time between trades, and the burstiness of the times between trades
+
+Quotes (best bid and ask):
+'CandleComponent'   | Description
+--------------------| ---
+`MidOpen`, `MidHigh`, `MidLow`, `MidClose` | The mid price path of the quotes, starting at the mid in effect
+`QuoteUpdates`      | The number of quote updates
+`TimeWeightedSpread` | The relative bid-ask spread, averaged over the time of the candle
+`TimeWeightedImbalance` | The level 1 size imbalance, averaged over the time of the candle
+`TimeWeightedDepth` | The size at the best bid and ask, averaged over the time of the candle
+`SpreadAtClose`, `ImbalanceAtClose`, `MicropriceOffsetAtClose`, `DepthAtClose` | The state of the quote at the close
+`MaxSpread`         | The widest relative spread of the candle
+`OrderFlowImbalance` | The order flow imbalance of the quote updates (Cont, Kukanov and Stoikov)
+`EffectiveSpread`   | The size-weighted effective spread of the trades against the mid price
+`VolumeAtTouch`, `VolumeInsideSpread`, `VolumeThroughTouch` | The share of the volume traded at, inside or through the best bid and ask
 
 And again, if these don't satisfy your needs, just bring your own by implementing the 
 [CandleComponent](src/candle_components/candle_component_trait.rs) trait and you can plug them into your own candle struct.
@@ -307,6 +412,8 @@ and the restored aggregator then closes other candles than the saved one would h
 
 ### TODOs:
 - Make generic over the data type storing the price (`f64`, `f32`, `i64`, `Decimal`, etc...)
+- Run many aggregators, rule parameters and symbols cheaply: see the proposal in [docs/2026-11-13_nxmxk_architecture.md](docs/2026-11-13_nxmxk_architecture.md)
+- Rules and components on order book levels beyond the best bid and ask: see [docs/2026-11-13_order_book_beyond_l1.md](docs/2026-11-13_order_book_beyond_l1.md)
 
 ### Donations :moneybag: :money_with_wings:
 I you would like to support the development of this crate, feel free to send over a donation:
