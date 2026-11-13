@@ -2,8 +2,9 @@
 
 use trade_aggregation::{
     candle_components::{
-        DownTicks, MaxAbsReturn, NegativeSemivariance, PositiveSemivariance, RealizedCubic,
-        RealizedQuartic, RealizedVariance, ReturnCount, TotalVariation, UnchangedTicks, UpTicks,
+        DownTicks, EfficiencyRatio, MaxAbsReturn, NegativeSemivariance, PositiveSemivariance,
+        RealizedCubic, RealizedQuartic, RealizedVariance, ReturnAutocovariance, ReturnCount,
+        TotalVariation, UnchangedTicks, UpTicks,
     },
     AlignedTimeRule, Gaps, GenericAggregator, MarketEvent, MidPrice, MillisecondPeriod,
     ModularCandle, Quote, Trade,
@@ -26,6 +27,14 @@ struct Sums {
     quartic: RealizedQuartic<MidPrice>,
     tv: TotalVariation<MidPrice>,
     max_abs: MaxAbsReturn<MidPrice>,
+}
+
+/// The shape of the path of the mid price.
+#[derive(Debug, Default, Clone, trade_aggregation::Candle)]
+#[candle(record = PathRecord, record_derive(Debug, Clone, Copy, PartialEq))]
+struct Path {
+    efficiency: EfficiencyRatio<MidPrice>,
+    autocovariance: ReturnAutocovariance<MidPrice>,
 }
 
 fn trade(timestamp: i64, price: f64) -> Event {
@@ -57,18 +66,22 @@ fn run<C: ModularCandle<Event> + Default + Clone>(events: &[Event]) -> Vec<C> {
     bars.into_iter().map(|b| b.candle().clone()).collect()
 }
 
-#[test]
-fn empty_candles_have_zero_sums() {
-    let events = [
+/// Two candles with mid prices, then two empty periods, [10, 20) and [20, 30).
+fn events_with_a_gap() -> [Event; 7] {
+    [
         quote(0, 100.0),
         trade(1, 99.0),
         quote(2, 101.0),
         trade(3, 102.0),
-        // Two empty periods, [10, 20) and [20, 30).
         quote(35, 99.0),
         trade(36, 98.0),
         quote(45, 99.0),
-    ];
+    ]
+}
+
+#[test]
+fn empty_candles_have_zero_sums() {
+    let events = events_with_a_gap();
     let records: Vec<SumsRecord> = run::<Sums>(&events).iter().map(Sums::record).collect();
     assert_eq!(records.len(), 4);
     let r = (101.0_f64 / 100.0).ln();
@@ -92,4 +105,25 @@ fn empty_candles_have_zero_sums() {
     assert!((records[3].quartic - down.powi(4)).abs() < 1e-18);
     // The last candle is still open: its unchanged tick is not in a record.
     assert!(records.iter().all(|r| r.flat == 0));
+}
+
+#[test]
+fn empty_candles_have_no_path() {
+    let records: Vec<PathRecord> = run::<Path>(&events_with_a_gap())
+        .iter()
+        .map(Path::record)
+        .collect();
+    assert_eq!(records.len(), 4);
+    // Mid 100 at 0 and 101 at 2, closed by the time rule at 10.
+    assert_eq!(records[0].efficiency, Some(1.0));
+    for empty in &records[1..3] {
+        assert_eq!(empty.efficiency, None);
+        assert_eq!(empty.autocovariance, 0.0);
+    }
+    // The path after the gap starts at the last mid before it, 101, and falls to 99.
+    assert_eq!(records[3].efficiency, Some(1.0));
+    assert!(
+        records[3].autocovariance < 0.0,
+        "the fall reverts the rise before the gap"
+    );
 }

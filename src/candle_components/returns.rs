@@ -112,7 +112,8 @@ return_sum! {
 return_sum! {
     /// The total variation `sum |r|` of the log returns, the "coastline" of the price path:
     /// the distance the log price travelled. Against the net move `|sum r|` it tells a trend
-    /// from a chop, and on trade prices it grows with the bid-ask bounce. Additive.
+    /// from a chop (see [`EfficiencyRatio`](super::EfficiencyRatio)), and on trade prices it grows
+    /// with the bid-ask bounce. Additive.
     ///
     /// Source: the realized power variation of order 1 of Barndorff-Nielsen and Shephard (2004),
     /// "Power and bipower variation with stochastic volatility and jumps".
