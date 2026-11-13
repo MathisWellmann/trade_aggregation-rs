@@ -6,7 +6,7 @@ use crate::{
 /// The state of the price path, in the terms of the directional change framework.
 #[derive(Debug, Clone, Copy, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-enum Trend {
+pub(super) enum Trend {
     /// No price seen yet.
     Start,
     /// No directional change confirmed yet; the extremes since the first price.
@@ -81,7 +81,7 @@ impl<P> DirectionalChangeRule<P> {
 }
 
 /// The trend after `price`, and whether `price` confirms a directional change.
-fn next_trend(trend: Trend, price: f64, threshold: f64) -> (Trend, bool) {
+pub(super) fn next_trend(trend: Trend, price: f64, threshold: f64) -> (Trend, bool) {
     let up = |low: f64| price >= low * (1.0 + threshold);
     let down = |high: f64| price <= high * (1.0 - threshold);
     match trend {
