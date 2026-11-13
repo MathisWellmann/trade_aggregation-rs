@@ -1,14 +1,18 @@
 //! The shape of the path of a [`PriceSource`] within a candle: how straight it went
-//! ([`EfficiencyRatio`]) and whether it reverts ([`ReturnAutocovariance`]).
+//! ([`EfficiencyRatio`]), whether it reverts ([`ReturnAutocovariance`]), its largest swings
+//! against the direction ([`MaxDrawdown`], [`MaxRunup`]) and when it reached its extremes
+//! ([`TimeOfHigh`], [`TimeOfLow`]).
 //!
 //! Open, high, low and close lose the order of the moves within a candle:
 //! a candle that rose then fell has the same OHLC as one that fell then rose.
 //! These components keep that order as scalars that a model can use.
 //! Like [`RealizedVariance`](super::RealizedVariance), the returns of a candle start at the last
-//! price of the previous candle when there is one, so the move into the first price counts.
+//! price of the previous candle when there is one, so the move into the first price counts;
+//! only the time of the extremes looks at the prices within the candle alone.
 
 use crate::{
-    price_source::LogReturns, CandleComponent, CandleComponentUpdate, PriceSource, TradePrice,
+    price_source::LogReturns, CandleComponent, CandleComponentUpdate, PriceSource, Timestamped,
+    TradePrice,
 };
 
 /// The efficiency ratio `|sum r| / sum |r|` of the log returns of the candle, in `[0, 1]`:
@@ -136,6 +140,253 @@ pub fn roll_spread(n: u64, autocovariance: f64) -> Option<f64> {
     Some(spread)
 }
 
+/// The largest fall of a path from its running peak, in log price units.
+/// The path is relative to the start of the candle, so it needs no price.
+#[derive(Debug, Default, Clone)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+struct Drawdown {
+    /// The log price relative to the start of the candle.
+    level: f64,
+    peak: f64,
+    max: f64,
+}
+
+impl Drawdown {
+    #[inline(always)]
+    fn step(&mut self, r: f64) {
+        self.level += r;
+        self.peak = self.peak.max(self.level);
+        self.max = self.max.max(self.peak - self.level);
+        debug_assert!(self.peak >= self.level);
+        debug_assert!(self.max >= 0.0);
+    }
+
+    /// The path of the next candle starts at the last price, at level 0.
+    #[inline(always)]
+    fn reset(&mut self) {
+        *self = Self::default();
+    }
+}
+
+/// The maximum drawdown of the log price within the candle: the largest fall from a running
+/// peak, `max ln(peak / price)`, `>= 0`. It is the loss of the worst entry for a long position,
+/// which the range `high - low` does not tell: a rising candle can have the same range
+/// with no drawdown. The path starts at the last price of the previous candle when there is one,
+/// else at the first price. 0 for a candle without returns. Scale-free.
+///
+/// Source: Magdon-Ismail, Atiya, Pratap and Abu-Mostafa (2004), "On the maximum drawdown of
+/// a Brownian motion".
+#[derive(Debug, Default, Clone)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub struct MaxDrawdown<P = TradePrice> {
+    drawdown: Drawdown,
+    returns: LogReturns<P>,
+}
+
+impl<P> CandleComponent for MaxDrawdown<P> {
+    type Value = f64;
+
+    #[inline(always)]
+    fn value(&self) -> f64 {
+        self.drawdown.max
+    }
+
+    /// Keeps the last price, at which the path of the next candle starts.
+    #[inline(always)]
+    fn reset(&mut self) {
+        self.drawdown.reset();
+    }
+}
+
+impl<E, P: PriceSource<E>> CandleComponentUpdate<E> for MaxDrawdown<P> {
+    #[inline(always)]
+    fn update(&mut self, event: &E) {
+        if let Some(r) = self.returns.observe(event).and_then(|step| step.log_return) {
+            self.drawdown.step(r);
+        }
+    }
+}
+
+/// The maximum run-up of the log price within the candle: the largest rise from a running
+/// trough, `max ln(price / trough)`, `>= 0`; the drawdown of a short position.
+/// See [`MaxDrawdown`] for the start of the path. 0 for a candle without returns. Scale-free.
+///
+/// Source: Magdon-Ismail, Atiya, Pratap and Abu-Mostafa (2004).
+#[derive(Debug, Default, Clone)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub struct MaxRunup<P = TradePrice> {
+    /// The drawdown of the negated path.
+    drawdown: Drawdown,
+    returns: LogReturns<P>,
+}
+
+impl<P> CandleComponent for MaxRunup<P> {
+    type Value = f64;
+
+    #[inline(always)]
+    fn value(&self) -> f64 {
+        self.drawdown.max
+    }
+
+    /// Keeps the last price, at which the path of the next candle starts.
+    #[inline(always)]
+    fn reset(&mut self) {
+        self.drawdown.reset();
+    }
+}
+
+impl<E, P: PriceSource<E>> CandleComponentUpdate<E> for MaxRunup<P> {
+    #[inline(always)]
+    fn update(&mut self, event: &E) {
+        if let Some(r) = self.returns.observe(event).and_then(|step| step.log_return) {
+            self.drawdown.step(-r);
+        }
+    }
+}
+
+/// When the largest `key` of a candle occurred, as a fraction of the time from the first event
+/// of the candle to its end.
+#[derive(Debug, Default, Clone)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+struct TimeOfMax {
+    /// The timestamp of the first event of the candle, of any kind.
+    first: Option<i64>,
+    /// The timestamp of the last event, or the close once the candle closes.
+    end: Option<i64>,
+    /// The largest key and the timestamp of its first occurrence.
+    max: Option<(f64, i64)>,
+}
+
+impl TimeOfMax {
+    /// An event of any kind at `timestamp`.
+    #[inline(always)]
+    fn observe_time(&mut self, timestamp: i64) {
+        self.extend_to(timestamp);
+        self.first.get_or_insert(timestamp);
+    }
+
+    /// The candle lasts at least until `timestamp`; without an event it has no first one.
+    #[inline(always)]
+    fn extend_to(&mut self, timestamp: i64) {
+        if let Some(end) = self.end {
+            assert!(timestamp >= end, "events must arrive in time order");
+        }
+        self.end = Some(timestamp);
+    }
+
+    /// A later key equal to the maximum does not move it: ties keep the first occurrence.
+    #[inline(always)]
+    fn observe_key(&mut self, key: f64, timestamp: i64) {
+        debug_assert!(key.is_finite());
+        if self.max.is_none_or(|(max, _)| key > max) {
+            self.max = Some((key, timestamp));
+        }
+    }
+
+    #[inline(always)]
+    fn fraction(&self) -> Option<f64> {
+        let (first, end, (_, at)) = (self.first?, self.end?, self.max?);
+        assert!(first <= at, "the maximum is in the candle");
+        assert!(at <= end, "the maximum is in the candle");
+        let duration = end - first;
+        if duration == 0 {
+            return None;
+        }
+        let fraction = (at - first) as f64 / duration as f64;
+        debug_assert!((0.0..=1.0).contains(&fraction), "{fraction}");
+        Some(fraction)
+    }
+}
+
+/// When in the candle the highest price of the source occurred, in `[0, 1]`: 0 at the first
+/// event of the candle (of any kind, also one without a price of the source), 1 at its close
+/// ([`CandleComponentUpdate::close_at`]; the last event before the candle closes).
+/// Ties keep the first occurrence. `None` without a price in the candle or when the candle
+/// lasted no time. Scale-free; with [`TimeOfLow`] it tells a rise (low before high) from a fall,
+/// which OHLC does not.
+///
+/// For a random walk without drift the time of the maximum follows the arcsine law, with the
+/// most mass near 0 and 1; a trend moves the high towards the close.
+/// Source: the arcsine law of Lévy (1939).
+#[derive(Debug, Default, Clone)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub struct TimeOfHigh<P = TradePrice> {
+    time: TimeOfMax,
+    returns: LogReturns<P>,
+}
+
+impl<P> CandleComponent for TimeOfHigh<P> {
+    type Value = Option<f64>;
+
+    #[inline(always)]
+    fn value(&self) -> Option<f64> {
+        self.time.fraction()
+    }
+
+    #[inline(always)]
+    fn reset(&mut self) {
+        self.time = TimeOfMax::default();
+    }
+}
+
+impl<E: Timestamped, P: PriceSource<E>> CandleComponentUpdate<E> for TimeOfHigh<P> {
+    #[inline(always)]
+    fn update(&mut self, event: &E) {
+        let timestamp = event.timestamp();
+        self.time.observe_time(timestamp);
+        if let Some(step) = self.returns.observe(event) {
+            self.time.observe_key(step.price, timestamp);
+        }
+    }
+
+    #[inline(always)]
+    fn close_at(&mut self, timestamp: i64) {
+        self.time.extend_to(timestamp);
+    }
+}
+
+/// When in the candle the lowest price of the source occurred, in `[0, 1]`.
+/// See [`TimeOfHigh`]; ties keep the first occurrence.
+///
+/// Source: the arcsine law of Lévy (1939).
+#[derive(Debug, Default, Clone)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub struct TimeOfLow<P = TradePrice> {
+    /// The time of the highest negated price.
+    time: TimeOfMax,
+    returns: LogReturns<P>,
+}
+
+impl<P> CandleComponent for TimeOfLow<P> {
+    type Value = Option<f64>;
+
+    #[inline(always)]
+    fn value(&self) -> Option<f64> {
+        self.time.fraction()
+    }
+
+    #[inline(always)]
+    fn reset(&mut self) {
+        self.time = TimeOfMax::default();
+    }
+}
+
+impl<E: Timestamped, P: PriceSource<E>> CandleComponentUpdate<E> for TimeOfLow<P> {
+    #[inline(always)]
+    fn update(&mut self, event: &E) {
+        let timestamp = event.timestamp();
+        self.time.observe_time(timestamp);
+        if let Some(step) = self.returns.observe(event) {
+            self.time.observe_key(-step.price, timestamp);
+        }
+    }
+
+    #[inline(always)]
+    fn close_at(&mut self, timestamp: i64) {
+        self.time.extend_to(timestamp);
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -253,6 +504,37 @@ mod tests {
         assert_close(roll_spread(4, -4e-4).expect("a bounce"), 0.02);
     }
 
+    #[test]
+    fn drawdown_and_runup_follow_the_running_extremes() {
+        let prices = [100.0, 105.0, 95.0, 102.0, 90.0, 110.0];
+        let drawdown = value_of::<MaxDrawdown>(&prices);
+        let runup = value_of::<MaxRunup>(&prices);
+        assert!((drawdown - (105.0_f64 / 90.0).ln()).abs() < 1e-14);
+        assert!((runup - (110.0_f64 / 90.0).ln()).abs() < 1e-14);
+        assert_eq!(value_of::<MaxDrawdown>(&[100.0, 101.0, 102.0]), 0.0);
+        assert_eq!(value_of::<MaxRunup>(&[100.0, 99.0, 98.0]), 0.0);
+        assert_eq!(value_of::<MaxDrawdown>(&[100.0]), 0.0, "the first price");
+        assert_eq!(value_of::<MaxRunup>(&[]), 0.0);
+    }
+
+    #[test]
+    fn the_path_starts_at_the_previous_close() {
+        let mut drawdown = MaxDrawdown::<TradePrice>::default();
+        let mut runup = MaxRunup::<TradePrice>::default();
+        let first = trades_at_prices(&[100.0, 110.0]);
+        update_all(&mut drawdown, &first);
+        update_all(&mut runup, &first);
+        drawdown.reset();
+        runup.reset();
+        assert_eq!(drawdown.value(), 0.0, "an empty candle");
+        assert_eq!(runup.value(), 0.0, "an empty candle");
+        let next = trades_at_prices(&[100.0, 105.0]);
+        update_all(&mut drawdown, &next);
+        update_all(&mut runup, &next);
+        assert!((drawdown.value() - (110.0_f64 / 100.0).ln()).abs() < 1e-15);
+        assert!((runup.value() - (105.0_f64 / 100.0).ln()).abs() < 1e-15);
+    }
+
     type Event = MarketEvent<Trade, Quote>;
 
     fn quote(timestamp: i64, bid: f64, bid_size: f64, ask: f64, ask_size: f64) -> Event {
@@ -267,6 +549,57 @@ mod tests {
 
     fn trade_at(timestamp: i64, price: f64) -> Event {
         Event::Trade(trade(timestamp, price, 1.0))
+    }
+
+    #[test]
+    fn time_of_high_and_low_keep_the_first_extreme() {
+        let trades = [
+            trade(10, 100.0, 1.0),
+            trade(20, 105.0, 1.0),
+            trade(30, 95.0, 1.0),
+            trade(40, 105.0, 1.0),
+            trade(50, 95.0, 1.0),
+        ];
+        let mut high = TimeOfHigh::<TradePrice>::default();
+        let mut low = TimeOfLow::<TradePrice>::default();
+        update_all(&mut high, &trades);
+        update_all(&mut low, &trades);
+        // Before the close the candle ends at its last event.
+        assert_eq!(high.value(), Some(0.25));
+        assert_eq!(low.value(), Some(0.5));
+        CandleComponentUpdate::<Trade>::close_at(&mut high, 90);
+        CandleComponentUpdate::<Trade>::close_at(&mut low, 90);
+        assert_eq!(high.value(), Some(10.0 / 80.0));
+        assert_eq!(low.value(), Some(20.0 / 80.0));
+        high.reset();
+        low.reset();
+        CandleComponentUpdate::<Trade>::close_at(&mut high, 100);
+        assert_eq!(high.value(), None, "an empty candle");
+        assert_eq!(low.value(), None, "an empty candle");
+    }
+
+    #[test]
+    fn time_of_high_needs_a_price_and_a_duration() {
+        let mut high = TimeOfHigh::<TradePrice>::default();
+        high.update(&trade(10, 100.0, 1.0));
+        assert_eq!(high.value(), None, "no time passed");
+        CandleComponentUpdate::<Trade>::close_at(&mut high, 10);
+        assert_eq!(high.value(), None, "no time passed");
+        CandleComponentUpdate::<Trade>::close_at(&mut high, 20);
+        assert_eq!(high.value(), Some(0.0), "at the first event");
+
+        let mut mid = TimeOfHigh::<MidPrice>::default();
+        mid.update(&trade_at(0, 100.0));
+        CandleComponentUpdate::<Event>::close_at(&mut mid, 10);
+        assert_eq!(mid.value(), None, "no quote in the candle");
+    }
+
+    #[test]
+    #[should_panic(expected = "events must arrive in time order")]
+    fn time_of_low_rejects_events_out_of_order() {
+        let mut low = TimeOfLow::<TradePrice>::default();
+        low.update(&trade(10, 100.0, 1.0));
+        low.update(&trade(5, 100.0, 1.0));
     }
 
     #[test]
@@ -295,8 +628,19 @@ mod tests {
         let net = (102.0_f64 / 99.0).ln();
         assert!((bounce - net / path.iter().sum::<f64>()).abs() < 1e-12);
         assert!(bounce < 0.7, "the bounce is not a trend");
+        assert_eq!(run::<MaxDrawdown<MidPrice>>(&events), 0.0);
+        let drawdown = run::<MaxDrawdown<TradePrice>>(&events);
+        assert!((drawdown - (101.0_f64 / 100.0).ln()).abs() < 1e-15);
+        // Micro 100, 100.5, 101.5.
+        let runup = run::<MaxRunup<Microprice>>(&events);
+        assert!((runup - (101.5_f64 / 100.0).ln()).abs() < 1e-15);
         assert!(run::<ReturnAutocovariance<Microprice>>(&events) > 0.0);
         assert!(run::<ReturnAutocovariance<TradePrice>>(&events) < 0.0);
+        // Measured from the first event, the quote at 0, to the close at 80.
+        assert_eq!(run::<TimeOfHigh<TradePrice>>(&events), Some(60.0 / 80.0));
+        assert_eq!(run::<TimeOfLow<TradePrice>>(&events), Some(10.0 / 80.0));
+        assert_eq!(run::<TimeOfHigh<Microprice>>(&events), Some(50.0 / 80.0));
+        assert_eq!(run::<TimeOfLow<MidPrice>>(&events), Some(0.0));
         let tv = run::<TotalVariation<MidPrice>>(&events);
         assert!((tv - (101.0_f64 / 100.0).ln()).abs() < 1e-15);
     }

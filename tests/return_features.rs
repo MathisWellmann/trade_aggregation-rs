@@ -2,9 +2,10 @@
 
 use trade_aggregation::{
     candle_components::{
-        DownTicks, EfficiencyRatio, MaxAbsReturn, NegativeSemivariance, PositiveSemivariance,
-        RealizedCubic, RealizedQuartic, RealizedVariance, ReturnAutocovariance, ReturnCount,
-        TotalVariation, UnchangedTicks, UpTicks,
+        DownTicks, EfficiencyRatio, MaxAbsReturn, MaxDrawdown, MaxRunup, NegativeSemivariance,
+        PositiveSemivariance, RealizedCubic, RealizedQuartic, RealizedVariance,
+        ReturnAutocovariance, ReturnCount, TimeOfHigh, TimeOfLow, TotalVariation, UnchangedTicks,
+        UpTicks,
     },
     AlignedTimeRule, Gaps, GenericAggregator, MarketEvent, MidPrice, MillisecondPeriod,
     ModularCandle, Quote, Trade,
@@ -35,6 +36,10 @@ struct Sums {
 struct Path {
     efficiency: EfficiencyRatio<MidPrice>,
     autocovariance: ReturnAutocovariance<MidPrice>,
+    drawdown: MaxDrawdown<MidPrice>,
+    runup: MaxRunup<MidPrice>,
+    time_of_high: TimeOfHigh<MidPrice>,
+    time_of_low: TimeOfLow<MidPrice>,
 }
 
 fn trade(timestamp: i64, price: f64) -> Event {
@@ -116,12 +121,23 @@ fn empty_candles_have_no_path() {
     assert_eq!(records.len(), 4);
     // Mid 100 at 0 and 101 at 2, closed by the time rule at 10.
     assert_eq!(records[0].efficiency, Some(1.0));
+    assert_eq!(records[0].drawdown, 0.0);
+    assert!((records[0].runup - (101.0_f64 / 100.0).ln()).abs() < 1e-15);
+    assert_eq!(records[0].time_of_high, Some(0.2));
+    assert_eq!(records[0].time_of_low, Some(0.0));
     for empty in &records[1..3] {
         assert_eq!(empty.efficiency, None);
         assert_eq!(empty.autocovariance, 0.0);
+        assert_eq!(empty.drawdown, 0.0);
+        assert_eq!(empty.runup, 0.0);
+        assert_eq!(empty.time_of_high, None);
+        assert_eq!(empty.time_of_low, None);
     }
-    // The path after the gap starts at the last mid before it, 101, and falls to 99.
-    assert_eq!(records[3].efficiency, Some(1.0));
+    // The path after the gap starts at the last mid before it, 101, and falls to 99 at 35;
+    // the candle runs from its first event at 35 to its close at 40.
+    assert!((records[3].drawdown - (101.0_f64 / 99.0).ln()).abs() < 1e-15);
+    assert_eq!(records[3].runup, 0.0);
+    assert_eq!(records[3].time_of_low, Some(0.0));
     assert!(
         records[3].autocovariance < 0.0,
         "the fall reverts the rise before the gap"
