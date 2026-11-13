@@ -26,6 +26,18 @@ pub(crate) fn trades_at_prices(prices: &[f64]) -> Vec<Trade> {
         .collect()
 }
 
+/// Prices that move by the given log returns from 100.
+pub(crate) fn prices_from_returns(returns: &[f64]) -> Vec<f64> {
+    let mut price = 100.0;
+    let mut prices = Vec::with_capacity(1 + returns.len());
+    prices.push(price);
+    for r in returns {
+        price *= r.exp();
+        prices.push(price);
+    }
+    prices
+}
+
 /// The indices of the events (e.g. trades) on which `rule` triggers.
 pub(crate) fn trigger_indices<E, R: AggregationRule<E>>(rule: &mut R, events: &[E]) -> Vec<usize> {
     events
