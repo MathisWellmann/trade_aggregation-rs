@@ -1,5 +1,5 @@
 //! Components of the signed order flow of the taker trades: the price impact of the flow
-//! (Kyle's lambda).
+//! (Kyle's lambda), the average price paid by each side, and the net flow with its extremes.
 //!
 //! A trade with a positive size is a taker buy, one with a negative size a taker sell.
 //! A trade with a size of zero has no side and moves no flow, so these components ignore it.
@@ -202,6 +202,217 @@ impl<E: AsTrade> CandleComponentUpdate<E> for KyleLambda {
     }
 }
 
+/// The notional and the base volume of the trades of one side, for its volume weighted price.
+#[derive(Debug, Default, Clone)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+struct SideVwap {
+    quote: f64,
+    base: f64,
+}
+
+impl SideVwap {
+    #[inline(always)]
+    fn add<T: TakerTrade>(&mut self, trade: &T) {
+        self.quote += trade.quote_size().abs();
+        self.base += trade.base_size().abs();
+        debug_assert!(self.quote >= 0.0);
+        debug_assert!(self.base >= 0.0);
+    }
+
+    #[inline(always)]
+    fn value(&self) -> Option<f64> {
+        (self.base > 0.0).then(|| self.quote / self.base)
+    }
+}
+
+/// The volume weighted average price of the taker buys, weighted by the base size:
+/// their notional divided by their base volume. `None` without buys.
+///
+/// The taker buys fill at the ask and the sells at the bid, so the gap between the
+/// [`BuyVwap`] and the [`SellVwap`] estimates the spread that takers pay without quote data,
+/// and its sign shows which side pushed the price. Divide the gap by either of them
+/// for a scale-free value.
+#[derive(Debug, Default, Clone)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub struct BuyVwap {
+    vwap: SideVwap,
+}
+
+impl CandleComponent for BuyVwap {
+    type Value = Option<f64>;
+
+    #[inline(always)]
+    fn value(&self) -> Option<f64> {
+        self.vwap.value()
+    }
+
+    #[inline(always)]
+    fn reset(&mut self) {
+        self.vwap = SideVwap::default();
+    }
+}
+
+impl<E: AsTrade> CandleComponentUpdate<E> for BuyVwap {
+    #[inline(always)]
+    fn update(&mut self, event: &E) {
+        let Some(trade) = event.as_trade() else {
+            return;
+        };
+        if trade.size() > 0.0 {
+            self.vwap.add(trade);
+        }
+    }
+}
+
+/// The volume weighted average price of the taker sells, weighted by the base size:
+/// their notional divided by their base volume. `None` without sells.
+/// See [`BuyVwap`] for the use of the gap between the two.
+#[derive(Debug, Default, Clone)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub struct SellVwap {
+    vwap: SideVwap,
+}
+
+impl CandleComponent for SellVwap {
+    type Value = Option<f64>;
+
+    #[inline(always)]
+    fn value(&self) -> Option<f64> {
+        self.vwap.value()
+    }
+
+    #[inline(always)]
+    fn reset(&mut self) {
+        self.vwap = SideVwap::default();
+    }
+}
+
+impl<E: AsTrade> CandleComponentUpdate<E> for SellVwap {
+    #[inline(always)]
+    fn update(&mut self, event: &E) {
+        let Some(trade) = event.as_trade() else {
+            return;
+        };
+        if trade.size() < 0.0 {
+            self.vwap.add(trade);
+        }
+    }
+}
+
+/// The net taker flow: the sum of the signed base sizes, buys minus sells,
+/// also called the delta of the candle. 0 for a candle without trades.
+///
+/// Additive. Persistent net buying pushes the price up (order flow imbalance);
+/// divide by the [`BaseVolume`](super::BaseVolume) for a scale-free imbalance in `[-1, 1]`.
+#[derive(Debug, Default, Clone)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub struct NetFlow {
+    flow: f64,
+}
+
+impl CandleComponent for NetFlow {
+    type Value = f64;
+
+    #[inline(always)]
+    fn value(&self) -> f64 {
+        self.flow
+    }
+
+    #[inline(always)]
+    fn reset(&mut self) {
+        self.flow = 0.0;
+    }
+}
+
+impl<E: AsTrade> CandleComponentUpdate<E> for NetFlow {
+    #[inline(always)]
+    fn update(&mut self, event: &E) {
+        let Some(trade) = event.as_trade() else {
+            return;
+        };
+        self.flow += trade.base_size();
+    }
+}
+
+/// The highest running net flow of the candle: the maximum of the sum of the signed
+/// base sizes from the open, which starts at 0, so the value is at least 0.
+///
+/// The "delta high" of a footprint chart: with [`NetFlow`] and [`NetFlowLow`] it shows
+/// whether the buyers pushed and then gave up (a high far above the close) or kept control.
+#[derive(Debug, Default, Clone)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub struct NetFlowHigh {
+    flow: f64,
+    high: f64,
+}
+
+impl CandleComponent for NetFlowHigh {
+    type Value = f64;
+
+    #[inline(always)]
+    fn value(&self) -> f64 {
+        self.high
+    }
+
+    #[inline(always)]
+    fn reset(&mut self) {
+        self.flow = 0.0;
+        self.high = 0.0;
+    }
+}
+
+impl<E: AsTrade> CandleComponentUpdate<E> for NetFlowHigh {
+    #[inline(always)]
+    fn update(&mut self, event: &E) {
+        let Some(trade) = event.as_trade() else {
+            return;
+        };
+        self.flow += trade.base_size();
+        self.high = self.high.max(self.flow);
+        debug_assert!(self.high >= 0.0);
+        debug_assert!(self.high >= self.flow);
+    }
+}
+
+/// The lowest running net flow of the candle: the minimum of the sum of the signed
+/// base sizes from the open, which starts at 0, so the value is at most 0.
+///
+/// The "delta low" of a footprint chart, the counterpart of [`NetFlowHigh`].
+#[derive(Debug, Default, Clone)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub struct NetFlowLow {
+    flow: f64,
+    low: f64,
+}
+
+impl CandleComponent for NetFlowLow {
+    type Value = f64;
+
+    #[inline(always)]
+    fn value(&self) -> f64 {
+        self.low
+    }
+
+    #[inline(always)]
+    fn reset(&mut self) {
+        self.flow = 0.0;
+        self.low = 0.0;
+    }
+}
+
+impl<E: AsTrade> CandleComponentUpdate<E> for NetFlowLow {
+    #[inline(always)]
+    fn update(&mut self, event: &E) {
+        let Some(trade) = event.as_trade() else {
+            return;
+        };
+        self.flow += trade.base_size();
+        self.low = self.low.min(self.flow);
+        debug_assert!(self.low <= 0.0);
+        debug_assert!(self.low <= self.flow);
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -391,10 +602,93 @@ mod tests {
         assert!((lambda - expected_lambda()).abs() < 1e-15);
     }
 
+    #[test]
+    fn side_vwaps_weight_the_price_by_base_size() {
+        // Inverse: 100 USD at 100 is 1 BTC, 400 USD at 200 is 2 BTC, so (100 + 400) / 3.
+        let inverse = [
+            trade(0, 100.0, 100.0),
+            trade(1, 200.0, 400.0),
+            trade(2, 50.0, -50.0),
+            trade(3, 70.0, 0.0),
+        ];
+        let (mut buys, mut sells) = (BuyVwap::default(), SellVwap::default());
+        update_all(&mut buys, &inverse);
+        update_all(&mut sells, &inverse);
+        assert!((buys.value().expect("buys") - 500.0 / 3.0).abs() < 1e-12);
+        assert_eq!(sells.value(), Some(50.0));
+        buys.reset();
+        sells.reset();
+        assert_eq!(buys.value(), None);
+        assert_eq!(sells.value(), None);
+
+        let spot = [
+            Spot {
+                price: 100.0,
+                size: 1.0,
+            },
+            Spot {
+                price: 200.0,
+                size: 3.0,
+            },
+            Spot {
+                price: 90.0,
+                size: -2.0,
+            },
+            Spot {
+                price: 80.0,
+                size: -2.0,
+            },
+        ];
+        update_all(&mut buys, &spot);
+        update_all(&mut sells, &spot);
+        assert_eq!(buys.value(), Some(175.0));
+        assert_eq!(sells.value(), Some(85.0));
+    }
+
+    #[test]
+    fn net_flow_tracks_the_running_delta_from_the_open() {
+        let spot = |size| Spot { price: 10.0, size };
+        let flows = [spot(2.0), spot(-5.0), spot(0.0), spot(1.0)];
+        let (mut net, mut high, mut low) = (
+            NetFlow::default(),
+            NetFlowHigh::default(),
+            NetFlowLow::default(),
+        );
+        update_all(&mut net, &flows);
+        update_all(&mut high, &flows);
+        update_all(&mut low, &flows);
+        // Running: 2, -3, -3, -2.
+        assert_eq!(net.value(), -2.0);
+        assert_eq!(high.value(), 2.0);
+        assert_eq!(low.value(), -3.0);
+        net.reset();
+        high.reset();
+        low.reset();
+        assert_eq!((net.value(), high.value(), low.value()), (0.0, 0.0, 0.0));
+        // The open counts as 0, so a candle of sells has a high of 0.
+        update_all(&mut net, &[spot(-1.0)]);
+        update_all(&mut high, &[spot(-1.0)]);
+        update_all(&mut low, &[spot(-1.0)]);
+        assert_eq!((net.value(), high.value(), low.value()), (-1.0, 0.0, -1.0));
+
+        // Inverse trades: 200 USD at 100 is 2 BTC.
+        let mut inverse = NetFlow::default();
+        update_all(
+            &mut inverse,
+            &[trade(0, 100.0, 200.0), trade(1, 50.0, -50.0)],
+        );
+        assert_eq!(inverse.value(), 1.0);
+    }
+
     #[derive(Debug, Default, Clone, Candle)]
     struct FlowCandle {
         kyle_lambda: KyleLambda,
         kyle_lambda_stats: KyleLambdaStats,
+        buy_vwap: BuyVwap,
+        sell_vwap: SellVwap,
+        net_flow: NetFlow,
+        net_flow_high: NetFlowHigh,
+        net_flow_low: NetFlowLow,
     }
 
     #[test]
@@ -420,6 +714,11 @@ mod tests {
             assert_eq!(flat.num_events(), 0);
             assert_eq!(c.kyle_lambda(), None);
             assert_eq!(c.kyle_lambda_stats(), RegressionSums::default());
+            assert_eq!(c.buy_vwap(), None);
+            assert_eq!(c.sell_vwap(), None);
+            assert_eq!(c.net_flow(), 0.0);
+            assert_eq!(c.net_flow_high(), 0.0);
+            assert_eq!(c.net_flow_low(), 0.0);
         }
         // The trade at 350 has a return from the last trade before the gap.
         assert_eq!(bars[3].candle().kyle_lambda_stats().n, 1);
