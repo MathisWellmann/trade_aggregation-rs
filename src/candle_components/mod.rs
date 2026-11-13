@@ -55,7 +55,10 @@ pub use quotes::{
     TimeWeightedImbalance, TimeWeightedSpread, WapRealizedVariance,
 };
 pub use realized::{BipowerVariation, RealizedQuarticity, RealizedVariance};
-pub use return_path::{roll_spread, EfficiencyRatio, ReturnAutocovariance};
+pub use return_path::{
+    roll_spread, EfficiencyRatio, MaxDrawdown, MaxRunup, ReturnAutocovariance, TimeOfHigh,
+    TimeOfLow,
+};
 pub use returns::{
     realized_kurtosis, realized_skewness, DownTicks, MaxAbsReturn, NegativeSemivariance,
     PositiveSemivariance, RealizedCubic, RealizedQuartic, ReturnCount, TotalVariation,
