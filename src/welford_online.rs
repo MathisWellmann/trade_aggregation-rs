@@ -27,6 +27,12 @@ impl WelfordOnline {
         self.variance().map(f64::sqrt)
     }
 
+    /// The running mean of the observations added so far, 0.0 without an observation yet
+    /// (meaningless then; callers should gate on [`Self::std_dev`] or their own count first).
+    pub fn mean(&self) -> f64 {
+        self.mean
+    }
+
     // reset to defaults
     pub fn reset(&mut self) {
         self.count = 0;

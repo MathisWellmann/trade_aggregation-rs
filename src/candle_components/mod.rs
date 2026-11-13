@@ -24,6 +24,8 @@ mod order_flow;
 mod quote_volume;
 mod quotes;
 mod realized;
+mod relative_std_dev_prices;
+mod relative_std_dev_sizes;
 mod return_path;
 mod returns;
 mod std_dev_prices;
@@ -70,6 +72,8 @@ pub use quotes::{
     VolumeThroughTouch, WapRealizedVariance,
 };
 pub use realized::{BipowerVariation, RealizedQuarticity, RealizedVariance};
+pub use relative_std_dev_prices::RelativeStdDevPrices;
+pub use relative_std_dev_sizes::RelativeStdDevSizes;
 pub use return_path::{
     roll_spread, EfficiencyRatio, MaxDrawdown, MaxRunup, ReturnAutocovariance, TimeOfHigh,
     TimeOfLow,

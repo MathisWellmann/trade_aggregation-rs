@@ -4,6 +4,10 @@ use crate::{
 
 /// This 'CandleComponent' keeps track of the standard deviation in trade prices.
 /// `None` with fewer than 2 trades, instead of an arbitrary fallback for an undefined spread.
+///
+/// This is in the raw price units of the symbol, so it is not comparable across symbols
+/// with different price levels. Use [`RelativeStdDevPrices`](super::RelativeStdDevPrices)
+/// for a scale-free (unitless) alternative.
 #[derive(Debug, Clone)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct StdDevPrices {

@@ -4,6 +4,11 @@ use crate::{
 
 /// This 'CandleComponent' keeps track of the standard deviation in the trade sizes.
 /// `None` with fewer than 2 trades, instead of an arbitrary fallback for an undefined spread.
+///
+/// This is in the raw base-currency units of the symbol, so it is not comparable across
+/// symbols with different typical trade sizes. Use
+/// [`RelativeStdDevSizes`](super::RelativeStdDevSizes) for a scale-free (unitless)
+/// alternative.
 #[derive(Debug, Clone)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct StdDevSizes {
