@@ -49,7 +49,7 @@ impl TakerTrade for Tick {
     #[inline(always)]
     fn size(&self) -> f64 {
         match self.side {
-            Side::Bid => self.size as f64 * -1.0,
+            Side::Bid => -(self.size as f64),
             Side::Ask => self.size as f64,
         }
     }

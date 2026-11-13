@@ -45,6 +45,6 @@ mod tests {
         for t in &crate::candle_components::tests::TRADES {
             m.update(t);
         }
-        assert_eq!(m.value(), 1684677290_000);
+        assert_eq!(m.value(), 1_684_677_290_000);
     }
 }
