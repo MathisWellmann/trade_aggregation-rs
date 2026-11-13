@@ -80,46 +80,31 @@ mod tests {
     fn relative_price_rule() {
         let mut rule = RelativePriceRule::new(0.01).unwrap();
 
-        assert_eq!(
-            rule.should_trigger(&Trade {
-                timestamp: 0,
-                price: 100.0,
-                size: 10.0
-            }),
-            false
-        );
-        assert_eq!(
-            rule.should_trigger(&Trade {
-                timestamp: 0,
-                price: 100.5,
-                size: 10.0
-            }),
-            false
-        );
-        assert_eq!(
-            rule.should_trigger(&Trade {
-                timestamp: 0,
-                price: 101.0,
-                size: 10.0
-            }),
-            true
-        );
-        assert_eq!(
-            rule.should_trigger(&Trade {
-                timestamp: 0,
-                price: 100.5,
-                size: 10.0
-            }),
-            false
-        );
-        assert_eq!(
-            rule.should_trigger(&Trade {
-                timestamp: 0,
-                price: 99.0,
-                size: 10.0
-            }),
-            true
-        );
+        assert!(!rule.should_trigger(&Trade {
+            timestamp: 0,
+            price: 100.0,
+            size: 10.0
+        }));
+        assert!(!rule.should_trigger(&Trade {
+            timestamp: 0,
+            price: 100.5,
+            size: 10.0
+        }));
+        assert!(rule.should_trigger(&Trade {
+            timestamp: 0,
+            price: 101.0,
+            size: 10.0
+        }));
+        assert!(!rule.should_trigger(&Trade {
+            timestamp: 0,
+            price: 100.5,
+            size: 10.0
+        }));
+        assert!(rule.should_trigger(&Trade {
+            timestamp: 0,
+            price: 99.0,
+            size: 10.0
+        }));
     }
 
     #[test]
