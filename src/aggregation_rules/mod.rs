@@ -22,7 +22,7 @@ pub(crate) mod test_utils;
 pub use adaptive::{Adaptive, Scaling, ThresholdRule};
 pub use aggregation_rule_trait::AggregationRule;
 pub use aligned_time_rule::*;
-pub use combinators::{AllRule, AnyRule, MaxDuration, MinDuration};
+pub use combinators::{AllRule, AnyRule, Fired, MaxDuration, MinDuration};
 pub use cusum_rule::CusumRule;
 pub use directional_change_rule::DirectionalChangeRule;
 pub use flow_bars::{FlowBarParams, FlowSignal};
