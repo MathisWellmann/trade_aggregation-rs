@@ -53,6 +53,39 @@ fn elapsed<E: Timestamped>(open_timestamp: i64, trade: &E) -> i64 {
     elapsed
 }
 
+/// Which inner rule of an [`AnyRule`] or an [`AllRule`] is responsible for the most recent close.
+///
+/// For [`AnyRule`], the rule that triggered first (or, at a deadline, the rule whose deadline it
+/// was). For [`AllRule`], the rule that completed the pair last (or, at a deadline, the rule
+/// whose deadline let the pending one through). Which criterion closed a hybrid bar is itself a
+/// feature of the bar (e.g. volume vs. volatility), and the share of candles closed by a timeout
+/// rather than the rule is a calibration diagnostic for the pair.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub enum Fired {
+    /// Rule `a` alone.
+    First,
+    /// Rule `b` alone.
+    Second,
+    /// Both rules, on the same trade or at the same deadline.
+    Both,
+}
+
+impl Fired {
+    /// Which rule(s) a close belongs to, from whether each one fired on it.
+    ///
+    /// # Panics (debug only):
+    /// If neither fired: a close always has a reason.
+    fn from_triggers(a: bool, b: bool) -> Self {
+        debug_assert!(a || b, "a close needs at least one rule to have fired");
+        match (a, b) {
+            (true, true) => Fired::Both,
+            (true, false) => Fired::First,
+            (false, _) => Fired::Second,
+        }
+    }
+}
+
 /// Closes the candle as soon as either rule triggers,
 /// e.g. a dollar volume rule or a volatility rule, whichever comes first ("hybrid bars").
 ///
@@ -65,12 +98,37 @@ fn elapsed<E: Timestamped>(open_timestamp: i64, trade: &E) -> i64 {
 pub struct AnyRule<A, B> {
     a: A,
     b: B,
+    /// Which rule closed the most recent candle, `None` before the first close.
+    /// Not touched by [`AggregationRule::reset`]: it is a record of the last close,
+    /// not per-candle accumulator state.
+    last_trigger: Option<Fired>,
 }
 
 impl<A, B> AnyRule<A, B> {
     /// Combine two rules, of which either one closes the candle.
     pub fn new(a: A, b: B) -> Self {
-        Self { a, b }
+        Self {
+            a,
+            b,
+            last_trigger: None,
+        }
+    }
+
+    /// Which rule closed the most recent candle that this rule closed,
+    /// `None` before the first close.
+    pub fn last_trigger(&self) -> Option<Fired> {
+        self.last_trigger
+    }
+
+    /// The first rule, e.g. to read its state after a candle it closed,
+    /// such as the last event of an `IntrinsicEventRule`.
+    pub fn first(&self) -> &A {
+        &self.a
+    }
+
+    /// The second rule.
+    pub fn second(&self) -> &B {
+        &self.b
     }
 }
 
@@ -87,6 +145,7 @@ where
         if trigger {
             reset_untriggered::<E, _>(&mut self.a, a);
             reset_untriggered::<E, _>(&mut self.b, b);
+            self.last_trigger = Some(Fired::from_triggers(a, b));
         }
         trigger
     }
@@ -104,6 +163,9 @@ where
     fn on_deadline(&mut self) {
         let deadline = AggregationRule::<E>::deadline(self)
             .expect("the aggregator closes a candle at a deadline only if there is one");
+        let a_at_deadline = self.a.deadline() == Some(deadline);
+        let b_at_deadline = self.b.deadline() == Some(deadline);
+        self.last_trigger = Some(Fired::from_triggers(a_at_deadline, b_at_deadline));
         close_at_deadline::<E, _>(&mut self.a, deadline);
         close_at_deadline::<E, _>(&mut self.b, deadline);
     }
@@ -128,6 +190,10 @@ pub struct AllRule<A, B> {
     b: B,
     a_triggered: bool,
     b_triggered: bool,
+    /// Which rule completed the pair last, `None` before the first close.
+    /// Not touched by [`AggregationRule::reset`]: it is a record of the last close,
+    /// not per-candle accumulator state.
+    last_trigger: Option<Fired>,
 }
 
 impl<A, B> AllRule<A, B> {
@@ -138,7 +204,26 @@ impl<A, B> AllRule<A, B> {
             b,
             a_triggered: false,
             b_triggered: false,
+            last_trigger: None,
         }
+    }
+
+    /// Which rule completed the pair last and so closed the most recent candle that this
+    /// rule closed (the other rule had already triggered and was waiting), `None` before
+    /// the first close.
+    pub fn last_trigger(&self) -> Option<Fired> {
+        self.last_trigger
+    }
+
+    /// The first rule, e.g. to read its state after a candle it closed,
+    /// such as the last event of an `IntrinsicEventRule`.
+    pub fn first(&self) -> &A {
+        &self.a
+    }
+
+    /// The second rule.
+    pub fn second(&self) -> &B {
+        &self.b
     }
 }
 
@@ -156,6 +241,7 @@ where
         if trigger {
             reset_untriggered::<E, _>(&mut self.a, a);
             reset_untriggered::<E, _>(&mut self.b, b);
+            self.last_trigger = Some(Fired::from_triggers(a, b));
             self.a_triggered = false;
             self.b_triggered = false;
         }
@@ -183,6 +269,13 @@ where
     fn on_deadline(&mut self) {
         let deadline = AggregationRule::<E>::deadline(self)
             .expect("the aggregator closes a candle at a deadline only if there is one");
+        // `deadline()` is `Some` only when exactly one side is pending; the deadline lets
+        // the other side (the one not yet triggered) through, which completes the pair.
+        self.last_trigger = Some(if self.a_triggered {
+            Fired::Second
+        } else {
+            Fired::First
+        });
         close_at_deadline::<E, _>(&mut self.a, deadline);
         close_at_deadline::<E, _>(&mut self.b, deadline);
         self.a_triggered = false;
@@ -220,6 +313,11 @@ impl<R> MinDuration<R> {
             open_timestamp: None,
             pending: false,
         }
+    }
+
+    /// The inner rule, e.g. to read its state after a candle it closed.
+    pub fn inner(&self) -> &R {
+        &self.inner
     }
 }
 
@@ -306,6 +404,11 @@ impl<R> MaxDuration<R> {
             open_timestamp: None,
         }
     }
+
+    /// The inner rule, e.g. to read its state after a candle it closed.
+    pub fn inner(&self) -> &R {
+        &self.inner
+    }
 }
 
 impl<E, R> AggregationRule<E> for MaxDuration<R>
@@ -358,7 +461,7 @@ mod tests {
     use super::*;
     use crate::{
         aggregation_rules::test_utils::{trade, trigger_indices},
-        By, TickRule, Trade, VolumeRule,
+        By, ThresholdRule, TickRule, Trade, VolumeRule,
     };
 
     /// `n` trades one millisecond apart, each of size 1.
@@ -518,5 +621,156 @@ mod tests {
         assert_eq!(AggregationRule::<Trade>::deadline(&rule), Some(10));
         AggregationRule::<Trade>::on_deadline(&mut rule);
         assert_eq!(AggregationRule::<Trade>::deadline(&rule), None);
+    }
+
+    #[test]
+    fn any_rule_last_trigger_is_none_before_any_close() {
+        let rule = AnyRule::new(TickRule::new(3), TickRule::new(4));
+        assert_eq!(rule.last_trigger(), None);
+    }
+
+    #[test]
+    fn any_rule_last_trigger_reports_which_rule_fired() {
+        let mut sizes = [1.0; 12];
+        sizes[1] = 10.0;
+        let trades: Vec<Trade> = sizes
+            .iter()
+            .zip(0..)
+            .map(|(size, ts)| trade(ts, 100.0, *size))
+            .collect();
+        let mut rule = AnyRule::new(
+            TickRule::new(5),
+            VolumeRule::new(10.0, By::Quote).expect("valid threshold"),
+        );
+        // The volume rule (b) fires alone on trade 1, then the tick rule (a) alone on 6 and 11.
+        let mut closes = Vec::new();
+        for t in &trades {
+            if rule.should_trigger(t) {
+                closes.push(rule.last_trigger());
+            }
+        }
+        assert_eq!(
+            closes,
+            vec![Some(Fired::Second), Some(Fired::First), Some(Fired::First)]
+        );
+    }
+
+    #[test]
+    fn any_rule_last_trigger_is_both_when_the_rules_fire_together() {
+        let mut rule = AnyRule::new(TickRule::new(3), TickRule::new(3));
+        let t = trades(3);
+        assert!(!rule.should_trigger(&t[0]));
+        assert!(!rule.should_trigger(&t[1]));
+        assert!(rule.should_trigger(&t[2]));
+        assert_eq!(rule.last_trigger(), Some(Fired::Both));
+    }
+
+    #[test]
+    fn any_rule_last_trigger_at_a_deadline_identifies_the_rule_whose_deadline_it_was() {
+        let mut rule = AnyRule::new(
+            TickRule::new(3),
+            crate::AlignedTimeRule::new(MillisecondPeriod::from_non_zero(10)),
+        );
+        assert!(trigger_indices(&mut rule, &trades(2)).is_empty());
+        assert_eq!(rule.last_trigger(), None, "no close yet");
+        AggregationRule::<Trade>::on_deadline(&mut rule);
+        assert_eq!(
+            rule.last_trigger(),
+            Some(Fired::Second),
+            "b is the time rule"
+        );
+    }
+
+    #[test]
+    fn any_rule_last_trigger_survives_reset() {
+        let mut rule = AnyRule::new(TickRule::new(1), TickRule::new(1));
+        assert!(rule.should_trigger(&trade(0, 100.0, 1.0)));
+        assert_eq!(rule.last_trigger(), Some(Fired::Both));
+        AggregationRule::<Trade>::reset(&mut rule);
+        assert_eq!(
+            rule.last_trigger(),
+            Some(Fired::Both),
+            "reset forgets pending accumulators, not the record of the last close"
+        );
+    }
+
+    #[cfg(feature = "serde")]
+    #[test]
+    fn any_rule_last_trigger_round_trips_with_serde() {
+        let mut rule = AnyRule::new(TickRule::new(5), TickRule::new(3));
+        assert_eq!(trigger_indices(&mut rule, &trades(3)), vec![2]);
+        assert_eq!(rule.last_trigger(), Some(Fired::Second));
+        let json = serde_json::to_string(&rule).expect("serializable");
+        let restored: AnyRule<TickRule, TickRule> =
+            serde_json::from_str(&json).expect("deserializable");
+        assert_eq!(restored.last_trigger(), Some(Fired::Second));
+    }
+
+    #[test]
+    fn all_rule_last_trigger_is_none_before_any_close() {
+        let rule = AllRule::new(TickRule::new(1), TickRule::new(1));
+        assert_eq!(rule.last_trigger(), None);
+    }
+
+    #[test]
+    fn all_rule_last_trigger_reports_the_rule_that_completed_the_pair() {
+        // The 5-tick rule completes the pair after the 2-tick rule already waited.
+        let mut rule = AllRule::new(TickRule::new(2), TickRule::new(5));
+        let mut closes = Vec::new();
+        for t in &trades(10) {
+            if rule.should_trigger(t) {
+                closes.push(rule.last_trigger());
+            }
+        }
+        assert_eq!(closes, vec![Some(Fired::Second), Some(Fired::Second)]);
+
+        // Swapping the rules swaps which one is reported as completing the pair.
+        let mut rule = AllRule::new(TickRule::new(5), TickRule::new(2));
+        let mut closes = Vec::new();
+        for t in &trades(10) {
+            if rule.should_trigger(t) {
+                closes.push(rule.last_trigger());
+            }
+        }
+        assert_eq!(closes, vec![Some(Fired::First), Some(Fired::First)]);
+    }
+
+    #[test]
+    fn all_rule_last_trigger_at_a_deadline_identifies_the_pending_rule() {
+        let mut rule = AllRule::new(
+            TickRule::new(1),
+            crate::AlignedTimeRule::new(MillisecondPeriod::from_non_zero(10)),
+        );
+        assert!(trigger_indices(&mut rule, &trades(1)).is_empty());
+        assert_eq!(rule.last_trigger(), None, "no close yet");
+        AggregationRule::<Trade>::on_deadline(&mut rule);
+        assert_eq!(
+            rule.last_trigger(),
+            Some(Fired::Second),
+            "the time rule (b) was pending and completes the pair at its deadline"
+        );
+    }
+
+    #[test]
+    fn all_rule_last_trigger_survives_reset() {
+        let mut rule = AllRule::new(TickRule::new(1), TickRule::new(1));
+        assert!(rule.should_trigger(&trade(0, 100.0, 1.0)));
+        assert_eq!(rule.last_trigger(), Some(Fired::Both));
+        AggregationRule::<Trade>::reset(&mut rule);
+        assert_eq!(rule.last_trigger(), Some(Fired::Both));
+    }
+
+    #[test]
+    fn the_inner_rules_can_be_read() {
+        let any = AnyRule::new(TickRule::new(2), TickRule::new(3));
+        assert_eq!(any.first().threshold(), 2.0);
+        assert_eq!(any.second().threshold(), 3.0);
+        let all = AllRule::new(TickRule::new(4), TickRule::new(5));
+        assert_eq!(all.first().threshold(), 4.0);
+        assert_eq!(all.second().threshold(), 5.0);
+        let min = MinDuration::new(TickRule::new(6), MillisecondPeriod::from_non_zero(1));
+        assert_eq!(min.inner().threshold(), 6.0);
+        let max = MaxDuration::new(TickRule::new(7), MillisecondPeriod::from_non_zero(1));
+        assert_eq!(max.inner().threshold(), 7.0);
     }
 }
