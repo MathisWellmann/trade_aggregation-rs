@@ -14,7 +14,7 @@ use crate::{AsTrade, CandleComponent, CandleComponentUpdate, TakerTrade};
 /// The side of a taker trade.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-enum Side {
+pub(super) enum Side {
     /// The taker bought, at the ask: a positive size.
     Buy,
     /// The taker sold, at the bid: a negative size.
@@ -24,7 +24,7 @@ enum Side {
 impl Side {
     /// The side of `trade`, `None` for a trade without size.
     #[inline(always)]
-    fn of<T: TakerTrade>(trade: &T) -> Option<Self> {
+    pub(super) fn of<T: TakerTrade>(trade: &T) -> Option<Self> {
         let size = trade.size();
         if size > 0.0 {
             Some(Self::Buy)
