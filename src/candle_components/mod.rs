@@ -18,6 +18,7 @@ mod open;
 #[cfg(feature = "chrono")]
 mod open_datetime;
 mod open_timestamp;
+mod order_flow;
 mod quote_volume;
 mod quotes;
 mod realized;
@@ -50,6 +51,7 @@ pub use open::Open;
 #[cfg(feature = "chrono")]
 pub use open_datetime::OpenDateTime;
 pub use open_timestamp::OpenTimeStamp;
+pub use order_flow::{KyleLambda, KyleLambdaStats, RegressionSums};
 pub use quote_volume::QuoteVolume;
 pub use quotes::{
     EffectiveSpread, MidClose, MidHigh, MidLow, MidOpen, OrderFlowImbalance, QuoteUpdates,
