@@ -165,20 +165,38 @@ pub struct QuoteOfi {
     previous: Option<[f64; 4]>,
 }
 
+/// The order flow imbalance increment of a quote update and the depth before it.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub(crate) struct OfiStep {
+    /// The increment, in the unit of the quote sizes.
+    pub(crate) increment: f64,
+    /// The mean size at the best bid and ask of the previous quote, `(bid_size + ask_size) / 2`.
+    pub(crate) depth: f64,
+}
+
 impl QuoteOfi {
     /// Start without a previous quote.
     pub fn new() -> Self {
         Self::default()
     }
-}
 
-impl<E: AsQuote> Signal<E> for QuoteOfi {
-    fn observe(&mut self, event: &E) -> Option<f64> {
+    /// The increment of `event` and the depth of the quote before it,
+    /// `None` for events other than valid quotes and for the first valid quote.
+    pub(crate) fn step<E: AsQuote>(&mut self, event: &E) -> Option<OfiStep> {
         let current = quote_levels(event.as_quote()?)?;
         let previous = self.previous.replace(current)?;
         let increment = order_flow(current, previous);
+        let depth = (previous[1] + previous[3]) / 2.0;
         debug_assert!(increment.is_finite());
-        Some(increment)
+        debug_assert!(depth >= 0.0, "sizes are not negative");
+        Some(OfiStep { increment, depth })
+    }
+}
+
+impl<E: AsQuote> Signal<E> for QuoteOfi {
+    #[inline(always)]
+    fn observe(&mut self, event: &E) -> Option<f64> {
+        self.step(event).map(|step| step.increment)
     }
 }
 
