@@ -219,6 +219,7 @@ Order flow and trades:
 `SmallTradeFlow`, `MediumTradeFlow`, `LargeTradeFlow` | The net volume of small, medium and large trades, relative to the recent average size
 `TakerOrders`, `Sweeps`, `MaxSweepDepth` | The taker orders (fills with the same time and side), how many swept several prices, and how far
 `MaxGap`, `InterArrivalCv` | The longest time between trades, and the burstiness of the times between trades
+`MissingTrades`, `FirstTradeId`, `LastTradeId` | For trades with the id of the exchange (`TradeId`): the ids missing before the trades of the candle (trades a feed lost), and the first and the last id of the candle
 
 Quotes (best bid and ask):
 'CandleComponent'   | Description

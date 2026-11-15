@@ -32,6 +32,7 @@ mod std_dev_prices;
 mod std_dev_sizes;
 mod taker_orders;
 mod time_velocity;
+mod trade_ids;
 mod trade_signs;
 mod trade_sizes;
 mod trades;
@@ -89,6 +90,7 @@ pub use std_dev_prices::StdDevPrices;
 pub use std_dev_sizes::StdDevSizes;
 pub use taker_orders::{MaxSweepDepth, Sweeps, TakerOrders};
 pub use time_velocity::TimeVelocity;
+pub use trade_ids::{FirstTradeId, LastTradeId, MissingTrades};
 pub use trade_signs::{ConditionalSignEntropy, LongestRun, SignAutocorrelation, SignSwitches};
 pub use trade_sizes::{
     LargeTradeFlow, LargestTradeShare, MediumTradeFlow, SizeHerfindahl, SmallTradeFlow,

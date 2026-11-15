@@ -117,6 +117,18 @@ pub trait TakerTrade: Timestamped {
     }
 }
 
+/// A trade with the id that the exchange gave it, e.g. the aggregated trade id of Binance.
+///
+/// The ids increase in the order of the matching engine, by one per trade, so a gap in them
+/// counts the trades that a feed lost ([`MissingTrades`](crate::candle_components::MissingTrades)),
+/// and the ids of the first and the last trade of a candle
+/// ([`FirstTradeId`](crate::candle_components::FirstTradeId),
+/// [`LastTradeId`](crate::candle_components::LastTradeId)) find the candles of a range of ids.
+pub trait TradeId: TakerTrade {
+    /// The id of the trade.
+    fn trade_id(&self) -> u64;
+}
+
 /// The resolution of the [`Timestamped`] timestamps
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
