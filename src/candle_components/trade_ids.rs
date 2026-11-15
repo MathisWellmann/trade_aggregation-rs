@@ -252,7 +252,7 @@ mod tests {
     #[test]
     fn the_candles_cover_every_id_once() {
         // Every id from 100 to 999 that is divisible by 3 is lost.
-        let lost = |id: &u64| id % 3 == 0;
+        let lost = |id: &u64| id.is_multiple_of(3);
         let ids: Vec<u64> = (100..1_000).filter(|id| !lost(id)).collect();
         let mut aggregator =
             GenericAggregator::<IdCandle, _, IdTrade>::new(TickRule::new(50), false);
