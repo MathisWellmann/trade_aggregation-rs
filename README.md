@@ -448,7 +448,3 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 ![GNU AGPLv3](readme_img/agplv3.png)
-
-### Commercial License
-If you'd like to use this crate legally without the restrictions of the GNU AGPLv3 license, 
-please contact me so we can quickly arrange a custom license.
