@@ -66,9 +66,21 @@ impl Scaling {
 ///   with linear scaling, a rule whose activity grows with the square root of time
 ///   oscillates instead of settling.
 /// - When a combinator closes the candle (e.g. [`MaxDuration`](crate::MaxDuration)),
-///   the inner rule restarts but the duration keeps running from its previous trigger.
-///   Slow inner triggers therefore lower the threshold.
+///   the inner rule restarts ([`AggregationRule::reset`]).
 ///   Wrap the combinator around `Adaptive` (`MaxDuration<Adaptive<R>>`), not the other way round.
+/// - A candle that a combinator closes before the inner rule triggered did not reach the
+///   threshold: its activity per duration was lower than the threshold implies.
+///   If it lasted longer than the average implies, `Adaptive` raises the average to
+///   `duration / threshold^p`, a lower bound of the duration per activity (a censored sample),
+///   which lowers the threshold. Without this, a threshold that the inner rule cannot reach
+///   within a [`MaxDuration`](crate::MaxDuration) would never come down: the timeout restarts
+///   the inner rule before it triggers, and only triggers calibrate. This happens after a
+///   seed far above the activity, after one very short first candle (the first sample sets
+///   the average alone), and when the activity drops by more than the ratio of the maximum
+///   to the target duration. The next candle is then timed from its own first event,
+///   so the time of the unfinished candle counts once.
+/// - Otherwise, the duration keeps running from the previous trigger of the inner rule
+///   when a combinator closes a candle.
 #[derive(Debug, Clone)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Adaptive<R> {
@@ -78,9 +90,16 @@ pub struct Adaptive<R> {
     min_threshold: f64,
     max_threshold: f64,
     scaling: Scaling,
+    /// The start of the duration of the next sample: the last trigger of the inner rule,
+    /// or the first event after a censored sample.
     last_trigger_timestamp: Option<i64>,
     /// The moving average of `duration in ms / threshold^p`.
     ms_per_activity: Option<f64>,
+    /// The first event that the inner rule saw since it last started a candle:
+    /// its last trigger, or the first event after a reset.
+    candle_start_timestamp: Option<i64>,
+    /// The latest event.
+    latest_timestamp: Option<i64>,
 }
 
 impl<R: ThresholdRule> Adaptive<R> {
@@ -128,6 +147,8 @@ impl<R: ThresholdRule> Adaptive<R> {
             scaling: Scaling::Linear,
             last_trigger_timestamp: None,
             ms_per_activity: None,
+            candle_start_timestamp: None,
+            latest_timestamp: None,
         })
     }
 }
@@ -170,6 +191,59 @@ fn calibrate(
     let sample = candle_ms / candle_activity.powi(p);
     let average = previous.map_or(sample, |prev| alpha * sample + (1.0 - alpha) * prev);
     debug_assert!(average > 0.0);
+    let threshold = threshold_for(average, scaling, target_ms, (min_threshold, max_threshold));
+    (average, threshold)
+}
+
+/// The average and the threshold after a candle that the inner rule did not trigger,
+/// if they change.
+///
+/// # Arguments:
+/// `previous`: The moving average of `ms / activity^p`, `None` before the first trigger.
+/// `threshold`: The threshold that the candle did not reach.
+/// `open_ms`: How long the inner rule accumulated without reaching it.
+///
+/// # Returns:
+/// The censored average and the lower threshold, or `None` if the candle did not last
+/// longer than the average (or, before the first trigger, the threshold) implies.
+fn censor(
+    previous: Option<f64>,
+    (threshold, open_ms): (f64, f64),
+    scaling: Scaling,
+    target_ms: f64,
+    bounds: (f64, f64),
+) -> Option<(f64, f64)> {
+    assert!(
+        threshold > 0.0,
+        "every threshold rule rejects thresholds <= 0"
+    );
+    assert!(threshold.is_finite());
+    assert!(open_ms >= 0.0, "a candle cannot end before it started");
+    let p = scaling.exponent();
+    // The activity stayed below the threshold, so the duration per activity was longer.
+    let lower_bound = open_ms / threshold.powi(p);
+    // Before the first trigger, the threshold itself implies the average.
+    let current = previous.unwrap_or(target_ms / threshold.powi(p));
+    if lower_bound <= current {
+        return None;
+    }
+    let next = threshold_for(lower_bound, scaling, target_ms, bounds);
+    // A larger average never gives a larger threshold, also at the bounds.
+    assert!(
+        next <= threshold,
+        "a censored sample raised {threshold} to {next}"
+    );
+    Some((lower_bound, next))
+}
+
+/// The threshold that gives candles of `target_ms` at `average` ms per activity^p.
+fn threshold_for(
+    average: f64,
+    scaling: Scaling,
+    target_ms: f64,
+    (min_threshold, max_threshold): (f64, f64),
+) -> f64 {
+    debug_assert!(average > 0.0);
     let unclamped = match scaling {
         Scaling::Linear => target_ms / average,
         Scaling::Diffusive => (target_ms / average).sqrt(),
@@ -177,7 +251,7 @@ fn calibrate(
     let threshold = unclamped.clamp(min_threshold, max_threshold);
     debug_assert!(threshold >= min_threshold);
     debug_assert!(threshold <= max_threshold);
-    (average, threshold)
+    threshold
 }
 
 impl<E, R> AggregationRule<E> for Adaptive<R>
@@ -187,6 +261,8 @@ where
 {
     fn should_trigger(&mut self, trade: &E) -> bool {
         let start = *self.last_trigger_timestamp.get_or_insert(trade.timestamp());
+        self.candle_start_timestamp.get_or_insert(trade.timestamp());
+        self.latest_timestamp = Some(trade.timestamp());
         let trigger = self.inner.should_trigger(trade);
         if trigger {
             let units_per_ms = E::TIMESTAMP_RESOLUTION.units_per_millisecond();
@@ -206,12 +282,35 @@ where
                 "`Adaptive::new` checked that the inner rule accepts every clamped threshold",
             );
             self.last_trigger_timestamp = Some(trade.timestamp());
+            self.candle_start_timestamp = Some(trade.timestamp());
         }
         trigger
     }
 
+    /// A combinator closed the candle before the inner rule triggered:
+    /// learn from it if it lasted too long (see the notes on [`Adaptive`]), and restart the inner rule.
     fn reset(&mut self) {
         self.inner.reset();
+        if let (Some(start), Some(latest)) = (self.candle_start_timestamp, self.latest_timestamp) {
+            let units_per_ms = E::TIMESTAMP_RESOLUTION.units_per_millisecond();
+            let open_ms = latest.saturating_sub(start) as f64 / units_per_ms as f64;
+            let censored = censor(
+                self.ms_per_activity,
+                (self.inner.threshold(), open_ms),
+                self.scaling,
+                self.target_duration.get() as f64,
+                (self.min_threshold, self.max_threshold),
+            );
+            if let Some((average, threshold)) = censored {
+                self.ms_per_activity = Some(average);
+                self.inner.set_threshold(threshold).expect(
+                    "`Adaptive::new` checked that the inner rule accepts every clamped threshold",
+                );
+                // The time of this candle is in the average now; time the next one from its start.
+                self.last_trigger_timestamp = None;
+            }
+        }
+        self.candle_start_timestamp = None;
     }
 
     fn deadline(&self) -> Option<i64> {
@@ -232,7 +331,9 @@ mod tests {
     use super::*;
     use crate::{
         aggregation_rules::test_utils::{random_flow, trade, trigger_indices},
-        By, SignedVolumeRule, TickRule, Trade, VolumeRule,
+        candle_components::NumTrades,
+        Aggregator, BarKind, By, Candle, GenericAggregator, MaxDuration, SignedVolumeRule,
+        TickRule, Trade, VolumeRule,
     };
 
     const TARGET: MillisecondPeriod = MillisecondPeriod::from_non_zero(100);
@@ -440,5 +541,103 @@ mod tests {
         assert!(trigger_indices(&mut rule, &t[..2]).is_empty());
         AggregationRule::<Trade>::reset(&mut rule);
         assert_eq!(trigger_indices(&mut rule, &t[2..]), vec![2, 5]);
+    }
+
+    #[test]
+    fn censor_only_lowers_the_threshold() {
+        let bounds = (1.0, 1e9);
+        let linear = Scaling::Linear;
+        // 1 ms per unit: 100 units per candle of 100 ms.
+        // Below 100 units for 50 ms says nothing new.
+        assert_eq!(
+            censor(Some(1.0), (100.0, 50.0), linear, 100.0, bounds),
+            None
+        );
+        // Below 100 units for 1000 ms: at least 10 ms per unit, at most 10 units per 100 ms.
+        assert_eq!(
+            censor(Some(1.0), (100.0, 1_000.0), linear, 100.0, bounds),
+            Some((10.0, 10.0))
+        );
+        // Before the first trigger, the threshold implies the average.
+        assert_eq!(censor(None, (100.0, 100.0), linear, 100.0, bounds), None);
+        assert_eq!(
+            censor(None, (100.0, 400.0), linear, 100.0, bounds),
+            Some((4.0, 25.0))
+        );
+        // A net flow below 10 for 400 ms: at least 4 ms per squared unit, a flow of 5 per 100 ms.
+        assert_eq!(
+            censor(None, (10.0, 400.0), Scaling::Diffusive, 100.0, bounds),
+            Some((4.0, 5.0))
+        );
+        // The bounds still hold.
+        assert_eq!(
+            censor(Some(1.0), (100.0, 1e6), linear, 100.0, (50.0, 1e9)),
+            Some((1e4, 50.0))
+        );
+    }
+
+    /// A threshold far above the activity, so that the inner rule cannot trigger before
+    /// `MaxDuration` restarts it: one trade per millisecond, a target of 100 trades per candle,
+    /// a first threshold of a million trades and a timeout of one second.
+    fn unreachable_threshold() -> MaxDuration<Adaptive<TickRule>> {
+        let adaptive =
+            Adaptive::new(TickRule::new(1_000_000), TARGET, 0.1, 1.0, 1e9).expect("valid");
+        MaxDuration::new(adaptive, MillisecondPeriod::from_non_zero(1_000))
+    }
+
+    #[test]
+    fn a_timeout_lowers_a_threshold_that_the_inner_rule_cannot_reach() {
+        let mut rule = unreachable_threshold();
+        let triggers = trigger_indices(&mut rule, &trades_at_rate(20_000, 1, 0));
+        let threshold = rule.inner().inner().threshold();
+        assert!((90.0..=110.0).contains(&threshold), "threshold {threshold}");
+        // At the end the inner rule closes candles of about 100 trades, not the timeout of 1000.
+        let last = &triggers[triggers.len() - 10..];
+        assert!(last.windows(2).all(|w| w[1] - w[0] < 120), "{last:?}");
+    }
+
+    #[derive(Debug, Default, Clone, Candle)]
+    struct CountCandle {
+        num_trades: NumTrades<u32>,
+    }
+
+    #[test]
+    fn a_deadline_lowers_a_threshold_that_the_inner_rule_cannot_reach() {
+        // One trade every 10 ms: a target of 10 trades per candle. The timeout passes at the
+        // deadline of `MaxDuration`, before the trade at that time.
+        let trades: Vec<Trade> = (0..5_000).map(|i| trade(i * 10, 100.0, 1.0)).collect();
+        let mut aggregator =
+            GenericAggregator::<CountCandle, _, Trade>::new(unreachable_threshold(), false);
+        let mut bars = Vec::new();
+        for t in &trades {
+            aggregator.update(t, &mut bars);
+        }
+        assert_eq!(bars[0].kind(), BarKind::Deadline);
+        let threshold = aggregator.rule().inner().inner().threshold();
+        assert!((9.0..=11.0).contains(&threshold), "threshold {threshold}");
+        let last = &bars[bars.len() - 10..];
+        assert!(last.iter().all(|b| b.kind() == BarKind::Rule), "{last:?}");
+        assert!(last.iter().all(|b| b.candle().num_trades() <= 11));
+    }
+
+    #[test]
+    fn a_short_reset_keeps_the_threshold_and_the_running_duration() {
+        let mut rule = adaptive_ticks(1.0, 1.0, 1e9);
+        let t = trades_at_rate(1_000, 1, 0);
+        assert_eq!(trigger_indices(&mut rule, &t[..301]), [0, 100, 200, 300]);
+        assert_eq!(rule.inner().threshold(), 100.0);
+        // A combinator closes the candle after 50 of 100 trades: no censored sample.
+        assert!(trigger_indices(&mut rule, &t[301..351]).is_empty());
+        AggregationRule::<Trade>::reset(&mut rule);
+        assert_eq!(rule.inner().threshold(), 100.0);
+        // The duration of the next sample still runs from the last trigger at 300 ms:
+        // the inner rule restarts at 351 and triggers at 450, so the sample is 150 ms
+        // per 100 trades and the threshold drops to 100 / 1.5.
+        assert_eq!(trigger_indices(&mut rule, &t[351..451]), [99]);
+        let threshold = rule.inner().threshold();
+        assert!(
+            (threshold - 100.0 / 1.5).abs() < 1.0,
+            "threshold {threshold}"
+        );
     }
 }

@@ -117,6 +117,10 @@ This aims at the arithmetic mean duration, e.g. about 1440 candles per day for a
 `with_scaling(Scaling::Diffusive)` is for rules whose activity grows with the square root of time,
 such as the net flow of a `SignedVolumeRule` or a price move ("adaptive delta bars").
 Combine it with a duration bound as `MaxDuration<Adaptive<R>>`.
+When the bound closes a candle that the inner rule did not trigger, the activity stayed below the threshold for the whole candle.
+If the candle lasted longer than the average implies, `Adaptive` takes its duration as a lower bound of the duration per activity (a censored sample) and lowers the threshold.
+So a threshold that the inner rule cannot reach within the bound comes down, e.g. after a seed far above the activity or a sudden drop of the activity,
+instead of locking the rule: only triggers of the inner rule calibrate, and the timeout restarts it before it can trigger.
 
 The imbalance and run bars learn their threshold from the market, which is known to be unstable:
 with balanced flow the expected imbalance goes to zero and bars collapse to single trades,
